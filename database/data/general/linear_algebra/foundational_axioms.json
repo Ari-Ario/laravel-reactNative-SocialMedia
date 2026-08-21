@@ -1,0 +1,83 @@
+[
+    {
+        "branch": "linear_algebra",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Matrix multiplication associative",
+        "parent_thesis": "Definition of a Ring: An Abelian group under addition and a monoid under multiplication, with multiplication distributing over addition",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "8104955f179c29d04da08fbc2ee1d179855a154387b645865fb2a38c4f638c46"
+    },
+    {
+        "branch": "linear_algebra",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Vector space axioms",
+        "parent_thesis": "Definition of a Vector Space over a Field: An Abelian group of vectors with compatible scalar multiplication from a Field",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "65a0d66e6fa872fd7eeb580f50fdb5438182678ed91ecd738b484b3389fac49d"
+    },
+    {
+        "branch": "linear_algebra",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Eigenvalues and eigenvectors",
+        "parent_thesis": "Definition of a Vector Space over a Field: An Abelian group of vectors with compatible scalar multiplication from a Field",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "c0fe6bdc80d2b70dff910ce892c558765f569022352294d3d5760eb478268f7c"
+    },
+    {
+        "branch": "linear_algebra",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Cramer rule",
+        "parent_thesis": "Definition of a Vector Space over a Field: An Abelian group of vectors with compatible scalar multiplication from a Field",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "ad4f6a2a074c4720dd34fcef8cf3b812effe42a9ed8a2777115cf919f38504cc"
+    },
+    {
+        "branch": "linear_algebra",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Spectral Theorem",
+        "parent_thesis": "Eigenvalues and eigenvectors",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "fd1700ee478f3a40e3f3625776daf2d13b56474d855cf549b1a5e1b4ebe097f9"
+    },
+    {
+        "branch": "linear_algebra",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Cayley-Hamilton Theorem",
+        "parent_thesis": "Eigenvalues and eigenvectors",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "960e4ae495a5c38c17c65e8e829b5cd75ad0875554674e68ff51319cff6f8538"
+    },
+    {
+        "branch": "linear_algebra",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Rank-Nullity Theorem",
+        "parent_thesis": "Definition of a Basis: A linearly independent set of vectors that spans the vector space",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "3f20477a446e076bdabd76b05589d609383bb2cbd86260987ff89744311dbcfe"
+    },
+    {
+        "branch": "linear_algebra",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Singular Value Decomposition (SVD)",
+        "parent_thesis": "Spectral Theorem",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "58d90a3fdbd1c278a8cf3004d60677fcb43b74f7554372813e37f35737ae6c80"
+    },
+    {
+        "branch": "linear_algebra",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Riesz Representation Theorem",
+        "parent_thesis": "Definition of a Vector Space over a Field: An Abelian group of vectors with compatible scalar multiplication from a Field",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "6785002f5100391c36b517a2ed914a1afe54501252d326d7dcd106512f4f20d4"
+    }
+]

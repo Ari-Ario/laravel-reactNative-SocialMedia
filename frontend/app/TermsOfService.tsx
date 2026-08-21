@@ -26,7 +26,7 @@ const TermsOfService = () => {
       <DecorativeSymbols />
 
       <View style={styles.header}>
-        <BackButton onPress={() => router.back()} />
+        <BackButton onPress={() => { if (router.canGoBack()) router.back(); else router.replace("/(tabs)"); }} />
         <Text style={styles.headerTitle}>Terms of Service</Text>
         <View style={{ width: 40 }} />
       </View>

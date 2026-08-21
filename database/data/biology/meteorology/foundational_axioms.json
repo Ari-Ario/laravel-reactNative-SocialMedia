@@ -1,0 +1,80 @@
+[
+    {
+        "branch": "meteorology",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Coriolis effect atmospheric circulation",
+        "parent_thesis": "Newton first law of motion",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "07b684539828681173c1e6774f41e22e0da488fe4e1b1de1e368c835109c4688"
+    },
+    {
+        "branch": "meteorology",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Ideal gas law in meteorology",
+        "parent_thesis": "Newton first law of motion",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "f84333d025416263f21fc5e87b1d829157ca6b69b5a05ccc68ba7706ecb18a3b"
+    },
+    {
+        "branch": "meteorology",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Adiabatic lapse rate",
+        "parent_thesis": "Newton first law of motion",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "ba08a241a24a8a90a41037bb9b6f50e9535f8aed07e64a412f806bcae2744b0d"
+    },
+    {
+        "branch": "meteorology",
+        "domain_partition": "biology_partition",
+        "thesis_statement": "Atmospheric Thermodynamics Axiom: Weather systems are driven by the uneven solar heating of the Earth's surface and the resulting fluid dynamics",
+        "parent_thesis": "Navier-Stokes Equations: Describes the motion of viscous fluid substances via momentum conservation",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "a7daad2f68f245a314cdf3ee61b21a4baba7299585daec37516b8aa6c9cff7f4"
+    },
+    {
+        "branch": "meteorology",
+        "domain_partition": "biology_partition",
+        "thesis_statement": "Coriolis Effect Axiom: Moving objects, including air masses and ocean currents, are deflected to the right in the Northern Hemisphere and to the left in the Southern Hemisphere due to the Earth's rotation",
+        "parent_thesis": "Newton's First Law of Motion (Inertia): An object remains at rest or in uniform motion unless acted upon by a net external force",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Formulated by Gaspard-Gustave de Coriolis, explaining the rotation direction of cyclones and the global wind belts (Trade winds, Westerlies)."
+    },
+    {
+        "branch": "meteorology",
+        "domain_partition": "biology_partition",
+        "thesis_statement": "Ideal Gas Law in Meteorology: The density and temperature of atmospheric air determine its pressure, governing buoyant lift and wind generation (P = \u03c1 R T)",
+        "parent_thesis": "Ideal Gas Law: PV = nRT",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Relates dry air pressure, density, gas constant, and temperature to calculate pressure gradient forces driving winds."
+    },
+    {
+        "branch": "meteorology",
+        "domain_partition": "biology_partition",
+        "thesis_statement": "Adiabatic Lapse Rate Axiom: Rising air parcels expand and cool, while sinking parcels compress and warm, at a rate determined by atmospheric moisture content",
+        "parent_thesis": "First Law of Thermodynamics (Conservation of Energy): \u0394U = Q - W",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Determines atmospheric stability and cloud formation, distinguishing dry lapse rate (~9.8\u00b0C/km) and moist lapse rate (~6\u00b0C/km)."
+    },
+    {
+        "branch": "meteorology",
+        "domain_partition": "empirical_science",
+        "thesis_statement": "Coriolis Effect on Atmospheric Circulation",
+        "parent_thesis": "Newton first law of motion",
+        "formal_proof": "Derived from Newton's laws of motion in a rotating reference frame, where an inertial force acts on objects in motion relative to the rotating frame, directly dictating atmospheric wind patterns.",
+        "context_description": "The Earth's rotation causes moving air and water to turn left in the southern hemisphere and turn right in the northern hemisphere, driving global wind patterns.",
+        "ast_signature": "51c1e50a067df31a71e69ea9182f43ba5a978c110e6151077a54a6d99d5368f0"
+    },
+    {
+        "branch": "meteorology",
+        "domain_partition": "empirical_science",
+        "thesis_statement": "Clausius-Clapeyron relation for atmospheric moisture",
+        "parent_thesis": "First law of thermodynamics energy conservation",
+        "formal_proof": "dP/dT = L / (T * dV). Relates the latent heat of vaporization to the saturation vapor pressure, mathematically proving that warmer air inherently holds more water vapor.",
+        "context_description": "A thermodynamic law showing that for every 1\u00b0C increase in temperature, the atmosphere can hold about 7% more moisture, directly impacting precipitation intensity.",
+        "ast_signature": "a50bcfe4315a2d410f4abc293e3fa4e815a9052e919d60fcf3938d36e1b82e0e"
+    }
+]

@@ -1,0 +1,65 @@
+[
+    {
+        "branch": "relativity",
+        "domain_partition": "physics_partition",
+        "thesis_statement": "Postulate of Special Relativity 1 (Principle of Relativity): The laws of physics are the same in all inertial frames of reference",
+        "parent_thesis": "Galilean Relativity (The laws of mechanics are invariant under Galilean transformations)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "The laws of physics are invariant (identical) in all inertial systems (non-accelerating frames of reference).",
+        "ast_signature": "c87471304d08793b4f5972658ae8906a046012e7284c72c0bf8e097cf631463d"
+    },
+    {
+        "branch": "relativity",
+        "domain_partition": "physics_partition",
+        "thesis_statement": "Postulate of Special Relativity 2 (Invariance of c): The speed of light in a vacuum is constant for all observers",
+        "parent_thesis": "Postulate of Special Relativity 1 (Principle of Relativity): The laws of physics are the same in all inertial frames of reference",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "The speed of light in vacuum, commonly denoted c, is the same for all observers, regardless of their motion or the motion of the light source.",
+        "ast_signature": "d307f4984e4b9b09de0fb17bae15a48e40d43cb20f071b3bf77d09be3a0f4daf"
+    },
+    {
+        "branch": "relativity",
+        "domain_partition": "physics_partition",
+        "thesis_statement": "Lorentz transformation factor",
+        "parent_thesis": "Postulate of Special Relativity 2 (Invariance of c): The speed of light in a vacuum is constant for all observers",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Derives the Lorentz factor \u03b3 = 1 / sqrt(1 - v^2/c^2) which describes time dilation and length contraction.",
+        "ast_signature": "00125d0e3611a389d41e3e5dc4ffd1e1dd3b6026dd06555c5c5fe48f33f8a65d"
+    },
+    {
+        "branch": "relativity",
+        "domain_partition": "physics_partition",
+        "thesis_statement": "Speed of light c limit",
+        "parent_thesis": "Lorentz transformation factor",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Shows that the speed of light c serves as the absolute upper boundary limit for information and matter propagation in spacetime.",
+        "ast_signature": "a55298dac95336cc3f1ce36093de69277f089e1ce2c9ab2429e96ab884008c66"
+    },
+    {
+        "branch": "relativity",
+        "domain_partition": "physics_partition",
+        "thesis_statement": "Mass-Energy Equivalence: E = mc^2",
+        "parent_thesis": "Lorentz transformation factor",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Energy and mass are equivalent and transmutable, scaled by the square of the speed of light.",
+        "ast_signature": "9b314df6a0f8d06b92e0e5066a4b54e9ffd18effe85dec9ad3b321ce971a35e7"
+    },
+    {
+        "branch": "relativity",
+        "domain_partition": "physics_partition",
+        "thesis_statement": "Equivalence Principle (General Relativity): The gravitational mass is equal to the inertial mass, and local effects of gravity are indistinguishable from acceleration",
+        "parent_thesis": "Newton's Law of Universal Gravitation: F = G*(m1*m2)/r^2",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "The core postulate of general relativity asserting the equivalence of inertial and gravitational mass.",
+        "ast_signature": "977d182ccf7bcf9687590e5737d5961bd070984226af79655d15aca574c9e4ec"
+    },
+    {
+        "branch": "relativity",
+        "domain_partition": "physics_partition",
+        "thesis_statement": "Einstein Field Equations (General Relativity): G_\u03bc\u03bd + \u039bg_\u03bc\u03bd = (8\u03c0G/c^4)T_\u03bc\u03bd (Spacetime curvature is dictated by energy and momentum)",
+        "parent_thesis": "Equivalence Principle (General Relativity): The gravitational mass is equal to the inertial mass, and local effects of gravity are indistinguishable from acceleration",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "A set of ten field equations in Einstein's general theory of relativity which describe the fundamental interaction of gravitation as a result of spacetime being curved by matter and energy.",
+        "ast_signature": "39b5d9680131b3f923a256485595b831ebc9165beadef5dd655e2e52d84646d7"
+    }
+]

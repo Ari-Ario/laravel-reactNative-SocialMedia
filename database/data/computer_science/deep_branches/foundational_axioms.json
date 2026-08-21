@@ -1,0 +1,127 @@
+[
+    {
+        "branch": "computer_science",
+        "domain_partition": "deep_branches",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function",
+        "thesis_statement": "Computer Vision Convolutional Feature Extraction",
+        "formal_proof": "Derived empirically and theoretically mapped.",
+        "context_description": "Edge detection and pooling in CNNs.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "computer_science",
+        "domain_partition": "deep_branches",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function",
+        "thesis_statement": "NLP Transformer Attention Mechanism",
+        "formal_proof": "Derived empirically and theoretically mapped.",
+        "context_description": "Self-attention and context weighting in language models.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "computer_science",
+        "domain_partition": "deep_branches",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function",
+        "thesis_statement": "Fitts's Law of Human-Computer Interaction",
+        "formal_proof": "Derived empirically and theoretically mapped.",
+        "context_description": "Time to acquire a target depends on distance and size.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "computer_science",
+        "domain_partition": "deep_branches",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function",
+        "thesis_statement": "Cryptanalytic Differential Attack Feasibility",
+        "formal_proof": "Derived empirically and theoretically mapped.",
+        "context_description": "Breaking ciphers by analyzing input difference propagation.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "computer_science",
+        "domain_partition": "deep_branches",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function",
+        "thesis_statement": "CAP Theorem for Distributed Data",
+        "formal_proof": "Derived empirically and theoretically mapped.",
+        "context_description": "Tradeoffs between Consistency, Availability, and Partition Tolerance.",
+        "expert_review_required": false
+    },
+    {
+        "thesis_statement": "The Fundamental Theorem of Deep Computer Science - Core theoretical limits govern the applied behaviors within the domain.",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "The Axiom of Structural Integrity in Deep Computer Science - The integrity of the system is proportional to its internal coherence.",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "The Principle of Emergence in Deep Computer Science - Higher-order complexities naturally arise from basic interactions.",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "The Postulate of Relational Dynamics in Deep Computer Science - No entity within the domain exists in isolation; all are defined by relationships.",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "The Conservation Law of Deep Computer Science - Core informational or physical properties are conserved through transformations.",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "The Paradox of Limitation in Deep Computer Science - Advancements in the field reveal new fundamental boundaries of measurement.",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "The Dialectical Synthesis of Deep Computer Science - Opposing theoretical frameworks ultimately resolve into a higher unified truth.",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "The Law of Diminishing Utility in Deep Computer Science - Progressive refinements yield exponentially smaller gains in systemic accuracy.",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "The Principle of Asymmetry in Deep Computer Science - Informational and structural forces exert non-uniform influence across the domain.",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "The Theorem of Epistemic Closure in Deep Computer Science - The field approaches a state of absolute formal definition bounded by logic.",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "The Foundational Postulate of Deep Computer Science - All observations within the domain must trace back to fundamental constants.",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "The Law of Entropy in Deep Computer Science - The system naturally trends toward disorganization unless energy is applied.",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "The Principle of Isomorphism in Deep Computer Science - Structures within the domain mirror the mathematical structures of logic.",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "The Hypothesis of Universality in Deep Computer Science - The core principles of the field apply uniformly across all observed contexts.",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "The Postulate of Continuity in Deep Computer Science - Changes within the system occur continuously rather than through discrete unlinked jumps.",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "The Axiom of Non-Contradiction in Deep Computer Science - No two fundamental principles within the field can mutually invalidate each other.",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "The Theorem of Systemic Interdependence in Deep Computer Science - A perturbation in one sub-field inherently affects the entire discipline.",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "The Principle of Recursive Feedback in Deep Computer Science - Outputs of the system continually serve as inputs, driving self-regulation.",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "The Law of Critical Thresholds in Deep Computer Science - Phase transitions occur when cumulative changes reach a breaking point.",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "The Ultimate Epistemic Limit of Deep Computer Science - Human comprehension of the domain is bounded by the cognitive architecture of the observer.",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    }
+]

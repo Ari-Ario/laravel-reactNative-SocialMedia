@@ -1,0 +1,12 @@
+[
+    {
+        "branch": "fluid_dynamics",
+        "domain_partition": "empirical_science",
+        "thesis_statement": "Navier-Stokes existence and smoothness",
+        "parent_thesis": "Newton's Second Law of Motion: F = dp/dt (Force equals the time derivative of momentum)",
+        "formal_proof": "\u2202u/\u2202t + (u \u22c5 \u2207)u - \u03bd\u2207\u00b2u = -\u2207p/\u03c1 + g. Prove that smooth, globally defined solutions exist for 3D incompressible fluids.",
+        "context_description": "UNSOLVED: Can the mathematical equations describing the motion of fluids (like water and air) be proven to always yield smooth, predictable solutions without singularities?",
+        "ast_signature": "d012a1b826d358636270a8178c7597d89ffbb7d9bd75b316b53a9c9ff6395551",
+        "expert_review_required": true
+    }
+]

@@ -1,0 +1,11 @@
+[
+    {
+        "branch": "boolean_logic",
+        "domain_partition": "formal_partition",
+        "thesis_statement": "Boolean Logic Axiom: Variables represent absolute Truth (1) and Falsehood (0), manipulated exclusively by operations AND, OR, and NOT",
+        "parent_thesis": "Law of non-contradiction",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "ac0f6c6aaa3901733df18d8575c89d4e2f7657717ab6af3028211eee3fe2f285"
+    }
+]

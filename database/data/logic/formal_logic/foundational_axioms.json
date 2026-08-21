@@ -1,0 +1,12 @@
+[
+    {
+        "branch": "computer_science",
+        "domain_partition": "logic",
+        "thesis_statement": "P versus NP problem",
+        "parent_thesis": "Boolean Axiom: 1 AND 0 = 0 (AND identity)",
+        "formal_proof": "P = { L | \u2203 Turing Machine M, time_M(x) \u2264 Poly(|x|) }. NP = { L | \u2203 Verifier V, time_V(x,w) \u2264 Poly(|x|) }. Is P = NP?",
+        "context_description": "UNSOLVED: If every problem whose solution can be quickly verified can also be quickly solved by a computer.",
+        "ast_signature": "3d0220bf57f551516d1c5b334ee6551f8eb33a2fe5c7bc251ebd228441c38e38",
+        "expert_review_required": true
+    }
+]

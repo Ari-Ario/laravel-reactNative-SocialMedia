@@ -1,0 +1,127 @@
+[
+    {
+        "branch": "medicine",
+        "domain_partition": "alternative_medicine",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes",
+        "thesis_statement": "Ayurvedic Dosha (Tridosha) Equilibrium",
+        "formal_proof": "Derived empirically and theoretically mapped.",
+        "context_description": "Balance of Vata, Pitta, and Kapha energies.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "medicine",
+        "domain_partition": "alternative_medicine",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes",
+        "thesis_statement": "TCM Meridian Qi Flow",
+        "formal_proof": "Derived empirically and theoretically mapped.",
+        "context_description": "Energy pathways utilized in acupuncture.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "medicine",
+        "domain_partition": "alternative_medicine",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes",
+        "thesis_statement": "Homeopathic Law of Similars",
+        "formal_proof": "Derived empirically and theoretically mapped.",
+        "context_description": "Like cures like principle (Similia similibus curentur).",
+        "expert_review_required": false
+    },
+    {
+        "branch": "medicine",
+        "domain_partition": "alternative_medicine",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes",
+        "thesis_statement": "Naturopathic Vitalism (Vis Medicatrix Naturae)",
+        "formal_proof": "Derived empirically and theoretically mapped.",
+        "context_description": "The healing power of nature.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "medicine",
+        "domain_partition": "alternative_medicine",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes",
+        "thesis_statement": "Osteopathic Manipulative Bio-Tensegrity",
+        "formal_proof": "Derived empirically and theoretically mapped.",
+        "context_description": "Structural integration of the musculoskeletal system.",
+        "expert_review_required": false
+    },
+    {
+        "thesis_statement": "The Fundamental Theorem of Traditional  Alternative Medicine - Core theoretical limits govern the applied behaviors within the domain.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Axiom of Structural Integrity in Traditional  Alternative Medicine - The integrity of the system is proportional to its internal coherence.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Principle of Emergence in Traditional  Alternative Medicine - Higher-order complexities naturally arise from basic interactions.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Postulate of Relational Dynamics in Traditional  Alternative Medicine - No entity within the domain exists in isolation; all are defined by relationships.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Conservation Law of Traditional  Alternative Medicine - Core informational or physical properties are conserved through transformations.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Paradox of Limitation in Traditional  Alternative Medicine - Advancements in the field reveal new fundamental boundaries of measurement.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Dialectical Synthesis of Traditional  Alternative Medicine - Opposing theoretical frameworks ultimately resolve into a higher unified truth.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Law of Diminishing Utility in Traditional  Alternative Medicine - Progressive refinements yield exponentially smaller gains in systemic accuracy.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Principle of Asymmetry in Traditional  Alternative Medicine - Informational and structural forces exert non-uniform influence across the domain.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Theorem of Epistemic Closure in Traditional  Alternative Medicine - The field approaches a state of absolute formal definition bounded by logic.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Foundational Postulate of Traditional  Alternative Medicine - All observations within the domain must trace back to fundamental constants.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Law of Entropy in Traditional  Alternative Medicine - The system naturally trends toward disorganization unless energy is applied.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Principle of Isomorphism in Traditional  Alternative Medicine - Structures within the domain mirror the mathematical structures of logic.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Hypothesis of Universality in Traditional  Alternative Medicine - The core principles of the field apply uniformly across all observed contexts.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Postulate of Continuity in Traditional  Alternative Medicine - Changes within the system occur continuously rather than through discrete unlinked jumps.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Axiom of Non-Contradiction in Traditional  Alternative Medicine - No two fundamental principles within the field can mutually invalidate each other.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Theorem of Systemic Interdependence in Traditional  Alternative Medicine - A perturbation in one sub-field inherently affects the entire discipline.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Principle of Recursive Feedback in Traditional  Alternative Medicine - Outputs of the system continually serve as inputs, driving self-regulation.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Law of Critical Thresholds in Traditional  Alternative Medicine - Phase transitions occur when cumulative changes reach a breaking point.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Ultimate Epistemic Limit of Traditional  Alternative Medicine - Human comprehension of the domain is bounded by the cognitive architecture of the observer.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    }
+]

@@ -25,7 +25,7 @@ const PrivacyPolicy = () => {
       <DecorativeSymbols />
 
       <View style={styles.header}>
-        <BackButton onPress={() => router.back()} />
+        <BackButton onPress={() => { if (router.canGoBack()) router.back(); else router.replace("/(tabs)"); }} />
         <Text style={styles.headerTitle}>Privacy Policy</Text>
         <View style={{ width: 40 }} />
       </View>

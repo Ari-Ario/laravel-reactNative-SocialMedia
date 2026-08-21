@@ -1,0 +1,101 @@
+[
+    {
+        "branch": "deontic_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Standard Deontic Logic SDL \u2014 based on Modal System D",
+        "parent_thesis": "Law of identity",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "7de9cb65a007ffc587ee431234554aee9cd21262161477d207bc18a4d3fd7b92"
+    },
+    {
+        "branch": "deontic_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Deontic Axiom OP\u2192PP (if obligatory then permissible)",
+        "parent_thesis": "Law of identity",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "2db412c5c6532ec347c107ad65efede76946c371aa4905ad3e862de53f1ba70e"
+    },
+    {
+        "branch": "deontic_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Deontic Axiom O(P\u2227Q)\u2194(OP\u2227OQ) (obligation distributes over conjunction)",
+        "parent_thesis": "Law of identity",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "8fdf42c4a614a92855f56d6aff4b0c1e5adab33cbe93eb6abd8fd05b26903182"
+    },
+    {
+        "branch": "deontic_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Deontic Axiom PP \u2261 \u00acO\u00acP (permission as negation of forbidden)",
+        "parent_thesis": "Law of identity",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "37f5288efbe48dc7b264cc254f73bbf9d4583e2e798f9ad94093cd9edbafcb54"
+    },
+    {
+        "branch": "deontic_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Deontic Axiom FP \u2261 O\u00acP (forbidden as obligatory negation)",
+        "parent_thesis": "Law of identity",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "5ca0bd6721e207068b1655f4c4f94ef6093620fb227a2372f4450683e6e2c09c"
+    },
+    {
+        "branch": "deontic_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Ross Paradox \u2014 OP \u2192 O(P\u2228Q) highlights inferential anomaly in SDL",
+        "parent_thesis": "Law of identity",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "e5bfb95a11a9252416efec14184effb2e7a7acd69f101bd9ed943c8f33bd43c3"
+    },
+    {
+        "branch": "deontic_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Good Samaritan Paradox \u2014 deontic iteration paradox in SDL",
+        "parent_thesis": "Law of identity",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "534d578e851c3b6859dfa813e608ad8f3fdb1c4485d54255122fc28f6b9c8d03"
+    },
+    {
+        "branch": "deontic_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Deontic Axiom of Ought Implies Can (OP \u2192 \u25c7P)",
+        "parent_thesis": "Law of identity",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "7662489a736e096ea2ecfb921a9e8e9ce3635506bd7d938849d5794909abf3b7"
+    },
+    {
+        "branch": "deontic_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Deontic Axiom K",
+        "parent_thesis": "Law of identity",
+        "formal_proof": "SDL Axiom K: O(P -> Q) -> (OP -> OQ). In deontic logic, if it is obligatory that P implies Q, then the obligation of P implies the obligation of Q.",
+        "context_description": "Foundational deontic axiom governing the distribution of the obligation operator over implication.",
+        "ast_signature": "c0adb1ec7f86249d8a42d37d3eaec3b3c1b69e2217cdd95d0b615e9b254318b6"
+    },
+    {
+        "branch": "deontic_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Chisholm Paradox",
+        "parent_thesis": "Ross Paradox \u2014 OP \u2192 O(P\u2228Q) highlights inferential anomaly in SDL",
+        "formal_proof": "Chisholm's Contrary-To-Duty paradox: (1) OP, (2) O(P -> Q), (3) ~P -> O~Q, (4) ~P. SDL represents these in a way that leads to inconsistency or logical redundancy.",
+        "context_description": "Paradox in deontic logic showing the difficulty of formalizing contrary-to-duty obligations in standard deontic systems.",
+        "ast_signature": "e4ff2d2e92d64b82fcf8f93f6ac4d0c4c57a442d829a8c4c046c4b9d21502204"
+    },
+    {
+        "branch": "deontic_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Deontic Axiom of Obligation Consistency",
+        "parent_thesis": "Deontic Axiom OP\u2192PP (if obligatory then permissible)",
+        "formal_proof": "Obligation Consistency: \u00acO(P \u2227 \u00acP). Proved in SDL via Axiom D (OP -> PP) and the definition of permission PP = \u00acO\u00acP: OP -> \u00acO\u00acP, thus it is never obligatory that both P and \u00acP hold.",
+        "context_description": "Axiom stating that conflicting or contradictory obligations cannot hold simultaneously in a rational system.",
+        "ast_signature": "f2053faaf764f9ab59ee262f1bb184250d5b9ad962e065d3093b80493887b26d"
+    }
+]

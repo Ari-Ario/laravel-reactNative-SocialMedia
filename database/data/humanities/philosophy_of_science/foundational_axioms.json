@@ -1,0 +1,117 @@
+[
+    {
+        "thesis_statement": "Popperian Falsifiability - A hypothesis must be empirically falsifiable to be demarcated as scientific",
+        "parent_thesis": "Boolean Axiom: Law of Non-Contradiction: NOT(P AND NOT P)",
+        "branch": "humanities",
+        "domain_partition": "philosophy_of_science",
+        "context_description": "Formulated by Karl Popper to solve the problem of induction and demarcate science from non-science by requiring testable predictions."
+    },
+    {
+        "thesis_statement": "Kuhnian Paradigm Shifts - Scientific progression occurs via normal science accumulation interrupted by revolutionary paradigm shifts",
+        "parent_thesis": "1: Being (True)",
+        "branch": "humanities",
+        "domain_partition": "philosophy_of_science",
+        "context_description": "Thomas Kuhn's framework demonstrating that scientific revolutions occur when anomalies build up and cause a shift to a new paradigm."
+    },
+    {
+        "thesis_statement": "Duhem-Quine Holism - An individual hypothesis cannot be tested in isolation; rather, the entire web of beliefs is tested",
+        "parent_thesis": "1: Being (True)",
+        "branch": "humanities",
+        "domain_partition": "philosophy_of_science",
+        "context_description": "The thesis that our beliefs face the tribunal of experience as a whole web, making single hypotheses untestable in absolute isolation."
+    },
+    {
+        "thesis_statement": "Lakatosian Research Programmes - Scientific progress is evaluated by progressive vs degenerating problem shifts in core research programmes",
+        "parent_thesis": "1: Being (True)",
+        "branch": "humanities",
+        "domain_partition": "philosophy_of_science",
+        "context_description": "Imre Lakatos's methodology mapping scientific growth via a hard core of theories surrounded by a protective belt of auxiliary hypotheses."
+    },
+    {
+        "thesis_statement": "Mertonian Norms of Science - Scientific inquiry is governed by four institutional imperatives: Communalism, Universalism, Disinterestedness, and Organized Skepticism",
+        "parent_thesis": "1: Being (True)",
+        "branch": "humanities",
+        "domain_partition": "philosophy_of_science",
+        "context_description": "Robert K. Merton's sociological ethos of modern science, providing the normative framework for objective community inquiry."
+    },
+    {
+        "thesis_statement": "The Fundamental Theorem of Philosophy of Science  Epistemological Paradigms - Core theoretical limits govern the applied behaviors within the domain.",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "The Axiom of Structural Integrity in Philosophy of Science  Epistemological Paradigms - The integrity of the system is proportional to its internal coherence.",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "The Principle of Emergence in Philosophy of Science  Epistemological Paradigms - Higher-order complexities naturally arise from basic interactions.",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "The Postulate of Relational Dynamics in Philosophy of Science  Epistemological Paradigms - No entity within the domain exists in isolation; all are defined by relationships.",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "The Conservation Law of Philosophy of Science  Epistemological Paradigms - Core informational or physical properties are conserved through transformations.",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "The Paradox of Limitation in Philosophy of Science  Epistemological Paradigms - Advancements in the field reveal new fundamental boundaries of measurement.",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "The Dialectical Synthesis of Philosophy of Science  Epistemological Paradigms - Opposing theoretical frameworks ultimately resolve into a higher unified truth.",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "The Law of Diminishing Utility in Philosophy of Science  Epistemological Paradigms - Progressive refinements yield exponentially smaller gains in systemic accuracy.",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "The Principle of Asymmetry in Philosophy of Science  Epistemological Paradigms - Informational and structural forces exert non-uniform influence across the domain.",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "The Theorem of Epistemic Closure in Philosophy of Science  Epistemological Paradigms - The field approaches a state of absolute formal definition bounded by logic.",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "The Foundational Postulate of Philosophy of Science  Epistemological Paradigms - All observations within the domain must trace back to fundamental constants.",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "The Law of Entropy in Philosophy of Science  Epistemological Paradigms - The system naturally trends toward disorganization unless energy is applied.",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "The Principle of Isomorphism in Philosophy of Science  Epistemological Paradigms - Structures within the domain mirror the mathematical structures of logic.",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "The Hypothesis of Universality in Philosophy of Science  Epistemological Paradigms - The core principles of the field apply uniformly across all observed contexts.",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "The Postulate of Continuity in Philosophy of Science  Epistemological Paradigms - Changes within the system occur continuously rather than through discrete unlinked jumps.",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "The Axiom of Non-Contradiction in Philosophy of Science  Epistemological Paradigms - No two fundamental principles within the field can mutually invalidate each other.",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "The Theorem of Systemic Interdependence in Philosophy of Science  Epistemological Paradigms - A perturbation in one sub-field inherently affects the entire discipline.",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "The Principle of Recursive Feedback in Philosophy of Science  Epistemological Paradigms - Outputs of the system continually serve as inputs, driving self-regulation.",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "The Law of Critical Thresholds in Philosophy of Science  Epistemological Paradigms - Phase transitions occur when cumulative changes reach a breaking point.",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "The Ultimate Epistemic Limit of Philosophy of Science  Epistemological Paradigms - Human comprehension of the domain is bounded by the cognitive architecture of the observer.",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    }
+]

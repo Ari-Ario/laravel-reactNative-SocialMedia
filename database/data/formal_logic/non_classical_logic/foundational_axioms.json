@@ -1,0 +1,128 @@
+[
+    {
+        "branch": "non_classical_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Three-valued Logic (\u0141ukasiewicz L3) \u2014 truth values {0, \u00bd, 1}",
+        "parent_thesis": "Boolean Axiom: Law of Excluded Middle: (P OR NOT P)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "4fc6fd74c360a4a00bd6dd60b9ae9c96cda40a9e4e5a3d0dd1171526ef102a89"
+    },
+    {
+        "branch": "non_classical_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Kleene Strong Three-valued Logic \u2014 indeterminate value",
+        "parent_thesis": "Three-valued Logic (\u0141ukasiewicz L3) \u2014 truth values {0, \u00bd, 1}",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "b5fef1d04b9436ac639989c35c105055763c4b7f44ae7fd9dd33a4d2590a1aa6"
+    },
+    {
+        "branch": "non_classical_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Kleene Weak Three-valued Logic",
+        "parent_thesis": "Three-valued Logic (\u0141ukasiewicz L3) \u2014 truth values {0, \u00bd, 1}",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "542c030b512cb34ede259b909982f9d99f097fccaa621c093c287dbfd3116c36"
+    },
+    {
+        "branch": "non_classical_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Priest LP Three-valued Logic \u2014 both-true value",
+        "parent_thesis": "Three-valued Logic (\u0141ukasiewicz L3) \u2014 truth values {0, \u00bd, 1}",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "49fb5fab2c6e572e25fe3c252c7f9cb0bf9f00cb518f15b5f3fe4068ebdfcbf4"
+    },
+    {
+        "branch": "non_classical_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Infinite-valued \u0141ukasiewicz Logic L\u03c9",
+        "parent_thesis": "Three-valued Logic (\u0141ukasiewicz L3) \u2014 truth values {0, \u00bd, 1}",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "43b41fff3fa60abd522d607cadd98ada6d1cd340443d4a2fa60fedfe5aa98d01"
+    },
+    {
+        "branch": "non_classical_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Free Logic \u2014 allows empty domains and non-denoting terms",
+        "parent_thesis": "Existential quantification",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "7cdf60cc5fbf0c0302f983e72b7ef165a7fba6fb154caa7059f9ba4d8270a038"
+    },
+    {
+        "branch": "non_classical_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Quantum Logic (Birkhoff-von Neumann) \u2014 lattice of closed subspaces",
+        "parent_thesis": "Boolean Axiom: Law of Non-Contradiction: NOT(P AND NOT P)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "7fa73c97c95bb1f5c42756bb0f961742f1ce440cd2c626aee0b636c2723c1af7"
+    },
+    {
+        "branch": "non_classical_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Linear Logic (Girard 1987) \u2014 resources, exponentials ! and ?",
+        "parent_thesis": "First-order logic validities",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "afb47ff8094b8c326b96ab890b6c8b58d5317c9d2d7ba322906598342cb66857"
+    },
+    {
+        "branch": "non_classical_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Separation Logic \u2014 Hoare logic extended with heap reasoning",
+        "parent_thesis": "First-order logic validities",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "f4e6f748d879748546b9ee86ad5f16867121b141da6cb2874986c2da58911ca8"
+    },
+    {
+        "branch": "non_classical_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Dynamic Logic \u2014 [\u03b1]P means P holds after program \u03b1",
+        "parent_thesis": "First-order logic validities",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "675bc0c53c9ddeb9d790be50d9cdf8e77e25218734470ab70fb232329a93ce86"
+    },
+    {
+        "branch": "non_classical_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Description Logic \u2014 knowledge representation (ALC, SHOIN)",
+        "parent_thesis": "First-order logic validities",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "0a6175441e99f84c9dc295cd5c6a00006b45f24839275972f2dd5a30159016ac"
+    },
+    {
+        "branch": "non_classical_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Default Logic (Reiter) \u2014 non-monotonic reasoning via default rules",
+        "parent_thesis": "First-order logic validities",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "61cf9ea9aca559e690a6e9fb9a62985deb5a3c624dcf1930ffbdc1d7fc403b6c"
+    },
+    {
+        "branch": "non_classical_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Circumscription (McCarthy) \u2014 minimise extension of predicates",
+        "parent_thesis": "Existential quantification",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "a49b05e5e8ecddc9c57f5b273e492539f83fb4a17b07c69f0d8010caef8bd873"
+    },
+    {
+        "branch": "non_classical_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Answer Set Programming (ASP) \u2014 stable model semantics",
+        "parent_thesis": "First-order logic validities",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "bfe894b6e1698ef8a079a8212a588e143875813c2adf537f48bf104e8034d930"
+    }
+]

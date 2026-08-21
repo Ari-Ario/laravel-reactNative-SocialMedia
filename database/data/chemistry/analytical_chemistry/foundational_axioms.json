@@ -1,0 +1,50 @@
+[
+    {
+        "branch": "analytical_chemistry",
+        "domain_partition": "chemistry_partition",
+        "thesis_statement": "Beer-Lambert Law: The attenuation of light to the properties of the material through which the light is travelling",
+        "parent_thesis": "Law of Reflection: The angle of incidence equals the angle of reflection",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine."
+    },
+    {
+        "branch": "analytical_chemistry",
+        "domain_partition": "chemistry_partition",
+        "thesis_statement": "Plate Theory of Chromatography: Models a chromatographic column as a series of discrete equilibrium stages (theoretical plates) to describe solute separation efficiency",
+        "parent_thesis": "Second Law of Thermodynamics: Total entropy of an isolated system can never decrease over time (\u0394S \u2265 0)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine."
+    },
+    {
+        "branch": "analytical_chemistry",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Beer-Lambert law",
+        "parent_thesis": "First law of thermodynamics energy conservation",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine."
+    },
+    {
+        "branch": "analytical_chemistry",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Chromatography partition coefficients",
+        "parent_thesis": "First law of thermodynamics energy conservation",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine."
+    },
+    {
+        "branch": "analytical_chemistry",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Mass spectrometry ionization",
+        "parent_thesis": "First law of thermodynamics energy conservation",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine."
+    },
+    {
+        "branch": "analytical_chemistry",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Titration equivalence point",
+        "parent_thesis": "First law of thermodynamics energy conservation",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine."
+    }
+]

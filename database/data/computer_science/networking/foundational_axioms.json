@@ -1,0 +1,18 @@
+[
+    {
+        "thesis_statement": "End-to-End Principle - Application-specific functions ought to reside in the end hosts of a network rather than in intermediary nodes",
+        "parent_thesis": "1: Being (True)"
+    },
+    {
+        "thesis_statement": "Packet Switching - Data is broken into network packets routed independently across a shared network",
+        "parent_thesis": "1: Being (True)"
+    },
+    {
+        "thesis_statement": "OSI Model - A conceptual framework that standardizes communication functions into 7 logical layers",
+        "parent_thesis": "1: Being (True)"
+    },
+    {
+        "thesis_statement": "Shannon-Hartley Theorem - Defines the maximum rate at which information can be transmitted over a communications channel of a specified bandwidth in the presence of noise",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    }
+]

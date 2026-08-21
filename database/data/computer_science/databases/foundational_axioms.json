@@ -1,0 +1,18 @@
+[
+    {
+        "thesis_statement": "ACID Properties - Transactions must guarantee Atomicity, Consistency, Isolation, and Durability",
+        "parent_thesis": "1: Being (True)"
+    },
+    {
+        "thesis_statement": "CAP Theorem (Brewer's Theorem) - A distributed data store can simultaneously provide only two out of three: Consistency, Availability, Partition tolerance",
+        "parent_thesis": "ACID Properties - Transactions must guarantee Atomicity, Consistency, Isolation, and Durability"
+    },
+    {
+        "thesis_statement": "BASE Semantics - Basically Available, Soft state, Eventual consistency (relaxation of ACID for NoSQL)",
+        "parent_thesis": "CAP Theorem (Brewer's Theorem) - A distributed data store can simultaneously provide only two out of three: Consistency, Availability, Partition tolerance"
+    },
+    {
+        "thesis_statement": "PACELC Theorem - If there is a partition, the trade-off is between availability and consistency; else, it is between latency and consistency",
+        "parent_thesis": "CAP Theorem (Brewer's Theorem) - A distributed data store can simultaneously provide only two out of three: Consistency, Availability, Partition tolerance"
+    }
+]

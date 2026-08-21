@@ -14,7 +14,7 @@ import { useModal } from '@/context/ModalContext';
 import { useProfileView } from '@/context/ProfileViewContext';
 import { useToastStore } from '@/stores/toastStore';
 import { usePostStore, Post, Comment, Reaction } from '@/stores/postStore';
-import { calculateAnchor, AnchorPosition } from '@/utils/layout';
+import { calculateAnchorPosition, AnchorPosition } from '@/utils/layout';
 
 export interface Repost {
   id: number;
@@ -524,13 +524,13 @@ const getGroupedReactionsComments = (
       ref.current.measure((x: number, y: number, width: number, height: number, px: number, py: number) => {
         // Use touch coordinates (pageX/pageY) as the anchor point with 0 width/height 
         // to ensure it appears exactly where the user long-pressed, but still benefit from horizontal clamping
-        const anchor = calculateAnchor(pageX || px, pageY || py, 0, 0, 220);
+      const anchor = calculateAnchorPosition(pageX || px, pageY || py, 0, 0, 220);
         setMenuPosition(anchor);
         setMenuVisible(true);
       });
     } else {
       // Fallback if no ref
-      const anchor = calculateAnchor(pageX - 110, pageY, 220, 0, 220);
+      const anchor = calculateAnchorPosition(pageX - 110, pageY, 220, 0, 220);
       setMenuPosition(anchor);
       setMenuVisible(true);
     }

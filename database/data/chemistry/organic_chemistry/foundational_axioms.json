@@ -1,0 +1,66 @@
+[
+    {
+        "branch": "organic_chemistry",
+        "domain_partition": "chemistry_partition",
+        "thesis_statement": "Carbon Tetravalency: Carbon forms four covalent bonds due to its electron configuration",
+        "parent_thesis": "Aufbau Principle / Hund's Rule: Electrons fill lower-energy atomic orbitals before higher-energy ones",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine."
+    },
+    {
+        "branch": "organic_chemistry",
+        "domain_partition": "chemistry_partition",
+        "thesis_statement": "Isomerism: Molecules with the same molecular formula can have different structural arrangements",
+        "parent_thesis": "Carbon Tetravalency: Carbon forms four covalent bonds due to its electron configuration",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine."
+    },
+    {
+        "branch": "organic_chemistry",
+        "domain_partition": "chemistry_partition",
+        "thesis_statement": "Woodward-Hoffmann Rules: The conservation of orbital symmetry dictates the stereochemical course of pericyclic reactions",
+        "parent_thesis": "Molecular Orbital Theory Axiom: Atomic orbitals combine to form molecular orbitals governed by the Schr\u00f6dinger equation, dictating chemical bonding",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine."
+    },
+    {
+        "branch": "organic_chemistry",
+        "domain_partition": "chemistry_partition",
+        "thesis_statement": "Resonance Theory: The actual structure of a molecule is a hybrid of multiple Lewis structures representing different electron distributions",
+        "parent_thesis": "Carbon Tetravalency: Carbon forms four covalent bonds due to its electron configuration",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine."
+    },
+    {
+        "branch": "organic_chemistry",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Markovnikov rule",
+        "parent_thesis": "First law of thermodynamics energy conservation",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine."
+    },
+    {
+        "branch": "organic_chemistry",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Zaitsev rule",
+        "parent_thesis": "First law of thermodynamics energy conservation",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine."
+    },
+    {
+        "branch": "organic_chemistry",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Chirality and enantiomers",
+        "parent_thesis": "First law of thermodynamics energy conservation",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine."
+    },
+    {
+        "branch": "organic_chemistry",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Aromaticity H\u00fcckel rule",
+        "parent_thesis": "First law of thermodynamics energy conservation",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine."
+    }
+]

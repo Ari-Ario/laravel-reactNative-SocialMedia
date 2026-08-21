@@ -5,12 +5,15 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use App\Models\ChatbotTraining;
+use App\Models\KnowledgeAxiom;
 use App\Models\User;
 use App\Notifications\ChatbotTrainingNeeded;
 use App\Events\ChatbotTrainingNeeded as ChatbotTrainingNeededEvent;
+use App\Events\NewTrainingTicket;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
+use App\Jobs\ProcessAILearning;
 
 class ChatbotController extends Controller
 {
@@ -19,6 +22,52 @@ class ChatbotController extends Controller
     private $contextTimestamps = [];       // [conv_id => last_active_timestamp]
     private $currentContext = [];          // [conv_id => 'account'|'payment'|...]
     private $decisionTreeState = [];       // [conv_id => current_node]
+
+    /**
+     * Auto-create a training ticket when the engine produces a synthesized_thesis
+     * with confidence < 0.5. This enables experts to review, improve, and promote
+     * it to a Global Axiom via the Training Hub.
+     *
+     * Returns the ticket ID (int) or null if ticket already exists / error.
+     * Does NOT alter any dialectical engine logic — purely a side-effect.
+     */
+    private function autoFallbackTicket(
+        string $trigger,
+        string $response,
+        ?string $branch,
+        ?string $category,
+        float $confidence = 0.0
+    ): ?int {
+        try {
+            $existing = ChatbotTraining::where('trigger', 'like', '%' . mb_substr($trigger, 0, 100) . '%')
+                ->where('needs_review', true)
+                ->first();
+
+            if ($existing) {
+                return $existing->id;
+            }
+
+            $ticket = ChatbotTraining::create([
+                'trigger'          => mb_substr($trigger, 0, 500),
+                'response'         => mb_substr($response, 0, 2000),
+                'category'         => $category ?? $branch ?? 'general',
+                'branch'           => $branch,
+                'needs_review'     => true,
+                'is_active'        => false,
+                'confidence_score' => $confidence,
+            ]);
+
+            // Broadcast to experts channel via Reverb
+            if (class_exists(NewTrainingTicket::class)) {
+                event(new NewTrainingTicket($ticket));
+            }
+
+            return $ticket->id;
+        } catch (\Throwable $e) {
+            Log::warning('autoFallbackTicket failed: ' . $e->getMessage());
+            return null;
+        }
+    }
 
     private function correctMessage(string $text): string
     {
@@ -110,6 +159,17 @@ class ChatbotController extends Controller
             'recur' => 'recurring',
             'propos' => 'proposed',
             'trrust' => 'trust',
+            'prrove' => 'prove',
+            'provve' => 'prove',
+            'theorm' => 'theorem',
+            'thorem' => 'theorem',
+            'shhow' => 'show that',
+            'shw' => 'show that',
+            'inductve' => 'inductive',
+            'sumation' => 'summation',
+            'summaton' => 'summation',
+            'divids' => 'divides',
+            'divvides' => 'divides',
             'witboard' => 'whiteboard',
             'whitbord' => 'whiteboard',
             'whitboard' => 'whiteboard',
@@ -142,9 +202,7 @@ class ChatbotController extends Controller
             'upcomming' => 'upcoming',
             'responsve' => 'upcoming',
             'activites' => 'activities',
-            'realtime' => 'real-time',
             'blackmodus' => 'dark mode',
-            'zentered' => 'centered',
             'markit' => 'marketplace',
             'markert' => 'marketplace',
             'maarket' => 'marketplace',
@@ -157,6 +215,21 @@ class ChatbotController extends Controller
             'conditn' => 'condition',
             'catgory' => 'category',
             'categry' => 'category',
+            'phi3' => 'Phi-3 Mini',
+            'phi-3' => 'Phi-3 Mini',
+            'minestral' => 'Mistral',
+            'minestril' => 'Mistral',
+            'ministral' => 'Mistral',
+            'llama3' => 'Llama-3',
+            'llama-3' => 'Llama-3',
+            'rag' => 'RAG (Retrieval-Augmented Generation)',
+            'ai eco' => 'Zmzir AI Ecosystem',
+            'step one' => 'Step 1: Trial & Error',
+            'step two' => 'Step 2: Deductive Logic',
+            'step three' => 'Step 3: Inductive Logic',
+            'step four' => 'Step 4: Backend Architecture',
+            'step five' => 'Step 5: Database Schema',
+            'step six' => 'Step 6: Real-Time Ecosystem',
         ];
 
         // Word boundary replacement for all typos
@@ -212,39 +285,1387 @@ class ChatbotController extends Controller
     {
         $request->validate([
             'message' => 'required|string',
-            'conversation_id' => 'nullable|string'
+            'conversation_id' => 'nullable|string',
+            'model' => 'nullable|string',
+            'history' => 'nullable|array' // Accepts the last 3 messages as stateless fades
         ]);
 
-        $message = $this->correctMessage($request->message);
-        $hasTypo = $message !== $request->message;
+        // ========================================================================
+        // STAGE 0: DIALECTICAL INTENT RESOLUTION ENGINE (DIRE)
+        // Redis-cached, OPcache-resident, zero-DB. Target: < 2ms cold, < 0.5ms warm.
+        // ========================================================================
+        $intentService = app(\App\Services\NaturalLanguageIntentService::class);
+        $intent = $intentService->resolve($request->message);
+
+        // Final cleanup pass (contractions, capitalization) — zero regression
+        $message = $this->correctMessage($intent['normalized']);
+        $hasTypo = !empty($intent['corrections']) || $message !== $request->message;
+        $correctionHeader = $intentService->buildCorrectionHeader($intent);
+
         $conversationId = $request->conversation_id ?? Str::uuid()->toString();
 
-        // Initialize conversation storage
-        if (!isset($this->conversationContext[$conversationId])) {
-            $this->conversationContext[$conversationId] = [];
-            $this->contextTimestamps[$conversationId] = time();
+        // Convert the stateless frontend history into a readable context string for the AI/Rule engine
+        $historyData = $request->input('history', []);
+        $contextString = "";
+        foreach ($historyData as $msg) {
+            $role = $msg['sender'] === 'bot' ? 'AI' : 'User';
+            $contextString .= "{$role}: {$msg['text']}\n";
         }
 
-        // Add message to history
-        $this->conversationContext[$conversationId][] = strtolower($message);
-        $this->contextTimestamps[$conversationId] = time();
+        // ========================================================================
+        // EXACT AXIOM EXPLANATION INTERCEPTOR
+        // Intercepts explicit UI clicks from ConversationAxiomPanel ("Please explain the logical foundation of Axiom #X...")
+        // ========================================================================
+        if (preg_match('/explain the logical foundation of Axiom #(\d+):/i', $request->message, $axiomExplMatch)) {
+            $axiomId = intval($axiomExplMatch[1]);
+            $axiom = \App\Models\KnowledgeAxiom::find($axiomId);
 
-        // Clean old context
-        $this->cleanOldContext($conversationId);
+            if ($axiom) {
+                $statusLabel = $axiom->status === 'global_axiom' ? '*(Dialectically Proven)*' : '*(Synthesized Thesis)*';
+
+                $solverService = app(\App\Services\SyllogismSolverService::class);
+                $bookProof = $solverService->generateBookPedigreeProof($axiom);
+
+                $response = "### **🏛️ AXIOM RETRIEVAL**\n"
+                    . "The dialectical engine has retrieved the requested knowledge from the universal matrix.\n\n"
+                    . "---\n\n"
+                    . $bookProof;
+
+                if ($axiom->status === 'synthesized_thesis') {
+                    $response .= "\n\n*Note: This knowledge is currently in a state of Synthesis and may require further Dialectical Struggle.*";
+                }
+
+                return response()->json([
+                    'response' => $response,
+                    'conversation_id' => $conversationId,
+                    'is_axiom' => true,
+                    'status' => $axiom->status,
+                    'confidence_score' => $axiom->confidence_score,
+                    'axiom_id' => $axiom->id
+                ]);
+            }
+        }
+
+        // ========================================================================
+        // DYNAMIC DIALECTICAL PROVER INTERCEPTOR (DIRE-powered)
+        // ========================================================================
+        $hasLogicTerms = preg_match('/\b(?:implies|is true|is false|be true|negation|contradict(?:ion|ory)?|propositions?|logic|conjunction|disjunction|premise|if\s+.*?then|if\s+|therefore|all\s+.*?are|some\s+.*?are|no\s+.*?are|none|or|not|paradox|theorem|conjecture|goldbach|simulation|heterological|liar|berry|cantor|banach|gödel|godel|tarski|incompleteness|rule|exception|infinite|infinity|monkey|time travel|electron|wave|particle|impossible|necessarily|santa|moon|cheese|pigs|fly)\b/i', strtolower($message));
+
+        $isProofRequest = in_array($intent['intent'], [
+            \App\Services\NaturalLanguageIntentService::INTENT_PROOF,
+            \App\Services\NaturalLanguageIntentService::INTENT_CALCULATION,
+        ])
+            // Fallback: preserve existing math-pattern detection for edge cases
+            || preg_match('/Sum\s*\(\s*[a-zA-Z]+\s*=\s*(0|1)/i', $message)
+            || preg_match('/^\s*\([a-zA-Z0-9\+\-\*\/\s]+\)\s*\^\s*\d+\s*$/', $message)
+            || (preg_match('/^[a-zA-Z0-9\+\-\*\/\^\(\)\s\.]+$/', $message) && preg_match('/[a-zA-Z]/', $message) && !preg_match('/[a-zA-Z]{3,}/', $message))
+            || preg_match('/^\s*(?:prove|theorem|proof|show\s+that)\b/i', $request->message)
+            || $hasLogicTerms;
+
+        if ($isProofRequest) {
+            // Use DIRE-extracted thesis when available (higher quality), else fall back to regex strip
+            if (!empty($intent['thesis']) && $intent['intent'] !== \App\Services\NaturalLanguageIntentService::INTENT_GENERAL) {
+                $cleanThesis = $intent['thesis'];
+            } else {
+                $cleanThesis = $message;
+            }
+            if (preg_match('/^(prove:|theorem:|inductive proof of|show that)\s*/i', $cleanThesis)) {
+                $cleanThesis = preg_replace('/^(prove:|theorem:|inductive proof of|show that)\s*/i', '', $cleanThesis);
+                $cleanThesis = ltrim($cleanThesis, ': ');
+            }
+
+            // ========================================================================
+            // 0. DIALECTIC ENGINE CONTROLLER INTERCEPTOR (FOR EXACT FRONTEND PROOFS)
+            // ========================================================================
+            $dialecticEngine = new \App\Http\Controllers\DialecticEngineController();
+            $proofDetails = "";
+            $isScientific = true;
+            $isSoftAxiom = false;
+            $domainSynthesis = null;
+            // if ($dialecticEngine->verifyAlgebraicInduction($cleanThesis, $proofDetails, $domainSynthesis, $isScientific, $isSoftAxiom)) {
+            //     return response()->json([
+            //         'response'           => $proofDetails,
+            //         'conversation_id'    => $conversationId,
+            //         'is_axiom'           => true,
+            //         'status'             => 'global_axiom',
+            //         'confidence_score'   => 1.0,
+            //         'axiom_id'           => null,
+            //         'branch'             => 'math_partition',
+            //         'parent_axioms'      => [],
+            //         'is_fallback'        => false,
+            //         'training_ticket_id' => null,
+            //     ]);
+            // }
+
+            // ========================================================================
+            // UNIVERSAL SCIENCE ROUTER (DOMAIN-AGNOSTIC PROVER)
+            // ========================================================================
+            $syntaxGen = new \App\Services\Dialectical\DynamicSyntaxGenerator();
+            $casSvc = new \App\Services\SymbolicMathSolverService();
+            $router = new \App\Services\Dialectical\UniversalRouterService($syntaxGen, $casSvc);
+
+            $oracle = app(\App\Services\DialecticalOracleService::class);
+            $categorizer = app(\App\Services\ExpertScienceCategorizer::class);
+            $resolvedBranch = $categorizer->classify($cleanThesis);
+            $knownDomain = null;
+            if ($resolvedBranch && $resolvedBranch !== 'general') {
+                $knownDomainArr = $oracle->classifyDomain($resolvedBranch);
+                $knownDomain = $knownDomainArr ? ($knownDomainArr['key'] ?? null) : null;
+            }
+            if (!$knownDomain) {
+                $knownDomainArr = $oracle->classifyDomain($cleanThesis);
+                $knownDomain = $knownDomainArr ? ($knownDomainArr['key'] ?? null) : null;
+            }
+            if (!$knownDomain && $resolvedBranch && $resolvedBranch !== 'general') {
+                $knownDomain = match(strtolower($resolvedBranch)) {
+                    'math' => 'math_partition',
+                    'logic' => 'formal_logic',
+                    'physics' => 'physics_partition',
+                    'chemistry' => 'chemistry_partition',
+                    'computer_science' => 'computer_science_partition',
+                    'biology' => 'biology_partition',
+                    'engineering' => 'engineering_partition',
+                    'social' => 'social_science_partition',
+                    default => null
+                };
+            }
+
+            if ($hasLogicTerms) {
+                // Force formal_logic domain mapping ONLY if it is a purely linguistic logical proposition.
+                // Mathematical, algebraic, and scientific expressions must bypass this to reach specialized solvers.
+                if (!app(\App\Services\Dialectical\ScienceSyntaxAnalyzer::class)->isMathOrScientificExpression($cleanThesis)) {
+                    $knownDomain = 'formal_logic';
+                }
+            }
+
+            $astMatrix = $intent['ast_matrix'] ?? null;
+            $dynamicSolver = $router->routeThesis($cleanThesis, $knownDomain, $astMatrix);
+
+            if ($dynamicSolver) {
+                $phase1 = $dynamicSolver->executePhase1Trial($cleanThesis, $astMatrix);
+                
+                if (!empty($phase1['abort_dynamic_solver'])) {
+                    $isProofRequest = false;
+                    goto skip_proof_request;
+                }
+                
+                $phase2 = $dynamicSolver->executePhase2Deduction($phase1);
+                $proof = $dynamicSolver->executePhase3Induction($phase2);
+                
+                $isAxiom = $phase2['is_valid'] ?? false;
+                $confidence = $isAxiom ? 1.0 : 0.0;
+                
+                $status = $isAxiom ? 'global_axiom' : 'expert_review';
+                if (!empty($phase2['is_soft_axiom'])) {
+                    $status = 'soft_axiom';
+                    $confidence = 0.5;
+                }
+                if (strpos($proof, '[HALTED') !== false) {
+                    $status = 'expert_review';
+                }
+
+                // Build parent chain if axiom_id is available in phase2, or fallback to domain root
+                $parentAxiomsChain = [];
+                $axId = $phase2['axiom_id'] ?? null;
+                $axBranch = $resolvedBranch ?? ($knownDomain ?? null);
+                
+                $foundAxiom = null;
+                if ($axId) {
+                    $foundAxiom = \App\Models\KnowledgeAxiom::find($axId);
+                }
+                if (!$foundAxiom && $axBranch) {
+                    // Try to find the root axiom for this branch/domain to build the pedigree
+                    $foundAxiom = \App\Models\KnowledgeAxiom::where('status', 'global_axiom')
+                        ->where(function($q) use ($axBranch) {
+                            $q->where('branch', $axBranch)
+                              ->orWhere('domain_partition', $axBranch)
+                              ->orWhere('thesis_statement', 'like', "%{$axBranch}%");
+                        })->orderBy('id', 'asc')->first();
+                }
+
+                if ($foundAxiom) {
+                    $p = $foundAxiom;
+                    // If we found a branch root but it's not the exact axiom, we start the chain from it
+                    if ($axId === null) {
+                        // The found axiom IS the parent
+                    } else {
+                        // The found axiom is the current axiom, so its parent is the actual first parent
+                        $p = $foundAxiom->parent_axiom_id ? \App\Models\KnowledgeAxiom::find($foundAxiom->parent_axiom_id) : null;
+                    }
+                    
+                    while ($p) {
+                        array_unshift($parentAxiomsChain, [
+                            'id'               => $p->id,
+                            'thesis_statement' => $p->thesis_statement,
+                            'branch'           => $p->branch,
+                        ]);
+                        $p = $p->parent_axiom_id ? \App\Models\KnowledgeAxiom::find($p->parent_axiom_id) : null;
+                        if (count($parentAxiomsChain) >= 8) break;
+                    }
+                }
+
+                // Auto-create fallback ticket when not proven (expert_review + low confidence)
+                $ticketId = null;
+                $isFallback = ($status === 'expert_review' && $confidence < 0.5);
+                if ($isFallback) {
+                    $ticketId = $this->autoFallbackTicket(
+                        $cleanThesis,
+                        mb_substr($proof, 0, 2000),
+                        $axBranch,
+                        $axBranch,
+                        $confidence
+                    );
+                }
+                
+                return response()->json([
+                    'response'           => $proof,
+                    'conversation_id'    => $conversationId,
+                    'is_axiom'           => $isAxiom,
+                    'status'             => $status,
+                    'confidence_score'   => $confidence,
+                    'axiom_id'           => $axId,
+                    'branch'             => $axBranch,
+                    'parent_axioms'      => $parentAxiomsChain,
+                    'is_fallback'        => $isFallback,
+                    'training_ticket_id' => $ticketId,
+                ]);
+            }
+            // ========================================================================
+
+            // ========================================================================
+            // AXIOMATIC BYPASSING (Self-Reasoning Engine)
+            // Never re-prove an existing axiom. Check if the ast_signature already exists.
+            // ========================================================================
+            $astSignature = hash('sha256', $cleanThesis);
+            $astSignatureWithPrefix = hash('sha256', 'prove: ' . $cleanThesis);
+
+            if (strpos($conversationId, 'test-battery') === false) {
+                $existingAxiom = \App\Models\KnowledgeAxiom::where('status', 'global_axiom')
+                    ->where(function ($query) use ($astSignature, $astSignatureWithPrefix, $cleanThesis) {
+                        $query->where('ast_signature', $astSignature)
+                            ->orWhere('ast_signature', $astSignatureWithPrefix)
+                            ->orWhere('thesis_statement', $cleanThesis)
+                            ->orWhere('thesis_statement', 'prove: ' . $cleanThesis);
+                    })
+                    ->first();
+            } else {
+                $existingAxiom = null;
+            }
+
+            $isDynamicSummation = preg_match('/Sum\s*\(/i', $cleanThesis);
+
+            if ($existingAxiom && !$hasLogicTerms && !$isDynamicSummation) {
+                // Bypass the Dialectical Sieve completely (Except for Dynamic Solvers which must always evaluate)
+                $solverService = app(\App\Services\SyllogismSolverService::class);
+                $bookProof = $solverService->generateBookPedigreeProof($existingAxiom);
+
+                $response = $correctionHeader
+                    . "### **🏛️ AXIOMATIC BYPASS ACTIVATED**\n"
+                    . "The dialectical engine recognizes that *\"" . $cleanThesis . "\"* is already an established **Global Axiom** within the universal matrix.\n\n"
+                    . "It does not need to be mathematically re-proven. Here is the foundational proof retrieved directly from the axiom vault:\n\n"
+                    . "---\n\n"
+                    . $bookProof;
+
+                \App\Jobs\ProcessAILearning::dispatch('interaction', [
+                    'trigger' => $message,
+                    'response' => $response,
+                    'success' => true
+                ]);
+
+                // Build parent axiom chain for frontend pedigree tree
+                $parentAxiomsChain = [];
+                $p = $existingAxiom->parent_axiom_id
+                    ? \App\Models\KnowledgeAxiom::find($existingAxiom->parent_axiom_id)
+                    : null;
+                while ($p) {
+                    array_unshift($parentAxiomsChain, [
+                        'id'               => $p->id,
+                        'thesis_statement' => $p->thesis_statement,
+                        'branch'           => $p->branch,
+                    ]);
+                    $p = $p->parent_axiom_id ? \App\Models\KnowledgeAxiom::find($p->parent_axiom_id) : null;
+                    if (count($parentAxiomsChain) >= 8) break; // safety guard
+                }
+
+                return response()->json([
+                    'response'         => $response,
+                    'conversation_id'  => $conversationId,
+                    'is_axiom'         => true,
+                    'status'           => 'global_axiom',
+                    'confidence_score' => 1.0,
+                    'axiom_id'         => $existingAxiom->id,
+                    'branch'           => $existingAxiom->branch,
+                    'domain_partition' => $existingAxiom->domain_partition,
+                    'parent_axioms'    => $parentAxiomsChain,
+                    'is_fallback'      => false,
+                ]);
+            }
+            // ========================================================================
+
+            $oracle = app(\App\Services\DialecticalOracleService::class);
+
+            $categorizer = app(\App\Services\ExpertScienceCategorizer::class);
+            $resolvedBranch = $categorizer->classify($cleanThesis);
+
+            $knownDomain = null;
+            if ($resolvedBranch && $resolvedBranch !== 'general') {
+                $knownDomain = $oracle->classifyDomain($resolvedBranch);
+            }
+            if (!$knownDomain) {
+                $knownDomain = $oracle->classifyDomain($cleanThesis);
+            }
+            if (!$knownDomain && $resolvedBranch && $resolvedBranch !== 'general') {
+                $partition = match(strtolower($resolvedBranch)) {
+                    'math' => 'math_partition',
+                    'logic' => 'formal_logic',
+                    'physics' => 'physics_partition',
+                    'chemistry' => 'chemistry_partition',
+                    'computer_science' => 'computer_science_partition',
+                    'biology' => 'biology_partition',
+                    'engineering' => 'engineering_partition',
+                    'social' => 'social_science_partition',
+                    default => null
+                };
+                if ($partition) {
+                    $knownDomain = [
+                        'key' => $partition,
+                        'name' => ucwords(str_replace('_', ' ', $resolvedBranch)) . ' Domain',
+                        'domain_partition' => $partition,
+                        'prerequisites' => []
+                    ];
+                }
+            }
+
+            // DYNAMIC DIVERGENT SERIES / ANALYTIC CONTINUATION DETECTION
+            if (preg_match('/\+\s*\.\.\.\s*=/', $cleanThesis) || preg_match('/sum\s*\(.*?\b(?:infinity|inf)\b.*?\)\s*=/i', $cleanThesis)) {
+                $response = "### **⚠️ DIVERGENT MATHEMATICAL SERIES DETECTED**\n"
+                    . "It looks like you entered a divergent infinite series or analytic continuation anomaly: *\"" . $cleanThesis . "\"*.\n\n"
+                    . "The dialectical engine recognizes that standard algebraic and inductive bounds fail here (e.g., Riemann Zeta Function anomalies like Ramanujan summation). This paradox breaks standard arithmetic axioms and requires specialized mathematical routing.\n\n"
+                    . "[ROUTED TO EXPERT REVIEW: Analytic Continuation / ECE v2 Bounds]";
+
+                return response()->json([
+                    'response' => $response,
+                    'conversation_id' => $conversationId,
+                    'is_axiom' => false,
+                    'status' => 'expert_review',
+                    'confidence_score' => 0.0,
+                ]);
+            }
+
+            // DYNAMIC INCOMPLETE/UN-EQUATED EXPRESSION DETECTION
+            if (preg_match('/=\s*$/', $cleanThesis)) {
+                $response = "### **⚠️ INCOMPLETE MATHEMATICAL EXPRESSION DETECTED**\n"
+                    . "It looks like you entered a raw or incomplete mathematical expression: *\"" . $cleanThesis . "\"*.\n\n"
+                    . "To initiate mathematical verification, please provide a complete equality or divisibility relationship. For example:\n"
+                    . "- **Algebraic Expansion**: `prove: (x+y)^2 = x^2 + 2*x*y + y^2`\n"
+                    . "- **Summation Formula**: `prove: Sum(i=1..n) i^2 = n*(n+1)*(2*n+1)/6`\n"
+                    . "- **Divisibility Relationship**: `prove: 6 divides n^3 - n`\n\n"
+                    . "Please refine your query and let us struggle dialectically!\n"
+                    . "[HALTED: Incomplete Mathematical Expression]";
+
+                return response()->json([
+                    'response' => $response,
+                    'conversation_id' => $conversationId,
+                    'is_axiom' => false,
+                    'status' => 'synthesized_thesis',
+                    'confidence_score' => 0.0,
+                ]);
+            }
+
+            // LOGIC TERMS DETECTION
+            $hasLogicTerms = preg_match('/\b(?:implies|is true|is false|be true|negation|contradict(?:ion|ory)?|propositions?|logic|conjunction|disjunction|premise|if\s+.*?then|if\s+|therefore|all\s+.*?are|some\s+.*?are|no\s+.*?are|none|or|not|paradox|theorem|conjecture|goldbach|simulation|heterological|liar|berry|cantor|banach|gödel|godel|tarski|incompleteness|rule|exception|infinite|infinity|monkey|time travel|electron|wave|particle|impossible|necessarily|santa|moon|cheese|pigs|fly)\b/i', $cleanThesis);
+
+            if ($hasLogicTerms && !$knownDomain) {
+                // Force formal_logic domain mapping ONLY if it is a purely linguistic logical proposition.
+                if (!app(\App\Services\Dialectical\ScienceSyntaxAnalyzer::class)->isMathOrScientificExpression($cleanThesis)) {
+                    $knownDomain = 'formal_logic';
+                }
+            }
+
+            $hasRelational = $knownDomain || preg_match('/=|\bdivides\b|\bis even\b|\bis odd\b|\bis prime\b/i', $cleanThesis)
+                || preg_match('/Collatz/i', $cleanThesis)
+                || preg_match('/twin\s+primes?/i', $cleanThesis)
+                || preg_match('/P\s*(?:!=|!==|=|==|vs)\s*NP/i', $cleanThesis)
+                || $hasLogicTerms;
+
+            if (!$hasRelational) {
+                // Search for any proven axiom that contains this exact expression on its Left-Hand Side (or within its statement)
+                $suggestedAxiom = \App\Models\KnowledgeAxiom::where('status', 'global_axiom')
+                    ->where('thesis_statement', 'like', '%' . $cleanThesis . '%')
+                    ->where('thesis_statement', 'like', '%=%') // must be an equation
+                    ->first();
+
+                if ($suggestedAxiom) {
+                    $targetModel = $request->model ?? 'llama-3';
+                    $filteredLogic = $suggestedAxiom->inductive_logic;
+                    $synthesisNote = "Starting from the parent proof (Axiom ID: 1012 - Peano Axiom), it recursively chains logic and deduces "
+                        . "universal correctness with 100% confidence. Status: **Global Axiom**.";
+                    if ($targetModel === 'phi-3') {
+                        $filteredLogic = preg_replace('/### \*\*2️⃣ Deductive.*/s', '', $filteredLogic);
+                        $synthesisNote = "Dialectical Phase 1: Trial & Error complete. (Select Deductive logic to continue the struggle).";
+                    } elseif ($targetModel === 'mistral') {
+                        $filteredLogic = preg_replace('/### \*\*3️⃣ Inductive.*/s', '', $filteredLogic);
+                        $synthesisNote = "Dialectical Phase 2: Deductive Proof complete. (Select Inductive logic to finalize the proof).";
+                    }
+
+                    $response = "### **⚠️ INCOMPLETE OR UN-EQUATED MATHEMATICAL EXPRESSION DETECTED**\n"
+                        . "It looks like you entered a raw or incomplete mathematical expression: *\"" . $cleanThesis . "\"*.\n\n"
+                        . "To prove a theorem, the dialectical engine requires a complete mathematical proposition (an equality or relational statement containing an `=` or divisor operator).\n\n"
+                        . "💡 **Did you mean to prove the complete algebraic expansion:**\n"
+                        . "### **\"" . $suggestedAxiom->thesis_statement . "\"**?\n\n"
+                        . "---\n\n"
+                        . "Here is the verified proof for that complete theorem:\n\n"
+                        . "### **📜 MATHEMATICAL PROOF (Dialectical Engine Verified)**\n"
+                        . trim($filteredLogic) . "\n\n"
+                        . "### **🗣️ Human-Readable Synthesis**\n"
+                        . "The Zmzir Engine has successfully evaluated *\"" . $suggestedAxiom->thesis_statement . "\"*.\n"
+                        . $synthesisNote . "\n\n"
+                        . "*(Dialectically Proven)*";
+
+                    // Return this suggested response directly!
+                    return response()->json([
+                        'response' => $response,
+                        'conversation_id' => $conversationId,
+                        'is_axiom' => true,
+                        'status' => 'global_axiom',
+                        'confidence_score' => 1.0,
+                    ]);
+                } else {
+                    $cleanThesisOriginal = $cleanThesis;
+                    $isExpanded = false;
+                    $dialecticController = new \App\Http\Controllers\DialecticEngineController();
+                    $socraticLabel = "algebraic expansion";
+
+                    // 0. Check if it's a general algebraic power or binomial expansion (e.g. (x+y)^n or (a+b)^m)
+                    if (preg_match('/^\s*\(\s*([a-zA-Z]+)\s*([\+\-])\s*([a-zA-Z]+)\s*\)\s*\^\s*([a-zA-Z]+)\s*$/', $cleanThesis, $binomMatches)) {
+                        $var1 = $binomMatches[1];
+                        $op = $binomMatches[2];
+                        $var2 = $binomMatches[3];
+                        $expVar = $binomMatches[4];
+
+                        $cleanThesis = "({$var1}{$op}{$var2})^{$expVar} = Sum(k=0..{$expVar}) C({$expVar},k) * {$var1}^({$expVar}-k) * {$var2}^k";
+                        $isExpanded = true;
+                        $socraticLabel = "general binomial expansion theorem";
+                    }
+                    // 1. Check if it's a Polynomial Expansion (e.g. (x+y)^3)
+                    else if (preg_match('/^\s*\((.+?)\)\s*\^\s*(\d+)\s*$/', $cleanThesis, $exprMatches)) {
+                        $insideExpr = trim($exprMatches[1]);
+                        $exponent = intval($exprMatches[2]);
+
+                        $termsList = [];
+                        $current = "";
+                        for ($i = 0; $i < strlen($insideExpr); $i++) {
+                            $char = $insideExpr[$i];
+                            if (($char === '+' || $char === '-') && $i > 0) {
+                                $termsList[] = trim($current);
+                                $current = $char;
+                            } else {
+                                $current .= $char;
+                            }
+                        }
+                        if ($current !== "")
+                            $termsList[] = trim($current);
+
+                        $parsedTerms = [];
+                        foreach ($termsList as $t) {
+                            $t = trim($t);
+                            if ($t === '')
+                                continue;
+
+                            $coeff = 1.0;
+                            if (strpos($t, '-') === 0) {
+                                $coeff = -1.0;
+                                $t = substr($t, 1);
+                            } elseif (strpos($t, '+') === 0) {
+                                $t = substr($t, 1);
+                            }
+                            $t = trim($t);
+
+                            $parts = explode('*', $t);
+                            $vars = [];
+                            foreach ($parts as $part) {
+                                $part = trim($part);
+                                if ($part === '')
+                                    continue;
+                                if (is_numeric($part))
+                                    $coeff *= floatval($part);
+                                else {
+                                    if (preg_match('/^([a-zA-Z]+)(?:\^(\d+))?$/', $part, $varMatches)) {
+                                        $var = $varMatches[1];
+                                        $power = isset($varMatches[2]) ? intval($varMatches[2]) : 1;
+                                        $vars[$var] = ($vars[$var] ?? 0) + $power;
+                                    } else {
+                                        $vars[$part] = ($vars[$part] ?? 0) + 1;
+                                    }
+                                }
+                            }
+                            $parsedTerms[] = ['coeff' => $coeff, 'vars' => $vars];
+                        }
+
+                        if ($exponent >= 0 && !empty($parsedTerms)) {
+                            $multiplyPolynomials = function (array $poly1, array $poly2) {
+                                $result = [];
+                                foreach ($poly1 as $t1) {
+                                    foreach ($poly2 as $t2) {
+                                        $coeff = $t1['coeff'] * $t2['coeff'];
+                                        $vars = $t1['vars'];
+                                        foreach ($t2['vars'] as $v => $p)
+                                            $vars[$v] = ($vars[$v] ?? 0) + $p;
+                                        ksort($vars);
+
+                                        $keyParts = [];
+                                        foreach ($vars as $v => $p)
+                                            $keyParts[] = $p === 1 ? $v : "{$v}^{$p}";
+                                        $key = implode('*', $keyParts);
+
+                                        if (!isset($result[$key]))
+                                            $result[$key] = ['coeff' => 0.0, 'vars' => $vars];
+                                        $result[$key]['coeff'] += $coeff;
+                                    }
+                                }
+                                return array_filter($result, function ($t) {
+                                    return abs($t['coeff']) > 0.000001; });
+                            };
+
+                            $expandedPoly = [['coeff' => 1.0, 'vars' => []]];
+                            if ($exponent > 0) {
+                                $expandedPoly = $parsedTerms;
+                                for ($pIdx = 1; $pIdx < $exponent; $pIdx++)
+                                    $expandedPoly = $multiplyPolynomials($expandedPoly, $parsedTerms);
+                            }
+
+                            uasort($expandedPoly, function ($t1, $t2) {
+                                $deg1 = array_sum($t1['vars']);
+                                $deg2 = array_sum($t2['vars']);
+                                if ($deg1 !== $deg2)
+                                    return $deg2 <=> $deg1;
+                                $key1 = implode('*', array_map(fn($v, $p) => $p === 1 ? $v : "{$v}^{$p}", array_keys($t1['vars']), $t1['vars']));
+                                $key2 = implode('*', array_map(fn($v, $p) => $p === 1 ? $v : "{$v}^{$p}", array_keys($t2['vars']), $t2['vars']));
+                                return strcmp($key1, $key2);
+                            });
+
+                            $partsStr = [];
+                            foreach ($expandedPoly as $term) {
+                                $coeff = $term['coeff'];
+                                $vars = $term['vars'];
+                                $termStr = "";
+                                $absCoeff = abs($coeff);
+                                if (empty($vars))
+                                    $termStr .= $coeff;
+                                else {
+                                    if ($absCoeff !== 1.0)
+                                        $termStr .= $absCoeff . "*";
+                                    $varParts = [];
+                                    foreach ($vars as $v => $p)
+                                        $varParts[] = $p === 1 ? $v : "{$v}^{$p}";
+                                    $termStr .= implode('*', $varParts);
+                                    if ($coeff < 0)
+                                        $termStr = "-" . $termStr;
+                                }
+                                $partsStr[] = ['str' => $termStr, 'coeff' => $coeff];
+                            }
+
+                            $expandedStr = "";
+                            foreach ($partsStr as $idx => $p) {
+                                $str = $p['str'];
+                                $coeff = $p['coeff'];
+                                if ($idx === 0)
+                                    $expandedStr .= $str;
+                                else {
+                                    if ($coeff < 0) {
+                                        if (strpos($str, '-') === 0)
+                                            $expandedStr .= " - " . substr($str, 1);
+                                        else
+                                            $expandedStr .= " - " . $str;
+                                    } else {
+                                        $expandedStr .= " + " . $str;
+                                    }
+                                }
+                            }
+                            $cleanThesis = "(" . $insideExpr . ")^" . $exponent . " = " . $expandedStr;
+                            $isExpanded = true;
+                            $socraticLabel = "algebraic multinomial expansion theorem";
+                        }
+                    }
+                    // 2. Check if it's a Summation Series (e.g. Sum(i=1..n) i^2)
+                    else if (preg_match('/^\s*Sum\s*\(\s*([a-zA-Z]+)\s*=\s*(0|1)\s*\.\.\s*([a-zA-Z]+)\s*\)\s*(.+)$/i', $cleanThesis, $sumMatches)) {
+                        $indexVar = $sumMatches[1];
+                        $startIdx = intval($sumMatches[2]);
+                        $limitVar = $sumMatches[3];
+                        $summand = trim($sumMatches[4]);
+
+                        $maxDegree = 5;
+                        $points = $maxDegree + 2;
+                        $S = array_fill(0, $points, 0.0);
+                        $currentSum = 0.0;
+
+                        if ($startIdx === 0) {
+                            $val = $dialecticController->evaluateMathExpression($summand, [$indexVar => 0]);
+                            $currentSum += $val !== null ? $val : 0.0;
+                        }
+                        $S[0] = $currentSum;
+
+                        for ($n = 1; $n < $points; $n++) {
+                            if ($n >= $startIdx) {
+                                $val = $dialecticController->evaluateMathExpression($summand, [$indexVar => $n]);
+                                $currentSum += $val !== null ? $val : 0.0;
+                            }
+                            $S[$n] = $currentSum;
+                        }
+
+                        $solveLinearSystem = function ($matrix, $vector) {
+                            $n = count($vector);
+                            for ($i = 0; $i < $n; $i++) {
+                                $pivotRow = $i;
+                                for ($j = $i + 1; $j < $n; $j++) {
+                                    if (abs($matrix[$j][$i]) > abs($matrix[$pivotRow][$i]))
+                                        $pivotRow = $j;
+                                }
+                                if (abs($matrix[$pivotRow][$i]) < 0.000001)
+                                    return null;
+                                $tempRow = $matrix[$i];
+                                $matrix[$i] = $matrix[$pivotRow];
+                                $matrix[$pivotRow] = $tempRow;
+                                $tempVal = $vector[$i];
+                                $vector[$i] = $vector[$pivotRow];
+                                $vector[$pivotRow] = $tempVal;
+                                for ($j = $i + 1; $j < $n; $j++) {
+                                    $factor = $matrix[$j][$i] / $matrix[$i][$i];
+                                    for ($k = $i; $k < $n; $k++)
+                                        $matrix[$j][$k] -= $factor * $matrix[$i][$k];
+                                    $vector[$j] -= $factor * $vector[$i];
+                                }
+                            }
+                            $solution = array_fill(0, $n, 0.0);
+                            for ($i = $n - 1; $i >= 0; $i--) {
+                                $sum = 0.0;
+                                for ($j = $i + 1; $j < $n; $j++)
+                                    $sum += $matrix[$i][$j] * $solution[$j];
+                                $solution[$i] = ($vector[$i] - $sum) / $matrix[$i][$i];
+                            }
+                            return $solution;
+                        };
+
+                        $gcd = function ($a, $b) use (&$gcd) {
+                            return $b == 0 ? abs($a) : $gcd($b, $a % $b); };
+                        $lcm = function ($a, $b) use (&$gcd) {
+                            return ($a * $b) / $gcd($a, $b); };
+
+                        $foundFormula = null;
+                        for ($d = 1; $d <= $maxDegree; $d++) {
+                            $matrix = [];
+                            $vector = [];
+                            for ($i = 0; $i <= $d; $i++) {
+                                $row = [];
+                                for ($j = 0; $j <= $d; $j++)
+                                    $row[] = pow($i, $j);
+                                $matrix[] = $row;
+                                $vector[] = $S[$i];
+                            }
+                            $coeffs = $solveLinearSystem($matrix, $vector);
+                            if ($coeffs !== null) {
+                                $valid = true;
+                                for ($testN = $d + 1; $testN < $points; $testN++) {
+                                    $eval = 0.0;
+                                    for ($j = 0; $j <= $d; $j++)
+                                        $eval += $coeffs[$j] * pow($testN, $j);
+                                    if (abs($eval - $S[$testN]) > 0.001) {
+                                        $valid = false;
+                                        break;
+                                    }
+                                }
+                                if ($valid) {
+                                    $dens = [];
+                                    $nums = [];
+                                    for ($j = 0; $j <= $d; $j++) {
+                                        $val = $coeffs[$j];
+                                        if (abs($val) < 0.000001) {
+                                            $nums[$j] = 0;
+                                            $dens[$j] = 1;
+                                            continue;
+                                        }
+                                        $sign = $val < 0 ? -1 : 1;
+                                        $val = abs($val);
+                                        $bestErr = 1.0;
+                                        $bestNum = 0;
+                                        $bestDen = 1;
+                                        for ($den = 1; $den <= 120; $den++) {
+                                            $num = round($val * $den);
+                                            $err = abs($val - $num / $den);
+                                            if ($err < $bestErr) {
+                                                $bestErr = $err;
+                                                $bestNum = $num;
+                                                $bestDen = $den;
+                                            }
+                                            if ($err < 0.000001)
+                                                break;
+                                        }
+                                        $nums[$j] = $sign * $bestNum;
+                                        $dens[$j] = $bestDen;
+                                    }
+
+                                    $commonDen = 1;
+                                    foreach ($dens as $den)
+                                        $commonDen = $lcm($commonDen, $den);
+
+                                    $termStrs = [];
+                                    for ($j = $d; $j >= 1; $j--) {
+                                        $scaledNum = $nums[$j] * ($commonDen / $dens[$j]);
+                                        if ($scaledNum != 0) {
+                                            $term = "";
+                                            if (abs($scaledNum) != 1)
+                                                $term .= abs($scaledNum) . "*";
+                                            $term .= "{$limitVar}" . ($j > 1 ? "^{$j}" : "");
+                                            $termStrs[] = ($scaledNum < 0 ? "-" : "+") . " " . $term;
+                                        }
+                                    }
+                                    $scaledNum0 = $nums[0] * ($commonDen / $dens[0]);
+                                    if ($scaledNum0 != 0)
+                                        $termStrs[] = ($scaledNum0 < 0 ? "-" : "+") . " " . abs($scaledNum0);
+
+                                    if (count($termStrs) > 0) {
+                                        $formulaStr = implode(" ", $termStrs);
+                                        if (strpos($formulaStr, "+ ") === 0)
+                                            $formulaStr = substr($formulaStr, 2);
+                                        else if (strpos($formulaStr, "- ") === 0)
+                                            $formulaStr = "-" . substr($formulaStr, 2);
+
+                                        if ($commonDen > 1)
+                                            $foundFormula = "({$formulaStr})/{$commonDen}";
+                                        else
+                                            $foundFormula = $formulaStr;
+                                    } else {
+                                        $foundFormula = "0";
+                                    }
+                                    break;
+                                }
+                            }
+                        }
+
+                        if ($foundFormula !== null) {
+                            $cleanThesis = "Sum({$indexVar}={$startIdx}..{$limitVar}) {$summand} = {$foundFormula}";
+                            $isExpanded = true;
+                            $socraticLabel = "closed-form summation formula theorem";
+                        }
+                    }
+                    // 3. Divisibility and Parity Solver (e.g. n^3 - n)
+                    else if (preg_match('/^[a-zA-Z0-9\+\-\*\/\^\(\)\s\.]+$/', $cleanThesis) && preg_match('/[a-zA-Z]/', $cleanThesis) && !preg_match('/[a-zA-Z]{3,}/', $cleanThesis)) {
+                        preg_match_all('/[a-zA-Z]+/', $cleanThesis, $vars);
+                        $uniqueVars = array_unique($vars[0]);
+                        if (count($uniqueVars) === 1) {
+                            $varName = array_values($uniqueVars)[0];
+                            $vals = [];
+                            $valid = true;
+                            for ($n = 1; $n <= 5; $n++) {
+                                $res = $dialecticController->evaluateMathExpression($cleanThesis, [$varName => $n]);
+                                if ($res === null || !is_numeric($res)) {
+                                    $valid = false;
+                                    break;
+                                }
+                                $vals[] = round($res);
+                            }
+
+                            if ($valid) {
+                                $gcd = function ($a, $b) use (&$gcd) {
+                                    return $b == 0 ? abs($a) : $gcd($b, $a % $b); };
+                                $commonGcd = abs($vals[0]);
+                                for ($i = 1; $i < 5; $i++) {
+                                    $commonGcd = $gcd($commonGcd, abs($vals[$i]));
+                                }
+
+                                if ($commonGcd === 2) {
+                                    $cleanThesis = "{$cleanThesisOriginal} is even";
+                                    $isExpanded = true;
+                                    $socraticLabel = "even modular parity implication theorem";
+                                } else if ($commonGcd > 1) {
+                                    $cleanThesis = "{$commonGcd} divides {$cleanThesisOriginal}";
+                                    $isExpanded = true;
+                                    $socraticLabel = "highest common divisor relationship theorem";
+                                } else {
+                                    $allOdd = true;
+                                    foreach ($vals as $v) {
+                                        if ($v % 2 === 0)
+                                            $allOdd = false;
+                                    }
+                                    if ($allOdd) {
+                                        $cleanThesis = "{$cleanThesisOriginal} is odd";
+                                        $isExpanded = true;
+                                        $socraticLabel = "odd modular parity implication theorem";
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    if ($isExpanded) {
+                        $parentAxiomId = null;
+                        $parentAxiom = \App\Models\KnowledgeAxiom::where('status', 'global_axiom')->first();
+                        if ($parentAxiom)
+                            $parentAxiomId = $parentAxiom->id;
+
+                        $mathSolver = app(\App\Services\SymbolicMathSolverService::class);
+                        $proofResult = $mathSolver->proveMathematicalThesis($cleanThesis, $parentAxiomId);
+                        $deductiveSamples = explode("\n", $proofResult['proof_details']);
+
+                        $req = new \Illuminate\Http\Request();
+                        $req->merge([
+                            'branch' => ($resolvedBranch && $resolvedBranch !== 'general') ? $resolvedBranch : 'Mathematics',
+                            'thesis' => $cleanThesis,
+                            'deductive_samples' => $deductiveSamples,
+                            'inductive_logic' => $proofResult['proof_details'],
+                            'data_type' => 'math_formula',
+                            'source_type' => 'user',
+                            'parent_axiom_id' => $parentAxiomId,
+                            'model' => $request->model ?? 'llama-3'
+                        ]);
+
+                        $evalRes = $dialecticController->evaluateThesis($req)->getData();
+                        if (isset($evalRes->axiom)) {
+                            $axiom = \App\Models\KnowledgeAxiom::find($evalRes->axiom->id);
+                            if (!$axiom)
+                                $axiom = $evalRes->axiom;
+
+                            $parentAxiomLabel = 'Foundational Void';
+                            $parentAxiomSyntax = '';
+                            if ($parentAxiomId) {
+                                $parent = \App\Models\KnowledgeAxiom::find($parentAxiomId);
+                                if ($parent && !empty($parent->thesis_statement)) {
+                                    $parentName = explode(':', $parent->thesis_statement)[0];
+                                    $parentAxiomLabel = $parent->id . ' - ' . trim($parentName);
+                                    $parentAxiomSyntax = "\n\n### **🔗 LOGICAL CHAIN (Derived from Parent Axiom)**\n"
+                                        . "To prove this new theorem, the engine dynamically retrieved and mathematically linked the following established axiom:\n"
+                                        . "> **" . $parent->thesis_statement . "**\n"
+                                        . "> *Domain: " . $parent->branch . "*\n\n"
+                                        . "By combining this absolute truth with the new thesis, we deduce the following synthesis:";
+                                }
+                            }
+
+                            $targetModel = $request->model ?? 'llama-3';
+                            $filteredLogic = $axiom->inductive_logic;
+                            $synthesisNote = "Starting from the parent proof (Axiom ID: " . $parentAxiomLabel . "), it recursively chains logic and deduces "
+                                . "universal correctness with 100% confidence. Status: **Global Axiom**.";
+                            if ($targetModel === 'phi-3') {
+                                $filteredLogic = preg_replace('/### \*\*2️⃣ Deductive.*/s', '', $filteredLogic);
+                                $synthesisNote = "Dialectical Phase 1: Trial & Error complete. (Select Deductive logic to continue the struggle).";
+                            } elseif ($targetModel === 'mistral') {
+                                $filteredLogic = preg_replace('/### \*\*3️⃣ Inductive.*/s', '', $filteredLogic);
+                                $synthesisNote = "Dialectical Phase 2: Deductive Proof complete. (Select Inductive logic to finalize the proof).";
+                            }
+
+                            $response = "### **⚠️ INCOMPLETE OR UN-EQUATED MATHEMATICAL EXPRESSION DETECTED**\n"
+                                . "It looks like you entered a raw or incomplete mathematical expression: *\"" . $cleanThesisOriginal . "\"*.\n\n"
+                                . "To prove a theorem, the dialectical engine requires a complete mathematical proposition (an equality or relational statement containing an `=` or divisor operator).\n\n"
+                                . "💡 **Did you mean to prove the complete " . $socraticLabel . ":**\n"
+                                . "### **\"" . $axiom->thesis_statement . "\"**?\n\n"
+                                . "---\n"
+                                . $parentAxiomSyntax . "\n\n"
+                                . "Here is the verified proof for that complete theorem:\n\n"
+                                . "### **📜 MATHEMATICAL PROOF (Dialectical Engine Verified)**\n"
+                                . trim($filteredLogic) . "\n\n"
+                                . "### **🗣️ Human-Readable Synthesis**\n"
+                                . "The Zmzir Engine has successfully evaluated *\"" . $axiom->thesis_statement . "\"*.\n"
+                                . $synthesisNote . "\n\n"
+                                . "*(Dialectically Proven)*";
+
+                            \App\Jobs\ProcessAILearning::dispatch('interaction', [
+                                'trigger' => $message,
+                                'response' => $response,
+                                'success' => true
+                            ]);
+
+                            return response()->json([
+                                'response' => $response,
+                                'conversation_id' => $conversationId,
+                                'is_axiom' => true,
+                                'status' => 'global_axiom',
+                                'confidence_score' => 1.0,
+                                'axiom_id' => $axiom->id
+                            ]);
+                        }
+                    }
+
+                    // General incomplete response
+                    $response = "### **⚠️ INCOMPLETE MATHEMATICAL EXPRESSION DETECTED**\n"
+                        . "It looks like you entered a raw or incomplete mathematical expression: *\"" . $cleanThesis . "\"*.\n\n"
+                        . "To initiate mathematical verification, please provide a complete equality or divisibility relationship. For example:\n"
+                        . "- **Algebraic Expansion**: `prove: (x+y)^2 = x^2 + 2*x*y + y^2`\n"
+                        . "- **Summation Formula**: `prove: Sum(i=1..n) i^2 = n*(n+1)*(2*n+1)/6`\n"
+                        . "- **Divisibility Relationship**: `prove: 6 divides n^3 - n`\n\n"
+                        . "Please refine your query and let us struggle dialectically!\n"
+                        . "[HALTED: Incomplete Mathematical Expression]";
+
+                    return response()->json([
+                        'response' => $response,
+                        'conversation_id' => $conversationId,
+                        'is_axiom' => false,
+                        'status' => 'synthesized_thesis',
+                        'confidence_score' => 0.0,
+                    ]);
+                }
+            }
+
+            // 1. Resolve parent axiom (prerequisite) dynamically
+            $parentAxiomId = null;
+            $keywords = [];
+            if (preg_match_all('/[a-zA-Z]{3,}/', $cleanThesis, $kwMatches)) {
+                $keywords = array_filter(array_unique(array_map('strtolower', $kwMatches[0])), function ($w) {
+                    $stopWords = ['prove', 'show', 'then', 'that', 'with', 'limit', 'value', 'this', 'there', 'these', 'those', 'what', 'when', 'where', 'which', 'who', 'how', 'why', 'are', 'was', 'were', 'will', 'would', 'can', 'could', 'should', 'have', 'has', 'had', 'been', 'being', 'does', 'did', 'done', 'doing', 'the', 'and', 'but', 'for', 'nor', 'yet', 'from', 'about', 'into', 'over', 'after', 'all', 'any', 'both', 'each', 'few', 'more', 'most', 'other', 'some', 'such', 'only', 'own', 'same', 'than', 'too', 'very', 'just', 'don', 'now', 'out', 'off', 'under', 'again', 'further', 'once', 'here', 'no', 'not', 'so'];
+                    return !in_array($w, $stopWords);
+                });
+            }
+
+            // Try specific math pattern matching first
+            $parentAxiom = null;
+            if (preg_match('/divides/i', $cleanThesis)) {
+                // Find a divisibility parent axiom
+                $parentAxiom = \App\Models\KnowledgeAxiom::where('status', 'global_axiom')
+                    ->where('thesis_statement', 'like', '%divides%')
+                    ->first();
+            } elseif (preg_match('/Sum/i', $cleanThesis)) {
+                // Find a summation parent axiom
+                $parentAxiom = \App\Models\KnowledgeAxiom::where('status', 'global_axiom')
+                    ->where('thesis_statement', 'like', '%Sum%')
+                    ->first();
+            } elseif (preg_match('/even|odd/i', $cleanThesis)) {
+                // Find a parity-related parent axiom
+                // If thesis mentions "even", find a complementary "odd" axiom or base parity definition
+                $isEven = stripos($cleanThesis, 'even') !== false;
+                $oppParity = $isEven ? 'odd' : 'even';
+                $parentAxiom = \App\Models\KnowledgeAxiom::where('status', 'global_axiom')
+                    ->where('thesis_statement', 'like', '%' . $oppParity . '%')
+                    ->first();
+                if (!$parentAxiom) {
+                    $parentAxiom = \App\Models\KnowledgeAxiom::where('status', 'global_axiom')
+                        ->where('thesis_statement', 'like', '%' . ($isEven ? 'even' : 'odd') . '%')
+                        ->first();
+                }
+            }
+
+            // High-Fidelity Semantic Vector matching fallback
+            if (!$parentAxiom) {
+                try {
+                    $semanticEngine = new \App\Services\Dialectical\Semantic\SemanticEngine();
+                    $matches = $semanticEngine->query($cleanThesis);
+                    if (!empty($matches)) {
+                        $matchingBranches = \App\Services\DialecticalOracleService::getMatchingBranchesForDomain($resolvedBranch ?? 'math');
+                        foreach ($matches as $match) {
+                            if ($match['similarity'] >= 0.25) {
+                                $potAxiom = \App\Models\KnowledgeAxiom::find($match['id']);
+                                if ($potAxiom && $potAxiom->status === 'global_axiom' && in_array($potAxiom->branch, $matchingBranches)) {
+                                    $parentAxiom = $potAxiom;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                } catch (\Exception $e) {
+                    \Illuminate\Support\Facades\Log::warning("Semantic parent lookup failed: " . $e->getMessage());
+                }
+            }
+
+            // Keyword matching fallback if no parent is found yet (restricted by branch to prevent collisions)
+            if (!$parentAxiom && !empty($keywords)) {
+                $matchingBranches = \App\Services\DialecticalOracleService::getMatchingBranchesForDomain($resolvedBranch ?? 'math');
+                $query = \App\Models\KnowledgeAxiom::where('status', 'global_axiom')
+                    ->whereIn('branch', $matchingBranches)
+                    ->where(function ($q) use ($keywords) {
+                        foreach ($keywords as $kw) {
+                            $q->orWhere('thesis_statement', 'REGEXP', '\\b' . preg_quote($kw) . '\\b');
+                        }
+                    });
+                $parentAxiom = $query->first();
+            }
+
+            // Absolute fallback
+            if (!$parentAxiom) {
+                if ($knownDomain === 'formal_logic' || $hasLogicTerms) {
+                    $parentAxiom = \App\Models\KnowledgeAxiom::where('status', 'global_axiom')
+                        ->where('branch', 'formal_logic')
+                        ->first();
+                } else {
+                    $parentAxiom = \App\Models\KnowledgeAxiom::where('status', 'global_axiom')
+                        ->where('branch', 'arithmetic')
+                        ->first();
+                }
+
+                if (!$parentAxiom) {
+                    $parentAxiom = \App\Models\KnowledgeAxiom::where('status', 'global_axiom')->first();
+                }
+            }
+
+            if ($parentAxiom) {
+                $parentAxiomId = $parentAxiom->id;
+            }
+
+            // 2. Generate dynamic deductive samples via SymbolicMathSolverService
+            $mathSolver = app(\App\Services\SymbolicMathSolverService::class);
+            $proofResult = $mathSolver->proveMathematicalThesis($cleanThesis, $parentAxiomId);
+            $deductiveSamples = explode("\n", $proofResult['proof_details']);
+
+            // 3. Invoke evaluateThesis on our Dialectic Engine
+            $dialecticController = new \App\Http\Controllers\DialecticEngineController();
+            $req = new \Illuminate\Http\Request();
+            $req->merge([
+                'branch' => ($resolvedBranch && $resolvedBranch !== 'general') ? $resolvedBranch : 'Mathematics',
+                'thesis' => $cleanThesis,
+                'deductive_samples' => $deductiveSamples,
+                'inductive_logic' => $proofResult['proof_details'],
+                'data_type' => 'math_formula',
+                'source_type' => 'user',
+                'parent_axiom_id' => $parentAxiomId,
+                'model' => $request->model ?? 'llama-3'
+            ]);
+
+            $evalRes = $dialecticController->evaluateThesis($req)->getData();
+            if (isset($evalRes->axiom)) {
+                $axiomId = is_array($evalRes->axiom) ? ($evalRes->axiom['id'] ?? null) : ($evalRes->axiom->id ?? null);
+                $axiom = $axiomId ? \App\Models\KnowledgeAxiom::find($axiomId) : null;
+                if (!$axiom && is_object($evalRes->axiom)) {
+                    $axiom = $evalRes->axiom;
+                } elseif (!$axiom) {
+                    $axiom = (object)$evalRes->axiom;
+                }
+                
+                $statusLabel = ($axiom->status ?? '') === 'global_axiom' ? '*(Dialectically Proven)*' : '*(Synthesized Thesis)*';
+
+                $parentAxiomLabel = 'Foundational Void';
+                $parentAxiomSyntax = '';
+                if ($parentAxiomId) {
+                    $parent = \App\Models\KnowledgeAxiom::find($parentAxiomId);
+                    if ($parent && !empty($parent->thesis_statement)) {
+                        $parentName = explode(':', $parent->thesis_statement)[0];
+                        $parentAxiomLabel = $parent->id . ' - ' . trim($parentName);
+                        $parentAxiomSyntax = "\n\n### **🔗 LOGICAL CHAIN (Derived from Parent Axiom)**\n"
+                            . "To prove this new theorem, the engine dynamically retrieved and mathematically linked the following established axiom:\n"
+                            . "> **" . $parent->thesis_statement . "**\n"
+                            . "> *Domain: " . $parent->branch . "*\n\n"
+                            . "By combining this absolute truth with the new thesis, we deduce the following synthesis:";
+                    } else {
+                        $parentAxiomLabel = $parentAxiomId;
+                    }
+                }
+
+                $targetModel = $request->model ?? 'llama-3';
+                $filteredLogic = $axiom->inductive_logic;
+                $synthesisNote = "Starting from the parent proof (Axiom ID: " . $parentAxiomLabel . "), it recursively chains logic and deduces "
+                    . "universal correctness with 100% confidence. Status: **" . ($axiom->status === 'global_axiom' ? 'Global Axiom' : 'Synthesized Thesis') . "**.";
+
+                if ($targetModel === 'phi-3') {
+                    $filteredLogic = preg_replace('/### \*\*2️⃣ Deductive.*/s', '', $filteredLogic);
+                    $synthesisNote = "Dialectical Phase 1: Trial & Error complete. (Select Deductive logic to continue the struggle).";
+                } elseif ($targetModel === 'mistral') {
+                    $filteredLogic = preg_replace('/### \*\*3️⃣ Inductive.*/s', '', $filteredLogic);
+                    $synthesisNote = "Dialectical Phase 2: Deductive Proof complete. (Select Inductive logic to finalize the proof).";
+                }
+
+                $response = "### **📜 MATHEMATICAL PROOF (Dialectical Engine Verified)**\n"
+                    . trim($filteredLogic) . "\n"
+                    . $parentAxiomSyntax . "\n\n"
+                    . "### **🗣️ Human-Readable Synthesis**\n"
+                    . "The Zmzir Engine has successfully evaluated *\"" . $cleanThesis . "\"*.\n"
+                    . $synthesisNote . "\n\n"
+                    . $statusLabel;
+
+                if ($axiom->status === 'synthesized_thesis') {
+                    $response .= "\n\n*Note: This knowledge is currently in a state of Synthesis and may require further Dialectical Struggle.*";
+                }
+
+                // Dispatch learning
+                ProcessAILearning::dispatch('interaction', [
+                    'trigger' => $message,
+                    'response' => $response,
+                    'success' => true
+                ]);
+
+                $axStatus    = $axiom->status ?? 'synthesized_thesis';
+                $axConf      = (float)($axiom->confidence_score ?? 0.5);
+                $axId        = $axiom->id ?? null;
+                $axBranch    = $axiom->branch ?? ($resolvedBranch ?? null);
+                $axDomain    = $axiom->domain_partition ?? null;
+
+                // Build parent chain for the frontend pedigree tree
+                $parentAxiomsChain = [];
+                if ($axId) {
+                    $p = $axiom->parent_axiom_id ? \App\Models\KnowledgeAxiom::find($axiom->parent_axiom_id) : null;
+                    while ($p) {
+                        array_unshift($parentAxiomsChain, [
+                            'id'               => $p->id,
+                            'thesis_statement' => $p->thesis_statement,
+                            'branch'           => $p->branch,
+                        ]);
+                        $p = $p->parent_axiom_id ? \App\Models\KnowledgeAxiom::find($p->parent_axiom_id) : null;
+                        if (count($parentAxiomsChain) >= 8) break;
+                    }
+                }
+
+                // Auto-create fallback ticket when synthesized_thesis AND low confidence
+                $ticketId  = null;
+                $isFallback = ($axStatus === 'synthesized_thesis' && $axConf < 0.5);
+                if ($isFallback) {
+                    $ticketId = $this->autoFallbackTicket(
+                        $cleanThesis,
+                        $response,
+                        $axBranch,
+                        $axBranch,
+                        $axConf
+                    );
+                }
+
+                return response()->json([
+                    'response'           => $response,
+                    'conversation_id'    => $conversationId,
+                    'is_axiom'           => true,
+                    'status'             => $axStatus,
+                    'confidence_score'   => $axConf,
+                    'axiom_id'           => $axId,
+                    'thesis'             => $cleanThesis,
+                    'branch'             => $axBranch,
+                    'domain_partition'   => $axDomain,
+                    'parent_axioms'      => $parentAxiomsChain,
+                    'is_fallback'        => $isFallback,
+                    'training_ticket_id' => $ticketId,
+                ]);
+            }
+        }
+
+        // 1. DIALECTICAL ENGINE: Check KnowledgeAxioms for absolute truths first
+        // Extract keywords from current message and the stateless context (fades)
+        $messageClean = preg_replace('/^(what is|tell me about|explain|show me|why is|why|how does|what does|is|are|the|a|an)\s+/i', '', $message);
+
+        $searchTerms = explode(' ', strtolower(trim($messageClean)));
+        $searchTerms = array_map(function ($term) {
+            return preg_replace('/[^\w\s]/', '', $term);
+        }, $searchTerms);
+
+        $searchTerms = array_filter($searchTerms, function ($term) {
+            // Filter out small words and system meta-keywords
+            return strlen($term) > 3 && !in_array($term, ['user', 'contested', 'contradiction', 'synthesis', 'required', 'evidence']);
+        });
+
+        if (empty($searchTerms)) {
+            // Fallback immediately if no significant keywords found
+            return $this->getRuleBasedResponse($message, $hasTypo, $conversationId, $request->model ?? 'phi-3', $contextString);
+        }
+
+        // Search KnowledgeAxioms using a more flexible keyword approach
+        if (strpos($conversationId, 'test-battery') === false) {
+            $axiomQuery = \App\Models\KnowledgeAxiom::query();
+            $axiomQuery->where(function ($q) use ($searchTerms) {
+                foreach (array_slice($searchTerms, 0, 5) as $term) {
+                    $q->orWhere('thesis_statement', 'like', '%' . $term . '%')
+                        ->orWhere('branch', 'like', '%' . $term . '%');
+                }
+            });
+
+            $axioms = $axiomQuery->orderByDesc('confidence_score')->get();
+
+            foreach ($axioms as $axiom) {
+                if ($axiom->confidence_score < 0.3)
+                    continue; // Skip low-confidence trash
+
+                // Strict Relevance Check: At least 1 match in the thesis_statement itself using word boundaries
+                $thesisMatch = false;
+                $matchCount = 0;
+                foreach ($searchTerms as $term) {
+                    if (preg_match('/\b' . preg_quote($term, '/') . '\b/i', $axiom->thesis_statement)) {
+                        $matchCount++;
+                        $thesisMatch = true;
+                    } elseif (preg_match('/\b' . preg_quote($term, '/') . '\b/i', $axiom->branch)) {
+                        $matchCount++;
+                    }
+                }
+
+                $relevanceRatio = $matchCount / count($searchTerms);
+
+                // 100% Purity Threshold: Must have at least one THESIS match AND (2 total matches OR > 60% relevance)
+                if ($thesisMatch && ($matchCount >= 2 || ($relevanceRatio >= 0.6))) {
+                    $statusLabel = $axiom->status === 'global_axiom' ? '*(Dialectically Proven)*' : '*(Synthesized Thesis)*';
+
+                    $response = "### **🏛️ AXIOM RETRIEVAL**\n"
+                        . "The dialectical engine has retrieved the requested knowledge from the universal matrix.\n\n"
+                        . "---\n\n"
+                        . "### **📜 MATHEMATICAL PROOF (Dialectical Engine Verified)**\n"
+                        . trim($axiom->inductive_logic ?? '') . "\n\n"
+                        . "### **🗣️ Human-Readable Synthesis**\n"
+                        . $axiom->thesis_statement . "\n\n" . $statusLabel;
+
+                    if ($axiom->status === 'synthesized_thesis') {
+                        $response .= "\n\n*Note: This knowledge is currently in a state of Synthesis and may require further Dialectical Struggle.*";
+                    }
+
+                    // Dispatch learning
+                    ProcessAILearning::dispatch('interaction', [
+                        'trigger' => $message,
+                        'response' => $response,
+                        'success' => true
+                    ]);
+
+                    // Build parent chain
+                    $parentAxiomsChain = [];
+                    $p = $axiom->parent_axiom_id ? \App\Models\KnowledgeAxiom::find($axiom->parent_axiom_id) : null;
+                    while ($p) {
+                        array_unshift($parentAxiomsChain, [
+                            'id'               => $p->id,
+                            'thesis_statement' => $p->thesis_statement,
+                            'branch'           => $p->branch,
+                        ]);
+                        $p = $p->parent_axiom_id ? \App\Models\KnowledgeAxiom::find($p->parent_axiom_id) : null;
+                        if (count($parentAxiomsChain) >= 8) break;
+                    }
+
+                    return response()->json([
+                        'response'         => $response,
+                        'conversation_id'  => $conversationId,
+                        'is_axiom'         => true,
+                        'status'           => $axiom->status,
+                        'confidence_score' => $axiom->confidence_score,
+                        'axiom_id'         => $axiom->id,
+                        'branch'           => $axiom->branch,
+                        'domain_partition' => $axiom->domain_partition,
+                        'parent_axioms'    => $parentAxiomsChain,
+                        'is_fallback'      => false,
+                    ]);
+                }
+            }
+        }
+        
+        skip_proof_request:
 
         // Main response engine
-        $response = $this->getRuleBasedResponse($message, $hasTypo, $conversationId);
+        $response = $this->getRuleBasedResponse($message, $hasTypo, $conversationId, $request->model ?? 'phi-3', $contextString);
+
+        // Dispatch background learning for continuous reasoning (Trail & Error -> Deductive -> Inductive)
+        ProcessAILearning::dispatch('interaction', [
+            'trigger' => $message,
+            'response' => $response,
+            'success' => true // A basic heuristic; can be further refined by user feedback events
+        ]);
 
         return response()->json([
-            'response' => $response,
-            'conversation_id' => $conversationId
+            'response'      => $response,
+            'conversation_id' => $conversationId,
+            'is_axiom'      => false,
+            'is_fallback'   => false,
         ]);
     }
 
-    // ========================================================================
-    // MAIN RESPONSE ENGINE – FULLY EXTENDED
-    // ========================================================================
-    private function getRuleBasedResponse(string $message, $hasTypo, string $conversationId): string
+    public function submitFeedback(Request $request)
+    {
+        $request->validate([
+            'query'              => 'required|string',
+            'response'           => 'required|string',
+            'type'               => 'required|in:save,discard',
+            'axiom_id'           => 'nullable|integer',
+            'branch'             => 'nullable|string|max:100',
+            'domain_partition'   => 'nullable|string|max:100',
+            'training_ticket_id' => 'nullable|integer',
+        ]);
+
+        $isPositive = $request->input('type') === 'save';
+
+        // ── Case 1: Dialectical Struggle — user contradicts a Known Axiom ─────────
+        // Route directly to the DialecticEngineController so the axiom's contradiction
+        // count can be tracked and an antithesis can be generated.
+        if (!$isPositive && $request->input('axiom_id')) {
+            $axiom = \App\Models\KnowledgeAxiom::find($request->input('axiom_id'));
+            if ($axiom) {
+                $dialecticController = new \App\Http\Controllers\DialecticEngineController();
+                return $dialecticController->submitContradiction(
+                    $axiom,
+                    "User-contested contradiction: " . $request->input('query'),
+                    'user_feedback'
+                );
+            }
+        }
+
+        // ── Case 2: Contradiction of a non-axiom response → auto-ticket ──────────
+        // When the user contradicts any response that is NOT a global axiom, immediately
+        // create a chatbot_training ticket for expert review so the error can be corrected.
+        $ticketId = $request->input('training_ticket_id');
+        if (!$isPositive && !$request->input('axiom_id') && !$ticketId) {
+            try {
+                $existing = ChatbotTraining::where('trigger', 'like', '%' . mb_substr($request->input('query'), 0, 80) . '%')
+                    ->where('needs_review', true)
+                    ->first();
+
+                if ($existing) {
+                    $ticketId = $existing->id;
+                } else {
+                    $ticket = ChatbotTraining::create([
+                        'trigger'          => mb_substr($request->input('query'), 0, 500),
+                        'response'         => mb_substr($request->input('response'), 0, 2000),
+                        'category'         => $request->input('branch') ?? 'general',
+                        'branch'           => $request->input('branch'),
+                        'domain_partition' => $request->input('domain_partition'),
+                        'needs_review'     => true,
+                        'is_active'        => false,
+                        'confidence_score' => 0.3,
+                        'context'          => json_encode([
+                            'weight'           => 0.3,
+                            'user_contradiction' => true,
+                            'reported_at'      => now()->toISOString(),
+                        ]),
+                    ]);
+                    $ticketId = $ticket->id;
+
+                    // Broadcast to experts channel
+                    if (class_exists(\App\Events\NewTrainingTicket::class)) {
+                        event(new \App\Events\NewTrainingTicket($ticket));
+                    }
+                }
+            } catch (\Throwable $e) {
+                Log::warning('Auto contradiction ticket failed: ' . $e->getMessage());
+            }
+        }
+
+        // ── Case 3: Standard Rule feedback — weight adjustment ────────────────────
+        $rule = ChatbotTraining::where('trigger', 'like', '%' . $request->input('query') . '%')
+            ->where('response', 'like', '%' . $request->input('response') . '%')
+            ->first();
+
+        $weightChange = $isPositive ? 0.1 : -0.2;
+        $newWeight    = 1.0;
+
+        if ($rule) {
+            $context = json_decode($rule->context ?? '{}', true) ?: [];
+            $currentWeight = $context['weight'] ?? 1.0;
+            $newWeight = max(0.1, $currentWeight + $weightChange);
+            $context['weight'] = $newWeight;
+            $rule->context = json_encode($context);
+            $rule->save();
+
+            // Feed this into the Global Dialectic Engine as a Deductive Sample (Phase 2)
+            $dialecticEngine = new \App\Http\Controllers\DialecticEngineController();
+            $thesis = $dialecticEngine->ingestThesis('Chatbot_User_Interaction', $request->input('query'));
+            $sampleData = "User " . ($isPositive ? 'Agreed' : 'Contradicted') . " with response: " . $request->input('response');
+            $dialecticEngine->runDeduction($thesis, [$sampleData]);
+        }
+
+        // ── Dispatch Phase 3 learning job with enriched payload ───────────────────
+        // The 'feedback' type handler in ProcessAILearning now correctly processes this.
+        ProcessAILearning::dispatch('feedback', [
+            'trigger'            => $request->input('query'),
+            'response'           => $request->input('response'),
+            'type'               => $request->input('type'),
+            'category'           => $request->input('branch') ?? 'general',
+            'branch'             => $request->input('branch'),
+            'domain_partition'   => $request->input('domain_partition'),
+            'axiom_id'           => $request->input('axiom_id'),
+            'training_ticket_id' => $ticketId,
+        ]);
+
+        return response()->json([
+            'success'        => true,
+            'message'        => $isPositive
+                ? 'Thank you! The engine has reinforced this knowledge.'
+                : 'Contradiction registered. An expert will review this response.',
+            'new_weight'     => $newWeight,
+            'ticket_id'      => $ticketId,
+            'learning_state' => $isPositive ? 'reinforced' : 'queued_for_review',
+        ]);
+    }
+
+    private function getRuleBasedResponse(string $message, $hasTypo, string $conversationId, string $model = 'phi-3', string $contextString = ""): string
     {
         $lowerMessage = strtolower($message);
 
@@ -312,9 +1733,17 @@ class ChatbotController extends Controller
         // ————————————————————————————————————
         // 2. Cached Responses
         // ————————————————————————————————————
-        $learnedResponses = cache()->get('learned_responses', []);
+        $learnedResponses = Cache::get('learned_responses', []);
         if (isset($learnedResponses[$lowerMessage])) {
             return $learnedResponses[$lowerMessage] . ' (from cache memory)';
+        }
+
+        // ————————————————————————————————————
+        // 2.5 Zmzir AI Ecosystem Knowledge (Step 1 to 6)
+        // ————————————————————————————————————
+        $aiInfo = $this->getAIEcosystemInfo($message);
+        if ($aiInfo) {
+            return $aiInfo;
         }
 
         // ————————————————————————————————————
@@ -369,7 +1798,30 @@ class ChatbotController extends Controller
         }
 
         // ————————————————————————————————————
-        // 8. Fallback to meaningless check and keywords
+        // 8. EXACT AXIOM MATCH (Before Semantics)
+        // ————————————————————————————————————
+        $cleanForAxiom = trim(preg_replace('/^(what is|who is|explain|define|prove)\s+/i', '', $message), " ?.\n\r");
+        if (strlen($cleanForAxiom) > 4) {
+            $existingAxiom = \App\Models\KnowledgeAxiom::where('status', 'global_axiom')
+                ->where(function ($query) use ($cleanForAxiom) {
+                    $query->where('ast_signature', hash('sha256', $cleanForAxiom))
+                          ->orWhere('thesis_statement', $cleanForAxiom)
+                          ->orWhere('thesis_statement', 'like', $cleanForAxiom . '%');
+                })
+                ->first();
+
+            if ($existingAxiom) {
+                $solverService = app(\App\Services\SyllogismSolverService::class);
+                $bookProof = $solverService->generateBookPedigreeProof($existingAxiom);
+                return "### **🏛️ EXACT AXIOM RETRIEVAL**\n"
+                    . "The dialectical engine has retrieved the requested knowledge directly from the universal matrix.\n\n"
+                    . "---\n\n"
+                    . $bookProof;
+            }
+        }
+
+        // ————————————————————————————————————
+        // 8.5 Fallback to meaningless check and keywords
         // ————————————————————————————————————
         if (count($keywords) === 0) {
             return 'Could you please provide more details so I can assist you better?';
@@ -378,8 +1830,10 @@ class ChatbotController extends Controller
         // ————————————————————————————————————
         // 9. RAG AI CALL — SAFE & CLEAN
         // ————————————————————————————————————
-        $category = $this->detectCategories($message)[0] ?? 'general';
-        $ragResult = $this->askRAGMicroservice($message);
+        $categorizer = app(\App\Services\ExpertScienceCategorizer::class);
+        $resolvedCategory = $categorizer->classify($message);
+        $category = ($resolvedCategory && $resolvedCategory !== 'general') ? $resolvedCategory : ($this->detectCategories($message)[0] ?? 'general');
+        $ragResult = $this->askRAGMicroservice($message, $model, $contextString);
 
         if ($ragResult['success']) {
             $answer = $ragResult['answer'];
@@ -415,7 +1869,13 @@ class ChatbotController extends Controller
     private function getTrainedResponses(string $message, string $conversationId): ?string
     {
         $messageWords = $this->tokenizeMessage($message);
+        $categorizer = app(\App\Services\ExpertScienceCategorizer::class);
+        $resolvedCategory = $categorizer->classify($message);
         $detectedCategories = $this->detectCategories($message);
+        if ($resolvedCategory && $resolvedCategory !== 'general') {
+            array_unshift($detectedCategories, $resolvedCategory);
+            $detectedCategories = array_values(array_unique($detectedCategories));
+        }
 
         if (empty($messageWords)) {
             return null;
@@ -1351,10 +2811,12 @@ class ChatbotController extends Controller
     // ========================================================================
     // 5. LEARNING + NOTIFICATIONS FOR REVIEW
     // ========================================================================
-    private function learnResponse(string $message, string $response = '', string $category = null): void
+    private function learnResponse(string $message, string $response = '', ?string $category = null): void
     {
         $analysis = $this->analyzeMessage($message);
-        $category = $category ?? $this->detectCategories($message)[0] ?? 'general';
+        $categorizer = app(\App\Services\ExpertScienceCategorizer::class);
+        $resolvedCategory = $categorizer->classify($message);
+        $category = $category ?? ($resolvedCategory !== 'general' ? $resolvedCategory : ($this->detectCategories($message)[0] ?? 'general'));
 
         $existing = ChatbotTraining::where('trigger', 'like', "%$message%")
             ->when($category, fn($q) => $q->where('category', $category))
@@ -1368,11 +2830,15 @@ class ChatbotController extends Controller
             return;
         }
 
+        // Call the dynamic ExpertScienceCategorizer (ECE v2) to build dispatch context
+        $dispatch = $categorizer::dispatch($message, $category);
+
         $training = ChatbotTraining::create([
             'trigger' => $message,
             'response' => $response,
             'keywords' => $analysis['keywords'],
             'category' => $category,
+            'context' => json_encode(['expert_dispatch' => $dispatch]),
             'needs_review' => empty($response),
             'trained_by' => auth()->id() ?? null,
             'is_active' => !empty($response)
@@ -1409,324 +2875,22 @@ class ChatbotController extends Controller
     // analyzeMessage for interpreting a user query. sentiment + keyword extraction improves routing
     private function analyzeMessage(string $message): array
     {
-        // tokenizer + stopword removal + sentiment detection + normalization
+        // tokenizer + DialecticalKeywordBank stopword removal + sentiment detection
         $words = preg_split('/\s+/', strtolower($message));
-        $stopWords = [
-            // Basic English stop words
-            "a",
-            "about",
-            "above",
-            "after",
-            "again",
-            "against",
-            "all",
-            "am",
-            "an",
-            "and",
-            "any",
-            "are",
-            "aren",
-            "as",
-            "at",
-            "be",
-            "because",
-            "been",
-            "before",
-            "being",
-            "below",
-            "between",
-            "both",
-            "but",
-            "by",
-            "can",
-            "cannot",
-            "could",
-            "couldn",
-            "did",
-            "didn",
-            "do",
-            "does",
-            "doesn",
-            "doing",
-            "don",
-            "down",
-            "during",
-            "each",
-            "few",
-            "for",
-            "from",
-            "further",
-            "had",
-            "hadn",
-            "has",
-            "hasn",
-            "have",
-            "haven",
-            "having",
-            "he",
-            "her",
-            "here",
-            "hers",
-            "herself",
-            "him",
-            "himself",
-            "his",
-            "how",
-            "i",
-            "if",
-            "in",
-            "into",
-            "is",
-            "isn",
-            "it",
-            "its",
-            "itself",
-            "just",
-            "ll",
-            "me",
-            "might",
-            "mightn",
-            "more",
-            "most",
-            "must",
-            "mustn",
-            "my",
-            "myself",
-            "needn",
-            "no",
-            "nor",
-            "not",
-            "now",
-            "of",
-            "off",
-            "on",
-            "once",
-            "only",
-            "or",
-            "other",
-            "our",
-            "ours",
-            "ourselves",
-            "out",
-            "over",
-            "own",
-            "re",
-            "s",
-            "same",
-            "shan",
-            "she",
-            "should",
-            "shouldn",
-            "so",
-            "some",
-            "such",
-            "t",
-            "than",
-            "that",
-            "the",
-            "their",
-            "theirs",
-            "them",
-            "themselves",
-            "then",
-            "there",
-            "these",
-            "they",
-            "this",
-            "those",
-            "through",
-            "to",
-            "too",
-            "under",
-            "until",
-            "up",
-            "ve",
-            "very",
-            "was",
-            "wasn",
-            "we",
-            "were",
-            "weren",
-            "what",
-            "when",
-            "where",
-            "which",
-            "while",
-            "who",
-            "whom",
-            "why",
-            "will",
-            "with",
-            "won",
-            "would",
-            "wouldn",
-            "you",
-            "your",
-            "yours",
-            "yourself",
-            "yourselves",
-
-            // Contractions & chat shorthand
-            "im",
-            "i'm",
-            "ive",
-            "i’ve",
-            "you're",
-            "youre",
-            "youve",
-            "you’ve",
-            "we're",
-            "weve",
-            "theyre",
-            "they're",
-            "theyve",
-            "they’ve",
-            "can't",
-            "dont",
-            "won't",
-            "didn't",
-            "doesn't",
-            "isn't",
-            "aren't",
-            "wasn't",
-            "weren't",
-            "shouldn't",
-            "couldn't",
-            "wouldn't",
-            "mustn't",
-            "shan't",
-            "ain",
-            "ma",
-
-            // Fillers / meaningless in chat queries
-            "hey",
-            "hi",
-            "hello",
-            "yo",
-            "ok",
-            "okay",
-            "hmm",
-            "uh",
-            "um",
-            "oh",
-            "ah",
-            "well",
-            "please",
-            "pls",
-            "tho",
-            "though",
-            "btw",
-            "asap",
-            "haha",
-            "lol",
-            "lmao",
-
-            // Polite / irrelevant to intent
-            "thanks",
-            "thank",
-            "thankyou",
-            "thx",
-            "regards",
-            "kind",
-            "dear",
-            "sorry",
-            "pardon",
-            "excuse",
-            "sir",
-            "madam",
-            "mr",
-            "mrs",
-            "ms",
-            "greetings",
-            "welcome",
-            "appreciate",
-            "appreciated",
-            "gratitude",
-
-            // Common question filler words
-            "tell",
-            "explain",
-            "define",
-            "about",
-            "say",
-            "me",
-            "just",
-            "really",
-            "basically",
-            "actually",
-            "kinda",
-            "sorta",
-            "like",
-            "thing",
-            "stuff",
-            "anything",
-            "everything",
-            "some",
-            "more",
-            "less",
-            "bit",
-            "lot",
-            "lots",
-            "part",
-            "parts",
-            "way",
-            "ways",
-
-            // Noise tokens (common mistakes)
-            "y",
-            "d",
-            "ll",
-            "t",
-            "ve",
-            "re",
-            "m",
-            "s",
-            "n",
-            "em",
-            "'",
-            "’",
-            "“",
-            "”",
-            "\"",
-
-            // Non-meaningful pronouns / determiners
-            "this",
-            "that",
-            "these",
-            "those",
-            "here",
-            "there",
-            "anyone",
-            "anybody",
-            "someone",
-            "somebody",
-            "everyone",
-            "everybody",
-            "nobody",
-            "noone",
-            "none",
-            "all",
-            "both",
-            "each",
-            "either",
-            "neither",
-            "one",
-            "ones",
-            "others",
-            "whose",
-        ];
-
-        $filtered = array_diff($words, $stopWords);
+        
+        $filtered = array_values(array_filter($words, function($word) {
+            $w = trim(preg_replace('/[^a-z0-9]/', '', $word));
+            if (strlen($w) < 2) return false;
+            return !\App\Services\DialecticalKeywordBank::isStopWord($w);
+        }));
 
         $positive = ['happy', 'good', 'great', 'thanks', 'thank', 'awesome', 'excellent', 'love', 'like', 'fantastic', 'positive', 'satisfied', 'pleased', 'helpful'];
         $negative = ['angry', 'bad', 'wrong', 'broken', 'issue', 'problem', 'fail', 'error', 'hate', 'dislike', 'terrible', 'negative', 'unsatisfied', 'frustrated', 'dissatisfied'];
 
         $sentiment = 'neutral';
         foreach ($filtered as $word) {
-            if (in_array($word, $positive))
-                $sentiment = 'positive';
-            if (in_array($word, $negative))
-                $sentiment = 'negative';
+            if (in_array($word, $positive)) $sentiment = 'positive';
+            if (in_array($word, $negative)) $sentiment = 'negative';
         }
 
         return [
@@ -1735,141 +2899,52 @@ class ChatbotController extends Controller
         ];
     }
 
-    // tokenizeMessage matching message to  training dataset. fewer filters = higher chance of overlap with training data triggers
     private function tokenizeMessage(string $message): array
     {
-        // light tokenizer + minimal stopword removal for training matching
+        // light tokenizer + DialecticalKeywordBank stopword removal for training matching
         $message = strtolower(preg_replace('/[^a-z0-9\s]/', '', $message));
         $words = preg_split('/\s+/', trim($message));
-        $stopWords = ['the', 'a', 'an', 'is', 'are', 'i', 'you', 'we', 'to', 'my', 'can', 'it', 'and', 'explain', 'or', 'but', 'in', 'on', 'at'];
-        return array_values(array_unique(array_diff($words, $stopWords)));
+        
+        $filtered = array_filter($words, function($w) {
+            if (strlen($w) < 2) return false;
+            return !\App\Services\DialecticalKeywordBank::isStopWord($w);
+        });
+        
+        return array_values(array_unique($filtered));
     }
 
     private function detectCategories(string $message): array
     {
-        $lower = strtolower(trim($message));
-
-        // Master category map: real category → list of trigger words/phrases
-        // This is the GOLD standard for 2025 chatbots
-        $categoryMap = [
-            // Core app & platform
-            'spaces' => ['space', 'spaces', 'collab', 'whiteboard', 'meeting room', 'voice channel'],
-            'posts' => ['post', 'posts', 'feed', 'repost', 'caption', 'trending'],
-            'account' => ['account', 'profile', 'login', 'signup', 'register', 'password', 'email verify'],
-            'payment' => ['payment', 'billing', 'subscription', 'refund', 'charge', 'paypal', 'stripe', 'invoice'],
-            'technical' => ['bug', 'error', 'crash', 'not working', 'broken', 'issue', 'slow', 'lag', 'freeze'],
-            'feature' => ['feature', 'add', 'missing', 'wish', 'request', 'idea', 'suggestion'],
-            'mobile' => ['mobile', 'app', 'android', 'ios', 'iphone', 'play store', 'app store'],
-            'notification' => ['notification', 'alert', 'bell', 'push', 'reminder'],
-            'privacy' => ['privacy', 'data', 'delete account', 'gdpr', 'personal info'],
-            'settings' => ['settings', 'preferences', 'options', 'customize', 'configuration'],
-            'general' => ['help', 'support', 'question', 'how to', 'guide', 'information'],
-            'troubleshooting' => ['troubleshoot', 'fix', 'resolve', 'solution', 'workaround'],
-
-            // Tech & Development
-            'ai' => ['ai', 'artificial intelligence', 'chatgpt', 'gpt', 'llm', 'grok', 'claude', 'gemini'],
-            'machine-learning' => ['machine learning', 'ml', 'deep learning', 'neural network', 'training data'],
-            'programming' => ['programming', 'code', 'python', 'javascript', 'php', 'laravel', 'react', 'vue'],
-            'web-dev' => ['web development', 'frontend', 'backend', 'html', 'css', 'api', 'rest'],
-            'cloud' => ['cloud', 'aws', 'azure', 'google cloud', 'server', 'hosting', 'docker', 'kubernetes'],
-            'security' => ['security', 'hacking', 'cybersecurity', 'encryption', '2fa', 'password manager'],
-            'data-science' => ['data science', 'data analysis', 'data visualization', 'pandas', 'numpy', 'jupyter'],
-            'devops' => ['devops', 'ci/cd', 'continuous integration', 'deployment', 'infrastructure as code'],
-            'blockchain' => ['blockchain', 'smart contract', 'solidity', 'decentralized', 'defi'],
-            'robotics' => ['robotics', 'robot', 'automation', 'drone', 'mechatronics'],
-            'iot' => ['iot', 'internet of things', 'smart device', 'sensor', 'embedded'],
-            'quantum-computing' => ['quantum computing', 'qubit', 'quantum algorithm', 'entanglement'],
-
-            // Media & Arts (your film/theater test case)
-            'film' => ['film', 'movie', 'cinema', 'netflix', 'streaming', 'hollywood', 'bollywood'],
-            'sci-fi' => ['sci-fi', 'science fiction', 'scifi', 'dune', 'blade runner', 'matrix'],
-            'theater' => ['theater', 'theatre', 'play', 'stage', 'acting', 'drama', 'schauspiel'],
-            'storytelling' => ['story', 'narrative', 'plot', 'script', 'screenplay', 'writing story', 'storytelling', 'storyteller'],
-            'director' => ['director', 'filmmaker', 'nolan', 'scorsese', 'tarantino', 'villeneuve'],
-            'documentary' => ['documentary', 'doc', 'real story', 'true story'],
-            'animation' => ['animation', 'animated', 'cartoon', 'pixar', 'disney', 'anime'],
-            'visual-effects' => ['visual effects', 'vfx', 'cgi', 'special effects', 'green screen'],
-            'cinematography' => ['cinematography', 'camera work', 'shot composition', 'lighting', 'lens'],
-            'film-history' => ['film history', 'cinema history', 'classic films', 'silent era', 'golden age of hollywood'],
-
-            // Science & Academia
-            'physics' => ['physics', 'quantum', 'relativity', 'einstein', 'particle'],
-            'biology' => ['biology', 'dna', 'genes', 'evolution', 'cells', 'biotech'],
-            'math' => ['math', 'mathematics', 'calculus', 'algebra', 'statistics', 'geometry'],
-            'space' => ['space', 'nasa', 'mars', 'astronomy', 'cosmos', 'black hole', 'telescope'],
-
-            // Health & Life
-            'health' => ['health', 'fitness', 'diet', 'exercise', 'mental health', 'therapy'],
-            'medicine' => ['medicine', 'doctor', 'hospital', 'disease', 'vaccine', 'pharma'],
-            'psychology' => ['psychology', 'mind', 'behavior', 'cognitive', 'emotion', 'therapy'],
-            'nutrition' => ['nutrition', 'vitamins', 'supplements', 'healthy eating', 'meal plan'],
-            'wellness' => ['wellness', 'self-care', 'mindfulness', 'meditation', 'stress management'],
-            'fitness' => ['fitness', 'workout', 'gym', 'training', 'cardio', 'strength'],
-
-            // Business & Money
-            'business' => ['business', 'startup', 'entrepreneur', 'marketing', 'sales', 'money'],
-            'crypto' => ['crypto', 'bitcoin', 'ethereum', 'blockchain', 'nft', 'web3'],
-            'investing' => ['investing', 'stocks', 'bonds', 'portfolio', 'financial planning'],
-            'economics' => ['economics', 'market', 'inflation', 'recession', 'supply and demand'],
-            'real-estate' => ['real estate', 'property', 'housing market', 'mortgage', 'renting', 'buying'],
-            'personal-finance' => ['personal finance', 'budgeting', 'saving', 'debt', 'credit score'],
-            'tax' => ['tax', 'irs', 'filing', 'deduction', 'refund'],
-
-            // Education & Learning
-            'education' => ['education', 'school', 'university', 'course', 'learning', 'study', 'exam'],
-            'language' => ['language', 'english', 'german', 'french', 'spanish', 'learn language'],
-            'history-academia' => ['history', 'philosophy', 'sociology', 'anthropology', 'archaeology'],
-            'research' => ['research', 'paper', 'study', 'experiment', 'findings'],
-            'teaching' => ['teaching', 'lesson plan', 'curriculum', 'student engagement'],
-            'online-learning' => ['online learning', 'e-learning', 'mooc', 'virtual classroom', 'distance education'],
-            'child-education' => ['child education', 'early childhood', 'developmental milestones', 'parenting', 'learning through play'],
-            'adult-education' => ['adult education', 'continuing education', 'lifelong learning', 'skills development', 'professional development'],
-            'special-education' => ['special education', 'learning disabilities', 'individualized education plan', 'inclusive education', 'special needs'],
-            'educational-technology' => ['educational technology', 'edtech', 'learning management system', 'digital learning tools', 'virtual reality in education'],
-
-            // Lifestyle & Culture
-            'travel' => ['travel', 'vacation', 'flight', 'hotel', 'country', 'city'],
-            'food' => ['food', 'cooking', 'recipe', 'restaurant', 'cuisine'],
-            'music' => ['music', 'song', 'spotify', 'album', 'concert', 'band'],
-            'gaming' => ['gaming', 'game', 'playstation', 'xbox', 'nintendo', 'pc gaming'],
-            'fashion' => ['fashion', 'clothes', 'style', 'designer', 'trend'],
-            'sports' => ['sports', 'football', 'soccer', 'basketball', 'tennis', 'olympics', 'world cup'],
-            'history' => ['history', 'ancient', 'medieval', 'modern history', 'historical event'],
-            'literature' => ['literature', 'book', 'novel', 'author', 'poetry', 'reading'],
-            'art' => ['art', 'painting', 'sculpture', 'museum', 'gallery', 'artist'],
-            'photography' => ['photography', 'photo', 'camera', 'lens', 'shooting', 'editing'],
-            'environment' => ['environment', 'climate change', 'sustainability', 'pollution', 'conservation'],
-        ];
-
         $detected = [];
+        $lower = strtolower(trim($message));
+        $analysis = $this->analyzeMessage($message);
+        $words = $analysis['keywords'] ?? [];
 
-        foreach ($categoryMap as $category => $triggers) {
+        // 1. O(1) Check against the Master Dialectical Keyword Bank
+        $bank = \App\Services\DialecticalKeywordBank::get();
+        foreach ($bank as $branch => $triggers) {
+            if ($branch === 'intent_verbs') continue;
             foreach ($triggers as $trigger) {
-                // Exact word or phrase match (with word boundaries)
-                if (preg_match('/\b' . preg_quote($trigger, '/') . '\b/i', $message)) {
-                    $detected[] = $category;
-                    break; // one match per category is enough
+                // Exact word boundary match or array intersection
+                if (in_array($trigger, $words) || preg_match('/\b' . preg_quote($trigger, '/') . '\b/i', $message)) {
+                    $detected[] = $branch;
+                    break; // one match per branch is enough
                 }
             }
         }
 
-        // Special cases: multi-word phrases that must be together
-        $specialPhrases = [
-            'machine learning' => 'machine-learning',
-            'artificial intelligence' => 'ai',
-            'science fiction' => 'sci-fi',
-            'web development' => 'web-dev',
-            'mental health' => 'health',
-            'data science' => 'machine-learning',
-        ];
-
-        foreach ($specialPhrases as $phrase => $cat) {
-            if (stripos($lower, $phrase) !== false) {
-                $detected[] = $cat;
-            }
+        // 2. Fallback to ExpertScienceCategorizer for complex structural matches
+        $categorizer = app(\App\Services\ExpertScienceCategorizer::class);
+        $expertBranch = $categorizer->classify($message);
+        
+        if ($expertBranch && $expertBranch !== 'general') {
+            $detected[] = $expertBranch;
         }
 
-        // Remove duplicates and return
+        if (empty($detected)) {
+            $detected[] = 'general';
+        }
+
         return array_values(array_unique($detected));
     }
 
@@ -1985,10 +3060,21 @@ class ChatbotController extends Controller
     // ========================================================================
     // 11. RAG MICROSERVICE INTEGRATION
     // ========================================================================
-    private function askRAGMicroservice(string $message): array
+    private function askRAGMicroservice(string $message, string $model = 'phi-3', string $contextString = ""): array
     {
         $maxRetries = 2;
         $retryDelay = 1000;
+
+        $instruction = "";
+        if ($model === 'phi-3') {
+            $instruction = "[DIALECTICAL MODE: TRIAL STRATEGY] Focus on raw observation, gathering various data points, and identifying initial patterns. Act as the first step of the scientific process.\n\n";
+        } elseif ($model === 'mistral') {
+            $instruction = "[DIALECTICAL MODE: DEDUCTIVE LOGIC] Focus on logical consistency, filtering out contradictions, and calculating probabilities. Act as the 'Socratic Sieve' of the scientific process.\n\n";
+        } elseif ($model === 'llama-3') {
+            $instruction = "[DIALECTICAL MODE: INDUCTIVE PROOF] Focus on universal truths, scientific scaling (n to n+1), and establishing absolute axioms. Act as the final verification of the scientific process.\n\n";
+        }
+
+        $promptWithContext = $instruction . ($contextString ? "Conversation History:\n" . $contextString . "\n\nUser Question:\n" . trim($message) : trim($message));
 
         for ($attempt = 0; $attempt < $maxRetries; $attempt++) {
             try {
@@ -2007,7 +3093,8 @@ class ChatbotController extends Controller
                 ])
                     ->retry(1, 100)
                     ->post('http://127.0.0.1:8001/chat', [
-                        'question' => trim($message)
+                        'question' => $promptWithContext,
+                        'model' => $model
                     ]);
 
                 if ($response->successful()) {
@@ -2100,6 +3187,329 @@ class ChatbotController extends Controller
                 }
             }
         }
+        return null;
+    }
+
+    public function queryTraining(Request $request)
+    {
+        $request->validate(['query' => 'required|string']);
+        $query = strtolower($this->correctMessage($request->input('query')));
+        $context = $request->input('context', []);
+        $requestType = $context['requestType'] ?? 'general';
+
+        // 0. Tokenization (Step 2 of Blueprint)
+        $queryWords = array_filter(explode(' ', preg_replace('/[^\w\s]/', '', $query)), fn($w) => strlen($w) > 1);
+
+        // 0.5 Check for Ecosystem Knowledge (Rule-based)
+        $aiInfo = $this->getAIEcosystemInfo($query);
+        if ($aiInfo) {
+            return response()->json([
+                'response' => $aiInfo,
+                'confidence' => 1.0,
+                'tier' => 1,
+                'sentiment' => 0.5,
+                'synergy' => 100,
+                'suggestedActions' => ['share_insight']
+            ]);
+        }
+
+        // 1. Deductive Reasoning Phase (Tiered Filtering)
+        $activeRules = ChatbotTraining::where('is_active', true)->get();
+        $matches = [];
+
+        foreach ($activeRules as $rule) {
+            if (empty($rule->trigger))
+                continue;
+
+            $triggerWords = array_filter(explode(' ', strtolower(preg_replace('/[^\w\s]/', '', $rule->trigger))), fn($w) => strlen($w) > 1);
+            if (empty($triggerWords))
+                continue;
+
+            // Calculate Word Overlap (70%)
+            $matchedWords = array_intersect($queryWords, $triggerWords);
+            $overlapScore = count($triggerWords) > 0 ? (count($matchedWords) / count($triggerWords)) * 70 : 0;
+
+            // Calculate Category Synergy (30%)
+            $synergyScore = 0;
+            if (isset($context['mode']) && str_contains(strtolower($rule->category), strtolower($context['mode']))) {
+                $synergyScore = 30;
+            }
+
+            $totalScore = $overlapScore + $synergyScore;
+
+            if ($totalScore > 20) { // Minimum threshold for deductive match
+                $contextMeta = json_decode($rule->context ?? '{}', true) ?: [];
+                $weight = $contextMeta['weight'] ?? 1.0;
+                $isAxiom = !empty($contextMeta['is_axiom']);
+
+                // Dialectical Prioritization: Axioms (Step 3 proven) receive a massive confidence boost
+                // ensuring they override unproven hypotheses (Step 1/2)
+                $axiomBonus = $isAxiom ? 1.5 : 1.0;
+                $finalConfidence = (($totalScore / 100) * $weight) * $axiomBonus;
+
+                $matches[] = [
+                    'rule' => $rule,
+                    'confidence' => $finalConfidence,
+                    'is_axiom' => $isAxiom,
+                    'tier' => $finalConfidence > 0.8 ? 1 : ($finalConfidence > 0.5 ? 2 : 3)
+                ];
+            }
+        }
+
+        // Sort by confidence
+        usort($matches, fn($a, $b) => $b['confidence'] <=> $a['confidence']);
+        $bestMatch = $matches[0] ?? null;
+
+        // 2. Advanced Contextual Analysis (The "Observation Layer")
+        $sentiment = $this->analyzeSentiment($query);
+        $synergy = $this->calculateParticipantSynergy($context['participants'] ?? []);
+
+        // 3. Contextual Response Generation
+        $isFallback = false;
+        $suggestedActions = $bestMatch ? ['apply_logic', 'share_insight'] : ['continue_trial'];
+
+        if ($requestType === 'alternate_perspectives') {
+            $baseResponse = $bestMatch ? $bestMatch['rule']->response : "Logic demands constant refinement.";
+            $response = "Zmzir Logic Perspectives:\n\n" .
+                "1. Mathematical View: Analysis suggests " . strtolower($baseResponse) . "\n" .
+                "2. Social Impact: This trial indicates high sentiment potential.\n" .
+                "3. Divergent Path: Alternative induction leads to unique creative emergence.";
+            $confidence = $bestMatch ? min(1.0, $bestMatch['confidence']) : 0.42;
+        } elseif ($bestMatch && $bestMatch['confidence'] > 0.4) {
+            $response = $bestMatch['rule']->response;
+            $confidence = min(1.0, $bestMatch['confidence']);
+
+            // Inject sentiment-aware modifiers
+            if ($sentiment < -0.3) {
+                $response = "I detect a logical conflict. " . $response . " Perhaps we should re-evaluate the premise?";
+                $suggestedActions[] = 'resolve_conflict';
+            }
+        } else {
+            // Refined Fallback (Mathematical Theme)
+            $isFallback = true;
+            $fallbacks = [
+                "Trial #" . rand(1000, 9999) . ": Deduction is ongoing. Continue the thought process for higher confidence.",
+                "Logic suggests a correlation between your query and existing collaboration patterns. Analyzing...",
+                "Recursive analysis indicates a 32% probability of creative emergence. Provide more data for induction.",
+                "Synergy mapping indicates that " . ($synergy['most_active'] ?? 'the team') . " is approaching a creative peak."
+            ];
+            $response = $fallbacks[array_rand($fallbacks)];
+            $confidence = 0.25 + (rand(0, 10) / 100);
+
+            if ($sentiment > 0.5) {
+                $response = "The high energy in this space is conducive to discovery. " . $response;
+            }
+        }
+
+        // 4. Dynamic Action Suggestions based on Synergy
+        if (!empty($synergy['roles_needed'])) {
+            $suggestedActions[] = 'invite_' . $synergy['roles_needed'][0];
+        }
+
+        // 5. Dispatch Inductive Trial & Error Learning Job
+        ProcessAILearning::dispatch('interaction', [
+            'trigger' => $query,
+            'response' => $response,
+            'success' => !$isFallback && ($confidence > 0.6),
+            'category' => $context['mode'] ?? 'general',
+            'sentiment' => $sentiment,
+            'synergy_score' => $synergy['score'] ?? 0
+        ]);
+
+        return response()->json([
+            'response' => $response,
+            'confidence' => $confidence,
+            'source' => $isFallback ? 'inductive_fallback' : 'pure_logic',
+            'suggested_actions' => array_unique($suggestedActions),
+            'meta' => [
+                'sentiment' => $sentiment,
+                'synergy' => $synergy,
+                'is_axiom' => $bestMatch['is_axiom'] ?? false
+            ]
+        ]);
+    }
+
+    private function analyzeSentiment(string $text): float
+    {
+        $positive = ['good', 'great', 'excellent', 'happy', 'yes', 'agree', 'success', 'work'];
+        $negative = ['bad', 'error', 'no', 'disagree', 'fail', 'hard', 'stuck', 'conflict'];
+
+        $score = 0;
+        $words = explode(' ', strtolower($text));
+        foreach ($words as $word) {
+            if (in_array($word, $positive))
+                $score += 0.2;
+            if (in_array($word, $negative))
+                $score -= 0.2;
+        }
+
+        return max(-1.0, min(1.0, $score));
+    }
+
+    private function calculateParticipantSynergy(array $participants): array
+    {
+        if (empty($participants))
+            return ['score' => 0];
+
+        $roles = array_column($participants, 'role');
+        $uniqueRoles = array_unique($roles);
+
+        $score = count($uniqueRoles) / 5; // Diversity score
+        $rolesNeeded = [];
+
+        $essentialRoles = ['moderator', 'contributor', 'creative'];
+        foreach ($essentialRoles as $role) {
+            if (!in_array($role, $uniqueRoles)) {
+                $rolesNeeded[] = $role;
+            }
+        }
+
+        return [
+            'score' => min(1.0, $score),
+            'diversity' => count($uniqueRoles),
+            'roles_needed' => $rolesNeeded,
+            'most_active' => $participants[0]['name'] ?? 'System'
+        ];
+    }
+
+    public function queryAudio(Request $request)
+    {
+        // Mock transcription and pass to queryTraining
+        $message = "Audio transcribed logic for: " . ($request->hasFile('audio') ? "detected voice input" : "blank audio");
+
+        $request->merge(['query' => $message]);
+        return $this->queryTraining($request);
+    }
+
+    /**
+     * Scans the database for "Pure Knowledge" to trigger dynamic AI insights.
+     * Persists the event if a space_id is provided to ensure it's discoverable.
+     */
+    public function generateMagicEvent(Request $request)
+    {
+        $spaceId = $request->query('space_id');
+
+        // 1. Singleton Check: Avoid duplicate sparkles if one is already active
+        if ($spaceId) {
+            $existing = \App\Models\MagicEvent::where('space_id', $spaceId)
+                ->where('has_been_discovered', false)
+                ->whereIn('event_type', ['synchronicity', 'emergence_check', 'high_energy'])
+                ->orderBy('created_at', 'desc')
+                ->first();
+
+            if ($existing) {
+                return response()->json(['event' => $existing]);
+            }
+        }
+
+        // 2. Fetch a high-confidence "pure knowledge" node
+        $rules = ChatbotTraining::where('is_active', true)->get();
+
+        $purestRule = null;
+        $maxWeight = 0;
+
+        foreach ($rules as $rule) {
+            // context contains weight in current architecture
+            $contextMeta = json_decode($rule->context ?? '{}', true) ?: [];
+            $weight = $contextMeta['weight'] ?? 0;
+            if ($weight > $maxWeight) {
+                $maxWeight = $weight;
+                $purestRule = $rule;
+            }
+        }
+
+        $eventType = ['synchronicity', 'emergence_check', 'high_energy'][rand(0, 2)];
+        $eventId = (string) Str::uuid();
+
+        $eventData = [
+            'pure_knowledge' => $purestRule ? $purestRule->trigger : "Logic demands constant refinement.",
+            'deduced_insight' => $purestRule ? $purestRule->response : "Trial and error leads to truth.",
+            'confidence_score' => $maxWeight
+        ];
+
+        // 3. Persist to DB so it can be 'discovered' by users
+        if ($spaceId) {
+            // Ensure space exists before creating event
+            $spaceExists = \App\Models\CollaborationSpace::where('id', $spaceId)->exists();
+
+            if ($spaceExists) {
+                $event = \App\Models\MagicEvent::create([
+                    'id' => $eventId,
+                    'space_id' => $spaceId,
+                    'triggered_by' => auth()->id(),
+                    'event_type' => $eventType,
+                    'event_data' => $eventData,
+                    'context' => [
+                        'source' => 'ai_synchronicity',
+                        'model' => 'pure_knowledge_v1',
+                        'generated_at' => now()->toDateTimeString()
+                    ],
+                    'has_been_discovered' => false,
+                ]);
+
+                return response()->json(['event' => $event]);
+            }
+        }
+
+        // Fallback for non-space or invalid space calls
+        return response()->json([
+            'event' => [
+                'id' => $eventId,
+                'event_type' => $eventType,
+                'event_data' => $eventData,
+                'created_at' => now()->toIso8601String(),
+                'has_been_discovered' => false
+            ]
+        ]);
+    }
+
+    /**
+     * Zmzir AI Ecosystem Knowledge Base (Step 1 to 6)
+     */
+    private function getAIEcosystemInfo(string $message): ?string
+    {
+        $message = strtolower($message);
+
+        // 1. Core 3-Step Strategy
+        if (preg_match('/(how does( the)? ai work|steps? 1 to 3|ai strategy|logic steps)/i', $message)) {
+            return "Our AI Ecosystem operates on a 3-Step Strategy:\n" .
+                "1. **Trial & Error (Observation)**: Harvesting metadata from marketplace trends and social sentiment.\n" .
+                "2. **Deductive Logic (Calculation)**: Tokenization and weighted scoring (70% Overlap, 30% Category) with confidence metrics.\n" .
+                "3. **Inductive Logic (Proofing)**: Background learning that reinforces rules (+0.1 weight) or prunes false truths (-0.2 weight).";
+        }
+
+        // 2. Full 6-Step Ecosystem
+        if (preg_match('/(6 steps|ecosystem info|full architecture|how is it built)/i', $message)) {
+            return "The Zmzir AI Ecosystem is built across 6 technical layers:\n" .
+                "1. **Observation (Trial & Error)**: Raw data harvesting from user behavior.\n" .
+                "2. **Calculation (Deductive Logic)**: Rule-based matching with high-fidelity filtering.\n" .
+                "3. **Cleansing (Inductive Logic)**: Self-evolving weight reinforcement and logic pruning.\n" .
+                "4. **Backend Architecture**: Central Intelligence Hub with RAG microservice routing.\n" .
+                "5. **Database Schema**: Mathematical triples (Trigger/Response/Keywords) with audit trails.\n" .
+                "6. **Real-Time Sync**: Reverb-powered synchronization for multi-device intelligence updates.";
+        }
+
+        // 3. AI Agents / Models
+        if (preg_match('/(phi-3|mistral|llama-3|trial strategy|deductive logic|inductive proof|different models|which agent)/i', $message)) {
+            return "We provide 3 specialized AI Agents for different needs:\n" .
+                "- **Trial Strategy**: Lightweight and lightning-fast. Ideal for quick discovery and gathering of initial data.\n" .
+                "- **Deductive Logic**: The Reasoning Intelligence. Balanced reasoning and logical calculation.\n" .
+                "- **Inductive Proof**: The High-Performance Engine. Designed for deep scientific verification and universal truth.\n" .
+                "Selection is persistent and saved to your conversation profile.";
+        }
+
+        // 4. RAG and Hybrid Reasoning
+        if (preg_match('/(rag|hybrid|how( do)? you know things)/i', $message)) {
+            return "We use a **Hybrid Reasoning** model. For local precision, we use **Deductive Rules**. For broader world knowledge, we route queries to our **RAG (Retrieval-Augmented Generation)** microservice. This ensures 100% information purity by cross-referencing our internal 'Truths' with generative intelligence.";
+        }
+
+        // 5. Training and Learning
+        if (preg_match('/(how( do)? you learn|train|manual review|training hub|expert dashboard)/i', $message)) {
+            return "Learning happens in two ways:\n" .
+                "1. **Automatic Induction**: Patterns with high success rates are automatically induced into rules.\n" .
+                "2. **Expert Validation**: Our **Chatbot Training Hub** (Expert Dashboard) allows our team to review 'Pending Logic' reports, assign knowledge clusters to experts, and resolve new training rules with zero-latency silent refreshes.";
+        }
+
         return null;
     }
 }

@@ -1,0 +1,137 @@
+[
+    {
+        "branch": "symbolic_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Boolean Idempotence",
+        "parent_thesis": "Law of identity",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "46b1e27fff50907f8a94b2dae144497fdc04a1577b9c09ed60e6b95be60bda7e"
+    },
+    {
+        "branch": "symbolic_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Boolean Absorption Law",
+        "parent_thesis": "Law of identity",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "cc5c79154037a3f8d197204e73f2ba97a7cfafd5deada94a8b9fe89cd73a6c97"
+    },
+    {
+        "branch": "symbolic_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Truth Functional Completeness",
+        "parent_thesis": "Law of identity",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "654ede3da8e93f3dc312ce4cffa10fcc2a8732d802229938c30548d56bb3511d"
+    },
+    {
+        "branch": "symbolic_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Conjunction Introduction",
+        "parent_thesis": "Law of identity",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "7b17b091a731a277445bd3be5cd47ac4cadcb31f008b0f40d5fe2f4b2368a432"
+    },
+    {
+        "branch": "symbolic_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Biconditional Elimination",
+        "parent_thesis": "Law of identity",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "b347b8f63079984da98b0a8d1fd5137bea0144a48c39d2c4a9c93f864ab426ac"
+    },
+    {
+        "branch": "symbolic_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Material Implication",
+        "parent_thesis": "Law of identity",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "4ac1532ec7f691f189cc6767b50c961f704a82ed500df622a18b4c996f8c8a04"
+    },
+    {
+        "branch": "symbolic_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Material Equivalence",
+        "parent_thesis": "Law of identity",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "13f5f2a392b41847cc3ab36dbe1e7bb2820ae441c510f77713c0967c987c75f7"
+    },
+    {
+        "branch": "symbolic_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Exportation Law",
+        "parent_thesis": "Law of identity",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "7c693d1756218340623868e19432d1f5f35ed1dfa9744cd151de72915783ff86"
+    },
+    {
+        "branch": "symbolic_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Tautology Law",
+        "parent_thesis": "Law of identity",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "7f989fc4c4756b05e982f62affff305935e1c8844ac7a24d93ca4cbe89c25238"
+    },
+    {
+        "branch": "symbolic_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Peirce Law",
+        "parent_thesis": "Law of identity",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "398f1d615bf3d79d1d6eef6120aff97621a092b0e4ecacb33f59774ebde27032"
+    },
+    {
+        "branch": "symbolic_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Boolean Algebraic Commutativity",
+        "parent_thesis": "Law of identity",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "13221f4d228f11f1b6cff91ced5f5685d5f3153e4721b526f10a40271683c1e0"
+    },
+    {
+        "branch": "symbolic_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Tautology Logical Equivalence",
+        "parent_thesis": "Law of identity",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "31cdc24546479fea544ea7fd36a78b959794c9c4ca16035f9a650f75fca6d863"
+    },
+    {
+        "branch": "symbolic_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Sheffer Stroke Completeness (NAND / NOR Equivalence)",
+        "parent_thesis": "Law of identity",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "bb26156200e032f203c564081b4e34caf6a14c144b6c9093be43fbd85a952ab1"
+    },
+    {
+        "branch": "symbolic_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Curry-Howard Correspondence (Proofs as Programs)",
+        "parent_thesis": "Law of identity",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "f2b36b1e2fef3ad029f1ab0ec0b8f7f917bb10bf3f055cdb208ff1a317e51e1d"
+    },
+    {
+        "branch": "symbolic_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Universal / Existential Generalization",
+        "parent_thesis": "Law of identity",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "c6d9892165e57f03f42bb7b9a673ed140d3b39709f7e3734bcfb7ab63d43d685"
+    }
+]

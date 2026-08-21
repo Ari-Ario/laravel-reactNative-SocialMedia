@@ -1,0 +1,65 @@
+[
+    {
+        "branch": "epidemiology",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Basic reproduction number R0",
+        "parent_thesis": "Epidemiological Triad (SIR Model): Disease transmission depends on the interaction between an agent, a host, and the environment",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "68b172df55d994cc19e99d23f5c151ba23585e918c78d85cf659284cb487ba68"
+    },
+    {
+        "branch": "epidemiology",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Herd immunity threshold",
+        "parent_thesis": "Herd Immunity Threshold (HIT) Axiom: Epidemic spread is halted when the proportion of immune individuals exceeds 1 - 1/R0",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "af1d1eedb514afa9d2b391c8c1092ce6669a21461b61087072f463cae361afcb"
+    },
+    {
+        "branch": "epidemiology",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Incidence and prevalence rates",
+        "parent_thesis": "Epidemiological Triad (SIR Model): Disease transmission depends on the interaction between an agent, a host, and the environment",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "d57466f480ef14df6a17aeffaeb4767726b5b38f64ca9c8ffb34c987c5bee804"
+    },
+    {
+        "branch": "epidemiology",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Basic reproduction number R0",
+        "parent_thesis": "Michaelis-Menten Kinetics: Describes the rate of enzymatic reactions by relating reaction rate v to substrate concentration [S]",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "68b172df55d994cc19e99d23f5c151ba23585e918c78d85cf659284cb487ba68"
+    },
+    {
+        "branch": "epidemiology",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Herd immunity threshold",
+        "parent_thesis": "Michaelis-Menten Kinetics: Describes the rate of enzymatic reactions by relating reaction rate v to substrate concentration [S]",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "af1d1eedb514afa9d2b391c8c1092ce6669a21461b61087072f463cae361afcb"
+    },
+    {
+        "branch": "epidemiology",
+        "domain_partition": "biology_partition",
+        "thesis_statement": "Epidemiological Triad (SIR Model): Disease transmission depends on the interaction between an agent, a host, and the environment",
+        "parent_thesis": "Germ Theory of Disease: Many diseases are caused by the presence and actions of specific microorganisms within the body",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "e24f4b501a0258ce906804b1820390665feaaf5a7acdb4b0db3c0e786072480b"
+    },
+    {
+        "branch": "epidemiology",
+        "domain_partition": "social_partition",
+        "thesis_statement": "Herd Immunity Threshold (HIT) Axiom: Epidemic spread is halted when the proportion of immune individuals exceeds 1 - 1/R0",
+        "parent_thesis": "Viral Entry Mechanism Axiom: Viral surface glycoproteins must structurally bind to specific host cell receptors to mediate membrane fusion",
+        "formal_proof": "Let R0 be the basic reproduction number (the expected number of secondary cases). If a fraction 'p' of the population is immune (blocking the viral entry mechanism), the effective reproduction number Re = R0 * (1 - p). The epidemic declines when Re < 1, which algebraically resolves to p > 1 - 1/R0.",
+        "context_description": "This is the mathematical proof of herd immunity. By blocking the virus from entering enough cells (either via vaccines or prior infection), the chain of transmission is physically severed.",
+        "ast_signature": "7284b2522e1afa4b4993b1ebb5e3e034a90cad2d416fd51ecdf71ab7c373a096"
+    }
+]

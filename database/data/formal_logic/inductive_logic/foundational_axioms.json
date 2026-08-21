@@ -1,0 +1,146 @@
+[
+    {
+        "branch": "inductive_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Carnap Inductive Logic \u2014 degree of confirmation c(H,E)",
+        "parent_thesis": "Enumerative Induction \u2014 n consistent observations raise probability of universal",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "e1a7cd3b651a6cfe5851c71d16349d56318e89b62953e0ed66999f8db01c7d69"
+    },
+    {
+        "branch": "inductive_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Bayesian Inference \u2014 P(H|E) = P(E|H)\u00b7P(H)/P(E)",
+        "parent_thesis": "Carnap Inductive Logic \u2014 degree of confirmation c(H,E)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "ccbeee6261ae7861906760c1a899eea3f83e25fe473679684cd5c33f77f32663"
+    },
+    {
+        "branch": "inductive_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Bayes Theorem as logical inference rule",
+        "parent_thesis": "Bayesian Inference \u2014 P(H|E) = P(E|H)\u00b7P(H)/P(E)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "dbdfa1048283410b9f7b57131cbd73cd11b5e9b4e8c2922fcf1821b95fc52e42"
+    },
+    {
+        "branch": "inductive_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Enumerative Induction \u2014 n consistent observations raise probability of universal",
+        "parent_thesis": "Hume Problem of Induction \u2014 induction cannot be logically justified deductively",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "1adeaece98b260898fa0b47831fd90250a031e57a2e177025bc92a89772da178"
+    },
+    {
+        "branch": "inductive_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Hume Problem of Induction \u2014 induction cannot be logically justified deductively",
+        "parent_thesis": "1: Being (True)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "767782a0b80651c82806ef8621b3e3eeb2845c81bcb30a71b3825cb2796b616d"
+    },
+    {
+        "branch": "inductive_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Goodman New Riddle of Induction \u2014 grue paradox",
+        "parent_thesis": "Hume Problem of Induction \u2014 induction cannot be logically justified deductively",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "a80417fbfec19a14bac7ec790b7c481707e63beba84b2e2d25487f2f09396c62"
+    },
+    {
+        "branch": "inductive_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Statistical Syllogism \u2014 most F are G; x is F; therefore x is probably G",
+        "parent_thesis": "Enumerative Induction \u2014 n consistent observations raise probability of universal",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "cddc6640cbde1ff45777a79fea3c83dedc35bdc127770e521b49ef5b8655eff0"
+    },
+    {
+        "branch": "inductive_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Inference to Best Explanation (Abduction \u2014 Peirce)",
+        "parent_thesis": "Hume Problem of Induction \u2014 induction cannot be logically justified deductively",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "cb6b40c31dded13ec0f6fbdd03e6ecdc98e5eda9a61f6a089e7200f16a5c7f0a"
+    },
+    {
+        "branch": "inductive_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Mathematical Induction \u2014 base case + inductive step proves \u2200n P(n)",
+        "parent_thesis": "Peano Axiom \u2014 Mathematical Induction Schema",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "ee99177048ad26861e93d918f278e357cc50dafb88ece7b9ec5f5bdee335db12"
+    },
+    {
+        "branch": "inductive_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Strong Mathematical Induction \u2014 assumes P(k) for all k\u2264n",
+        "parent_thesis": "Mathematical Induction \u2014 base case + inductive step proves \u2200n P(n)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "794d9c10e0969bb0994803293bd223425820c07cdc808b7f34114fc0c55b8fad"
+    },
+    {
+        "branch": "inductive_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Transfinite Induction \u2014 induction over ordinals",
+        "parent_thesis": "Strong Mathematical Induction \u2014 assumes P(k) for all k\u2264n",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "8bad569de022d693576d74b7c6d213300f38f32e472015500d94bd327c3154a6"
+    },
+    {
+        "branch": "inductive_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Structural Induction \u2014 induction over inductively defined structures",
+        "parent_thesis": "Mathematical Induction \u2014 base case + inductive step proves \u2200n P(n)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "6af3212cf11a60379545e523afc5006f68899e5244680dd29e6f940483431358"
+    },
+    {
+        "branch": "inductive_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Mill Methods \u2014 method of agreement, difference, concomitant variation",
+        "parent_thesis": "Hume Problem of Induction \u2014 induction cannot be logically justified deductively",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "050165fa84ad3b203d01d7414e77d45587f6a804097b0d73b782e921db72845f"
+    },
+    {
+        "branch": "inductive_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Popper Falsificationism \u2014 scientific theories must be falsifiable",
+        "parent_thesis": "Goodman New Riddle of Induction \u2014 grue paradox",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "1c3dbf8bb48057a93a2ef9cfd64880f18182f53ada1fcf4023bb1a7c778a5e3b"
+    },
+    {
+        "branch": "inductive_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Forward-Backward (Cauchy) Induction \u2014 proves for powers of 2, then backwards",
+        "parent_thesis": "Mathematical Induction \u2014 base case + inductive step proves \u2200n P(n)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "fac45b806c9712a809fe6b9c4235948f43b05b46d6b7557413279687f92fd8ee"
+    },
+    {
+        "branch": "inductive_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Argument from Analogy \u2014 structural isomorphism implies shared properties",
+        "parent_thesis": "Hume Problem of Induction \u2014 induction cannot be logically justified deductively",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "9587947197f884790039b37522d6276f2743e97576b3acc7fd8ac9ae7105e305"
+    }
+]

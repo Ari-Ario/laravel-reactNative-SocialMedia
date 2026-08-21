@@ -77,10 +77,15 @@ Route::group(["middleware" => ["auth:sanctum"]], function () {
             Route::get('/', [ChatbotTrainingController::class, 'index']);
             Route::post('/', [ChatbotTrainingController::class, 'store']);
             Route::put('/{id}', [ChatbotTrainingController::class, 'update']);
+            Route::put('/{id}/review', [ChatbotTrainingController::class, 'review']);
             Route::post('/bulk-approve', [ChatbotTrainingController::class, 'bulkApprove']);
             Route::get('/needs-review', [ChatbotTrainingController::class, 'needsReview']);
             Route::get('/categories', [ChatbotTrainingController::class, 'categories']);
-            Route::delete('/delete/{id}', [ChatbotTrainingController::class, 'destroy']);
+            Route::get('/experts', [ChatbotTrainingController::class, 'experts']);
+            Route::get('/my-domains', [ChatbotTrainingController::class, 'myDomains']);
+            Route::post('/{id}/assign', [ChatbotTrainingController::class, 'assign']);
+            Route::post('/{id}/review', [ChatbotTrainingController::class, 'review']);
+            Route::delete('/{id}', [ChatbotTrainingController::class, 'destroy']);
         }
     );
 
@@ -197,6 +202,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
             Route::get('/{id}/participants', [SpaceController::class, 'getParticipants']);
             Route::get('/{id}/ai-suggestions', [SpaceController::class, 'getAISuggestions']);
             Route::post('/{id}/ai-query', [SpaceController::class, 'aiQuery']);
+            Route::post('/{id}/add-summary', [SpaceController::class, 'addSummary']);
             Route::post('/{id}/upload-media', [SpaceController::class, 'uploadMedia']);
             Route::get('/{id}/media', [SpaceController::class, 'getMedia']);
             Route::delete('/{id}/media/{mediaId}', [SpaceController::class, 'deleteMedia']);
@@ -278,6 +284,15 @@ Route::middleware('auth:sanctum')->prefix('notifications')->group(function () {
 });
 
 Route::prefix('ai')->middleware('auth:sanctum')->group(function () {
+    // Mathematical Proofing AI Endpoints
+    Route::post('/query-training', [ChatbotController::class, 'queryTraining']);
+    Route::post('/query-audio', [ChatbotController::class, 'queryAudio']);
+    Route::post('/submit-feedback', [ChatbotController::class, 'submitFeedback']);
+    Route::get('/magic-event', [ChatbotController::class, 'generateMagicEvent']);
+
+    // Global Dialectic Methodology Endpoint
+    Route::post('/dialectic/evaluate', [\App\Http\Controllers\DialecticEngineController::class, 'evaluateThesis']);
+
     // ... existing interactions ...
     Route::get('/interactions', [AIController::class, 'getInteractions']);
     Route::post('/interactions/{id}/feedback', [AIController::class, 'provideFeedback']);

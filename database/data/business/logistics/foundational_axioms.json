@@ -1,0 +1,117 @@
+[
+    {
+        "thesis_statement": "Little's Law - The average number of items in a stationary queueing system is the average arrival rate times the average time spent",
+        "parent_thesis": "Peano axioms",
+        "branch": "business",
+        "domain_partition": "logistics",
+        "context_description": "A fundamental queuing theory equation showing that L = lambda * W under very general mathematical conditions."
+    },
+    {
+        "thesis_statement": "Economic Order Quantity (EOQ) - The optimal order size minimizes the sum of inventory carrying and ordering costs",
+        "parent_thesis": "Peano axioms",
+        "branch": "business",
+        "domain_partition": "logistics",
+        "context_description": "The classical cost-minimization derivative formula balancing carrying cost against flat setup costs."
+    },
+    {
+        "thesis_statement": "The Bullwhip Effect - Minor changes in consumer demand create escalating variability up the supply chain",
+        "parent_thesis": "Peano axioms",
+        "branch": "business",
+        "domain_partition": "logistics",
+        "context_description": "A systemic phenomenon where information lags and dynamic responses amplify demand spikes at upstream supplier tiers."
+    },
+    {
+        "thesis_statement": "Just-In-Time (JIT) Lean Production - Waste is minimized by pulling resources through a system only when required",
+        "parent_thesis": "Nash equilibrium in game theory",
+        "branch": "business",
+        "domain_partition": "logistics",
+        "context_description": "An organizational and game-theoretic synchronization strategy designed to reduce waste and eliminate redundant buffer stocks."
+    },
+    {
+        "thesis_statement": "Bellman's Principle of Optimality - An optimal policy has the property that whatever the initial state and decisions are, the remaining decisions must constitute an optimal policy with regard to the state resulting from the first decision",
+        "parent_thesis": "Peano axioms",
+        "branch": "business",
+        "domain_partition": "logistics",
+        "context_description": "The mathematical foundation of dynamic programming, breaking complex multi-stage decisions into recursive sub-problems."
+    },
+    {
+        "thesis_statement": "The Fundamental Theorem of Operations Research, Logistics  Supply Chain Management - Core theoretical limits govern the applied behaviors within the domain.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Axiom of Structural Integrity in Operations Research, Logistics  Supply Chain Management - The integrity of the system is proportional to its internal coherence.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Principle of Emergence in Operations Research, Logistics  Supply Chain Management - Higher-order complexities naturally arise from basic interactions.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Postulate of Relational Dynamics in Operations Research, Logistics  Supply Chain Management - No entity within the domain exists in isolation; all are defined by relationships.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Conservation Law of Operations Research, Logistics  Supply Chain Management - Core informational or physical properties are conserved through transformations.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Paradox of Limitation in Operations Research, Logistics  Supply Chain Management - Advancements in the field reveal new fundamental boundaries of measurement.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Dialectical Synthesis of Operations Research, Logistics  Supply Chain Management - Opposing theoretical frameworks ultimately resolve into a higher unified truth.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Law of Diminishing Utility in Operations Research, Logistics  Supply Chain Management - Progressive refinements yield exponentially smaller gains in systemic accuracy.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Principle of Asymmetry in Operations Research, Logistics  Supply Chain Management - Informational and structural forces exert non-uniform influence across the domain.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Theorem of Epistemic Closure in Operations Research, Logistics  Supply Chain Management - The field approaches a state of absolute formal definition bounded by logic.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Foundational Postulate of Operations Research, Logistics  Supply Chain Management - All observations within the domain must trace back to fundamental constants.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Law of Entropy in Operations Research, Logistics  Supply Chain Management - The system naturally trends toward disorganization unless energy is applied.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Principle of Isomorphism in Operations Research, Logistics  Supply Chain Management - Structures within the domain mirror the mathematical structures of logic.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Hypothesis of Universality in Operations Research, Logistics  Supply Chain Management - The core principles of the field apply uniformly across all observed contexts.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Postulate of Continuity in Operations Research, Logistics  Supply Chain Management - Changes within the system occur continuously rather than through discrete unlinked jumps.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Axiom of Non-Contradiction in Operations Research, Logistics  Supply Chain Management - No two fundamental principles within the field can mutually invalidate each other.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Theorem of Systemic Interdependence in Operations Research, Logistics  Supply Chain Management - A perturbation in one sub-field inherently affects the entire discipline.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Principle of Recursive Feedback in Operations Research, Logistics  Supply Chain Management - Outputs of the system continually serve as inputs, driving self-regulation.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Law of Critical Thresholds in Operations Research, Logistics  Supply Chain Management - Phase transitions occur when cumulative changes reach a breaking point.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Ultimate Epistemic Limit of Operations Research, Logistics  Supply Chain Management - Human comprehension of the domain is bounded by the cognitive architecture of the observer.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    }
+]

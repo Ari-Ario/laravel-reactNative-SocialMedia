@@ -63,7 +63,7 @@ const LanguageScreen = () => {
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
             <View style={styles.header}>
-                <BackButton onPress={() => router.back()} />
+                <BackButton onPress={() => { if (router.canGoBack()) router.back(); else router.replace("/(tabs)"); }} />
                 <Text style={[styles.headerTitle, { color: colors.text }]}>{t('language')}</Text>
                 <View style={{ width: 40 }} />
             </View>

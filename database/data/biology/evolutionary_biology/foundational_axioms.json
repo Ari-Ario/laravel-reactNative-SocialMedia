@@ -1,0 +1,90 @@
+[
+    {
+        "branch": "evolutionary_biology",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Natural selection survival fitness",
+        "parent_thesis": "Michaelis-Menten Kinetics: Describes the rate of enzymatic reactions by relating reaction rate v to substrate concentration [S]",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "384be2c4edefde1405e7aaf8a52b33e5bda2514d65151a65c9cae94e4fac150c"
+    },
+    {
+        "branch": "evolutionary_biology",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Genetic drift",
+        "parent_thesis": "Michaelis-Menten Kinetics: Describes the rate of enzymatic reactions by relating reaction rate v to substrate concentration [S]",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "7ece86c13185e9be73d63656e16f6036cdd9f3957ef6539a119b328397537ab3"
+    },
+    {
+        "branch": "evolutionary_biology",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Allopatric speciation",
+        "parent_thesis": "Michaelis-Menten Kinetics: Describes the rate of enzymatic reactions by relating reaction rate v to substrate concentration [S]",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "6e35297996a0250b8fe2f36758b92260f30c5b7572ba9eb456482ef8918834f2"
+    },
+    {
+        "branch": "evolutionary_biology",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Convergent evolution",
+        "parent_thesis": "Michaelis-Menten Kinetics: Describes the rate of enzymatic reactions by relating reaction rate v to substrate concentration [S]",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "30f09d564c3065c523669161a7e342dcee87ae92cefaac7f1286f43c7984579d"
+    },
+    {
+        "branch": "evolutionary_biology",
+        "domain_partition": "biology_partition",
+        "thesis_statement": "Darwinian Natural Selection: Organisms better adapted to their environment tend to survive and produce more offspring",
+        "parent_thesis": "Hardy-Weinberg Principle: Allele and genotype frequencies in a population will remain constant from generation to generation in the absence of other evolutionary influences",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "01df27d2087aeb3bcb601783676e3dc3939b880fb652ed74b57cbcb143cb3e84"
+    },
+    {
+        "branch": "evolutionary_biology",
+        "domain_partition": "biology_partition",
+        "thesis_statement": "Common Descent: All life on Earth is related and has descended from a common ancestor",
+        "parent_thesis": "Darwinian Natural Selection: Organisms better adapted to their environment tend to survive and produce more offspring",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "be595da02fc3049e4e8afe2f4f3135cb630acfc9b3879bace74a77638080865c"
+    },
+    {
+        "branch": "evolutionary_biology",
+        "domain_partition": "biology_partition",
+        "thesis_statement": "Evolutionarily Stable Strategy (ESS): A strategy which, if adopted by a population, cannot be invaded by any alternative strategy",
+        "parent_thesis": "Nash Equilibrium Existence Theorem (Every finite game has at least one mixed-strategy Nash equilibrium)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "e453eae01ac711d4547c54ab1c8ffa051d432dde34ca0a0b2e84d0763a7be170"
+    },
+    {
+        "branch": "evolutionary_biology",
+        "domain_partition": "biology_partition",
+        "thesis_statement": "Kin Selection (Hamilton's Rule): rB > C (Genetic relatedness times benefit must exceed cost for altruism to evolve)",
+        "parent_thesis": "Evolutionarily Stable Strategy (ESS): A strategy which, if adopted by a population, cannot be invaded by any alternative strategy",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "6e1d3c5ff531f0b0d5cb988462d8689fe001e568de2342368735b4b9a21c09a3"
+    },
+    {
+        "branch": "evolutionary_biology",
+        "domain_partition": "biology_partition",
+        "thesis_statement": "Modern Synthesis: Merges Darwinian natural selection with Mendelian genetics to explain evolutionary change at the population level",
+        "parent_thesis": "Darwinian Natural Selection: Organisms better adapted to their environment tend to survive and produce more offspring",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Formulated by Fisher, Haldane, Wright, Dobzhansky, and Mayr, reconciling Mendelian inheritance mechanisms with natural selection kinetics."
+    },
+    {
+        "branch": "evolutionary_biology",
+        "domain_partition": "biology_partition",
+        "thesis_statement": "Punctuated Equilibrium: Evolutionary development is characterized by long periods of stasis punctuated by brief episodes of rapid speciation",
+        "parent_thesis": "Darwinian Natural Selection: Organisms better adapted to their environment tend to survive and produce more offspring",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Proposed by Eldredge and Gould, explaining gaps in fossil succession as natural reflections of localized, rapid speciation events rather than structural failures."
+    }
+]

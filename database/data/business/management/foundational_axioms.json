@@ -1,0 +1,18 @@
+[
+    {
+        "thesis_statement": "Principal-Agent Problem - Conflicts of interest arise when an agent acts on behalf of a principal",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Theory of the Firm (Coase) - Firms exist to minimize transaction costs",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Resource-Based View (RBV) - Sustained competitive advantage is achieved through valuable, rare, and inimitable resources",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Taylorism (Scientific Management) - Management should analyze and synthesize workflows to improve economic efficiency and labor productivity",
+        "parent_thesis": "1: Being (True)"
+    }
+]

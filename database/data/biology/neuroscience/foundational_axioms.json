@@ -1,0 +1,82 @@
+[
+    {
+        "branch": "neuroscience",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Hebb postulate (cells that fire together wire together)",
+        "parent_thesis": "Michaelis-Menten Kinetics: Describes the rate of enzymatic reactions by relating reaction rate v to substrate concentration [S]",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "46f5e13490ba0eabf90d8fe55a342b10b5220f85f7fa94af86ca4b1ccb8bc548"
+    },
+    {
+        "branch": "neuroscience",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Synaptic plasticity long-term potentiation",
+        "parent_thesis": "Michaelis-Menten Kinetics: Describes the rate of enzymatic reactions by relating reaction rate v to substrate concentration [S]",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "cf2e2f240e0c02dfcbf26cf745e4145a7687b68777d006837afca546d9aa1b59"
+    },
+    {
+        "branch": "neuroscience",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Neurotransmitter reuptake",
+        "parent_thesis": "Michaelis-Menten Kinetics: Describes the rate of enzymatic reactions by relating reaction rate v to substrate concentration [S]",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "0dcb84f028dbabcae6e2d30dca84faf7886120fa5f8ad6cf3b9d7bfabd31f7b6"
+    },
+    {
+        "branch": "neuroscience",
+        "domain_partition": "biology_partition",
+        "thesis_statement": "Action Potential Axiom: Neurons transmit signals via rapid changes in the electrical membrane potential",
+        "parent_thesis": "Nernst Equation: Relates the reduction potential of an electrochemical reaction to the standard electrode potential, temperature, and activities of the chemical species",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "6e731fa6f0eafaefc7be5a0645b4589322c1c26201ecd5c0748fea693909909e"
+    },
+    {
+        "branch": "neuroscience",
+        "domain_partition": "biology_partition",
+        "thesis_statement": "Synaptic Transmission Axiom: Neurons communicate via the release and binding of neurotransmitters across synaptic clefts",
+        "parent_thesis": "Action Potential Axiom: Neurons transmit signals via rapid changes in the electrical membrane potential",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "1bc008560112cdedead46e83f5e8d2353f36dd6b338b38bba5db44a8f419248e"
+    },
+    {
+        "branch": "neuroscience",
+        "domain_partition": "biology_partition",
+        "thesis_statement": "Weber-Fechner Law: The magnitude of a subjective sensation increases proportionally to the logarithm of the stimulus intensity (dp = k(dS/S))",
+        "parent_thesis": "Logarithmic Derivative Axiom: d/dx(ln x) = 1/x (The rate of growth of a logarithmic function is inversely proportional to its value)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "57091cfcd8e35739e222405ac37643fadcc341ea0e3d95b77e284b81870a647b"
+    },
+    {
+        "branch": "neuroscience",
+        "domain_partition": "biology_partition",
+        "thesis_statement": "Reward Prediction Error (RPE): Phasic firing of dopaminergic neurons encodes the discrepancy between expected and received rewards",
+        "parent_thesis": "Monoamine Synthesis Pathway: Tyrosine is catalytically converted to L-DOPA, and then to Dopamine, dictating neuromodulatory availability",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "7b9f025d0dfac5c2b1b760caa0a4c75869a76b98ac181d8fc154004841dd7f09"
+    },
+    {
+        "branch": "neuroscience",
+        "domain_partition": "biology_partition",
+        "thesis_statement": "Hebbian Learning Axiom: Synaptic efficacy increases when presynaptic and postsynaptic neurons fire simultaneously (Neurons that fire together, wire together)",
+        "parent_thesis": "Action Potential Axiom: Neurons transmit signals via rapid changes in the electrical membrane potential",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "10df9d7514369721bdcbd438c94f0ad63a56e6a397c3b3f2c522541ad65c71f1"
+    },
+    {
+        "branch": "neuroscience",
+        "domain_partition": "biology_partition",
+        "thesis_statement": "Hodgkin-Huxley Model: Describes the initiation and propagation of action potentials in neurons using ionic conductances",
+        "parent_thesis": "Action Potential Axiom: Neurons transmit signals via rapid changes in the electrical membrane potential",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Developed by Alan Hodgkin and Andrew Huxley, modeling nerve action potentials via differential equations of lipid bilayer capacitance and voltage-gated ion channels (Na+, K+, leakage)."
+    }
+]

@@ -532,7 +532,7 @@ export default function TellFriendScreen() {
             <BlurView intensity={activeScheme === 'dark' ? 20 : 10} style={StyleSheet.absoluteFill} />
 
             <LinearGradient colors={activeScheme === 'dark' ? ['rgba(0,0,0,0.3)', 'transparent'] : [colors.surface, 'transparent']} style={[styles.header, { paddingTop: insets.top + 10 }]}>
-                <BackButton onPress={() => router.back()} />
+                <BackButton onPress={() => { if (router.canGoBack()) router.back(); else router.replace("/(tabs)"); }} />
                 <View style={styles.headerCenter}>
                     <Text style={styles.headerTitle}>{t('tell_friend')}</Text>
                     <View style={styles.headerUnderline} />

@@ -1,0 +1,58 @@
+[
+    {
+        "branch": "inorganic_chemistry",
+        "domain_partition": "chemistry_partition",
+        "thesis_statement": "Crystal Field Theory: Describes the breaking of orbital degeneracy in transition metal complexes due to the presence of ligands",
+        "parent_thesis": "Aufbau Principle / Hund's Rule: Electrons fill lower-energy atomic orbitals before higher-energy ones",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine."
+    },
+    {
+        "branch": "inorganic_chemistry",
+        "domain_partition": "chemistry_partition",
+        "thesis_statement": "Ligand Field Theory (LFT): Describes the bonding, orbital arrangement, and magnetic properties of coordination complexes by combining crystal field theory and molecular orbital theory",
+        "parent_thesis": "Crystal Field Theory: Describes the breaking of orbital degeneracy in transition metal complexes due to the presence of ligands",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine."
+    },
+    {
+        "branch": "inorganic_chemistry",
+        "domain_partition": "chemistry_partition",
+        "thesis_statement": "Jahn-Teller Effect: Any non-linear molecular system in a degenerate electronic state will undergo geometrical distortion to remove the degeneracy and lower its energy",
+        "parent_thesis": "Crystal Field Theory: Describes the breaking of orbital degeneracy in transition metal complexes due to the presence of ligands",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine."
+    },
+    {
+        "branch": "inorganic_chemistry",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Periodic table trends electronegativity",
+        "parent_thesis": "First law of thermodynamics energy conservation",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine."
+    },
+    {
+        "branch": "inorganic_chemistry",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Coordination complex theory",
+        "parent_thesis": "First law of thermodynamics energy conservation",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine."
+    },
+    {
+        "branch": "inorganic_chemistry",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Crystal field theory",
+        "parent_thesis": "First law of thermodynamics energy conservation",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine."
+    },
+    {
+        "branch": "inorganic_chemistry",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Acid-base Lewis theory",
+        "parent_thesis": "First law of thermodynamics energy conservation",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine."
+    }
+]

@@ -1,0 +1,58 @@
+[
+    {
+        "branch": "astrophysics",
+        "domain_partition": "physics_partition",
+        "thesis_statement": "Hubble's Law: Galaxies recede from the observer at a speed proportional to their distance (v = H0 * D)",
+        "parent_thesis": "Einstein Field Equations (General Relativity): G_\u03bc\u03bd + \u039bg_\u03bc\u03bd = (8\u03c0G/c^4)T_\u03bc\u03bd (Spacetime curvature is dictated by energy and momentum)",
+        "formal_proof": "v = H_0 * d. Derived from Friedmann-Lema\u00eetre-Robertson-Walker metric solutions under cosmic expansions.",
+        "context_description": "The observation that galaxies are moving away from Earth at speeds proportional to their distance."
+    },
+    {
+        "branch": "astrophysics",
+        "domain_partition": "physics_partition",
+        "thesis_statement": "Schwarzschild Radius (Black Hole Boundary): r_s = 2GM/c^2",
+        "parent_thesis": "Einstein Field Equations (General Relativity): G_\u03bc\u03bd + \u039bg_\u03bc\u03bd = (8\u03c0G/c^4)T_\u03bc\u03bd (Spacetime curvature is dictated by energy and momentum)",
+        "formal_proof": "r_s = 2GM / c^2. Calculated by finding the coordinate singularity in the vacuum Schwarzschild metric.",
+        "context_description": "The physical limit of mass confinement leading to an event horizon."
+    },
+    {
+        "branch": "astrophysics",
+        "domain_partition": "physics_partition",
+        "thesis_statement": "Chandrasekhar Limit: The maximum mass of a stable white dwarf star (~1.4 solar masses)",
+        "parent_thesis": "Pauli Exclusion Principle: Two identical fermions cannot occupy the same quantum state simultaneously",
+        "formal_proof": "M_ch \u2248 1.4 M_solar. Relates relativistic electron degeneracy pressure against self-gravitational collapse.",
+        "context_description": "The mass limit beyond which electron degeneracy pressure cannot support a white dwarf star."
+    },
+    {
+        "branch": "astrophysics",
+        "domain_partition": "physics_partition",
+        "thesis_statement": "Hubble law of cosmic expansion",
+        "parent_thesis": "Hubble's Law: Galaxies recede from the observer at a speed proportional to their distance (v = H0 * D)",
+        "formal_proof": "Bridge alias.",
+        "context_description": "Bridge alias for Hubble's Law."
+    },
+    {
+        "branch": "astrophysics",
+        "domain_partition": "physics_partition",
+        "thesis_statement": "Schwarzschild radius black holes",
+        "parent_thesis": "Schwarzschild Radius (Black Hole Boundary): r_s = 2GM/c^2",
+        "formal_proof": "Bridge alias.",
+        "context_description": "Bridge alias for Schwarzschild Radius."
+    },
+    {
+        "branch": "astrophysics",
+        "domain_partition": "physics_partition",
+        "thesis_statement": "Chandrasekhar limit",
+        "parent_thesis": "Chandrasekhar Limit: The maximum mass of a stable white dwarf star (~1.4 solar masses)",
+        "formal_proof": "Bridge alias.",
+        "context_description": "Bridge alias for Chandrasekhar Limit."
+    },
+    {
+        "branch": "astrophysics",
+        "domain_partition": "physics_partition",
+        "thesis_statement": "Kepler laws of planetary motion",
+        "parent_thesis": "Kepler's First Law of Planetary Motion (Orbits are ellipses)",
+        "formal_proof": "Bridge alias.",
+        "context_description": "Bridge alias mapping to detailed Kepler laws."
+    }
+]

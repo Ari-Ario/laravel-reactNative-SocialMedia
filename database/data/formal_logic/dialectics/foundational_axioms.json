@@ -1,0 +1,74 @@
+[
+    {
+        "branch": "dialectics",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Socratic Elenchus (Cross-examination)",
+        "parent_thesis": "Justified True Belief (JTB / Gettier Definition)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "7ad5561bfcc83506de0e8d2d6fcc66d1bf9bf229d07ec94c0a2cc05976dbde36"
+    },
+    {
+        "branch": "dialectics",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Hegelian Dialectic (Thesis-Antithesis-Synthesis / Aufheben)",
+        "parent_thesis": "Law of non-contradiction",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "16dfbd5666003e325190f779f2b72f8eb236b76065a9e3a04b0641bf62522a31"
+    },
+    {
+        "branch": "dialectics",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Unity of Opposites",
+        "parent_thesis": "Hegelian Dialectic (Thesis-Antithesis-Synthesis / Aufheben)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "077b874213e71cb1c301cb64a39c2f307a1478ccc54eb0c49c06fca822f48d5c"
+    },
+    {
+        "branch": "dialectics",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Socratic interrogation contradiction detection",
+        "parent_thesis": "Socratic Elenchus (Cross-examination)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "a238f9ebf205594aedb08d30687cf1361fc8994fb30c7aa6da90ed5e58e58123"
+    },
+    {
+        "branch": "dialectics",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Principle of Quantitative to Qualitative Change",
+        "parent_thesis": "Hegelian Dialectic (Thesis-Antithesis-Synthesis / Aufheben)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "3fa0a63455123875e105611a38e7b6fba88382d541bdd40bb28b0c588152ef90"
+    },
+    {
+        "branch": "dialectics",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Negation of the Negation",
+        "parent_thesis": "Hegelian Dialectic (Thesis-Antithesis-Synthesis / Aufheben)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "c77c56bf1005d666ef289efd43c58f0e7aabf2071bf589013f5cbee26a6b9a69"
+    },
+    {
+        "branch": "dialectics",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Historical Materialism",
+        "parent_thesis": "Hegelian Dialectic (Thesis-Antithesis-Synthesis / Aufheben)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "da0ee3b37d740345cde33db1fab62c2ef95cac2c0becdeb78d8517f98d12aa95"
+    },
+    {
+        "branch": "dialectics",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Master-Slave Dialectic (Hegel)",
+        "parent_thesis": "Hegelian Dialectic (Thesis-Antithesis-Synthesis / Aufheben)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "3ba789eaab70cefb98065070e9168da83a02bc9ee5683a32ddaf9f0d62bbf14a"
+    }
+]

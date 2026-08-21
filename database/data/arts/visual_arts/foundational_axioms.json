@@ -1,0 +1,227 @@
+[
+    {
+        "branch": "arts",
+        "domain_partition": "visual_arts",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints",
+        "thesis_statement": "Color Theory (Additive/Subtractive) Model",
+        "formal_proof": "Derived empirically and theoretically mapped.",
+        "context_description": "Color generation models dictating light vs pigment interaction.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "arts",
+        "domain_partition": "visual_arts",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints",
+        "thesis_statement": "Perspective & Vanishing Point Geometry",
+        "formal_proof": "Derived empirically and theoretically mapped.",
+        "context_description": "Spatial depth representation in two-dimensional media.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "arts",
+        "domain_partition": "visual_arts",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints",
+        "thesis_statement": "Golden Ratio Proportion in Composition",
+        "formal_proof": "Derived empirically and theoretically mapped.",
+        "context_description": "Mathematical balance and aesthetic harmony.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "arts",
+        "domain_partition": "visual_arts",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints",
+        "thesis_statement": "Gestalt Principles of Visual Perception",
+        "formal_proof": "Derived empirically and theoretically mapped.",
+        "context_description": "How humans group similar visual elements.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "arts",
+        "domain_partition": "visual_arts",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints",
+        "thesis_statement": "Chiaroscuro & Value Gradation",
+        "formal_proof": "Derived empirically and theoretically mapped.",
+        "context_description": "Light and shadow mapping for three-dimensional volume.",
+        "expert_review_required": false
+    },
+    {
+        "thesis_statement": "Principle of Visual arts - A fundamental concept in the study of Visual arts",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Outline of the visual arts - A fundamental concept in the study of Visual arts",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Work of art - A fundamental concept in the study of Visual arts",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Art - A fundamental concept in the study of Visual arts",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Art colony - A fundamental concept in the study of Visual arts",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Art film - A fundamental concept in the study of Visual arts",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Art horror - A fundamental concept in the study of Visual arts",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Art Infusion - A fundamental concept in the study of Visual arts",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Art movement - A fundamental concept in the study of Visual arts",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Artist-run publishing - A fundamental concept in the study of Visual arts",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Authenticity in art - A fundamental concept in the study of Visual arts",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Pablo Barba - A fundamental concept in the study of Visual arts",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Book art (fine art) - A fundamental concept in the study of Visual arts",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Climate change art - A fundamental concept in the study of Visual arts",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Edible art - A fundamental concept in the study of Visual arts",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Figure painting - A fundamental concept in the study of Visual arts",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Food art - A fundamental concept in the study of Visual arts",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Form and content - A fundamental concept in the study of Visual arts",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Graphic arts - A fundamental concept in the study of Visual arts",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Handicraft - A fundamental concept in the study of Visual arts",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Invisible mending - A fundamental concept in the study of Visual arts",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of List of mathematical art software - A fundamental concept in the study of Visual arts",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Macram\u00e9 - A fundamental concept in the study of Visual arts",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Masterpiece - A fundamental concept in the study of Visual arts",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Mathematics and art - A fundamental concept in the study of Visual arts",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Mimesis - A fundamental concept in the study of Visual arts",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Muscleman - A fundamental concept in the study of Visual arts",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Namepiece - A fundamental concept in the study of Visual arts",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Nude (art) - A fundamental concept in the study of Visual arts",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Open studio event - A fundamental concept in the study of Visual arts",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Photo stand-in - A fundamental concept in the study of Visual arts",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Plastic arts - A fundamental concept in the study of Visual arts",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Portals (initiative) - A fundamental concept in the study of Visual arts",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Sequential art - A fundamental concept in the study of Visual arts",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Simultaneous art - A fundamental concept in the study of Visual arts",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Sociology of art - A fundamental concept in the study of Visual arts",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Sure Seaters - A fundamental concept in the study of Visual arts",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Synesthesia in art - A fundamental concept in the study of Visual arts",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Taxidermy - A fundamental concept in the study of Visual arts",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Video essay - A fundamental concept in the study of Visual arts",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Visual impairment in art - A fundamental concept in the study of Visual arts",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Visual music - A fundamental concept in the study of Visual arts",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Visual narrative - A fundamental concept in the study of Visual arts",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Visual workplace - A fundamental concept in the study of Visual arts",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Art world - A fundamental concept in the study of Visual arts",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    }
+]

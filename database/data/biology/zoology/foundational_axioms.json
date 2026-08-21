@@ -1,0 +1,62 @@
+[
+    {
+        "branch": "zoology",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Bergmann rule body size",
+        "parent_thesis": "Michaelis-Menten Kinetics: Describes the rate of enzymatic reactions by relating reaction rate v to substrate concentration [S]",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "fef46b6465f534fd4c0417880dece0647a01fbc03c512464671c544c61e64f3b"
+    },
+    {
+        "branch": "zoology",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Allen rule appendage length",
+        "parent_thesis": "Michaelis-Menten Kinetics: Describes the rate of enzymatic reactions by relating reaction rate v to substrate concentration [S]",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "bb1c0b452cad3b6481d8f3022a5d1dfd68e29764b8069638d76a335558b31074"
+    },
+    {
+        "branch": "zoology",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Hamilton rule kin selection",
+        "parent_thesis": "Michaelis-Menten Kinetics: Describes the rate of enzymatic reactions by relating reaction rate v to substrate concentration [S]",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "bcadda95fc8197b429d805b3ae3ddf158cf9cf425ba250ce892264373d89a678"
+    },
+    {
+        "branch": "zoology",
+        "domain_partition": "biology_partition",
+        "thesis_statement": "Animal Heterotrophy Axiom: Animals must ingest other organisms or their products to sustain life",
+        "parent_thesis": "Cell Theory: All living organisms are composed of one or more cells, and the cell is the basic unit of structure and organization",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "6f7935a243ee9d51ea4c0f38b94f16f7daedca36a6dc08e5aae3af26dc1a4874"
+    },
+    {
+        "branch": "zoology",
+        "domain_partition": "biology_partition",
+        "thesis_statement": "Bergmann's Rule: Within a broadly distributed taxonomic clade, populations and species of larger size are found in colder environments",
+        "parent_thesis": "Animal Heterotrophy Axiom: Animals must ingest other organisms or their products to sustain life",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "First proposed by Carl Bergmann, describing surface-area-to-volume ratio scaling for endothermic heat conservation."
+    },
+    {
+        "branch": "zoology",
+        "domain_partition": "biology_partition",
+        "thesis_statement": "Allen's Rule: Endothermic animals from colder climates tend to have shorter limbs and appendages than those from warmer climates",
+        "parent_thesis": "Animal Heterotrophy Axiom: Animals must ingest other organisms or their products to sustain life",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "First proposed by Joel Asaph Allen, showing evolutionary selection on limb surface area to regulate heat dissipation."
+    },
+    {
+        "branch": "zoology",
+        "domain_partition": "biology_partition",
+        "thesis_statement": "Haldane's Rule: When in the offspring of two different animal races one sex is absent, rare, or sterile, that sex is the heterozygous (heterogametic) sex",
+        "parent_thesis": "Mendelian Inheritance (Law of Segregation): Allele pairs separate during gamete formation and randomly unite at fertilization",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "First noted by J.B.S. Haldane, reflecting genetic incompatibilities on sex chromosomes during hybrid speciation."
+    }
+]

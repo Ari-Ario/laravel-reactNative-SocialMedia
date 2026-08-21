@@ -1,0 +1,82 @@
+[
+    {
+        "branch": "fluid_dynamics",
+        "domain_partition": "physics_partition",
+        "thesis_statement": "Navier-Stokes Equations: Describes the motion of viscous fluid substances via momentum conservation",
+        "parent_thesis": "Newton's Second Law of Motion: F = dp/dt (Force equals the time derivative of momentum)",
+        "formal_proof": "\u03c1 (\u2202u/\u2202t + u \u00b7 \u2207u) = -\u2207p + \u03bc \u2207\u00b2u + f. Conservation of momentum in fluid mechanics.",
+        "context_description": "The partial differential equations describing the velocity, pressure, and temperature fields of flowing fluids."
+    },
+    {
+        "branch": "fluid_dynamics",
+        "domain_partition": "physics_partition",
+        "thesis_statement": "Continuity Equation (Conservation of Mass in fluid flow): \u2202\u03c1/\u2202t + \u2207\u00b7(\u03c1v) = 0",
+        "parent_thesis": "Navier-Stokes Equations: Describes the motion of viscous fluid substances via momentum conservation",
+        "formal_proof": "\u2202\u03c1/\u2202t + \u2207 \u00b7 (\u03c1v) = 0. Conserves fluid density flux globally in a closed volume.",
+        "context_description": "Mathematical equation describing the transport of mass in a fluid system."
+    },
+    {
+        "branch": "fluid_dynamics",
+        "domain_partition": "physics_partition",
+        "thesis_statement": "Bernoulli's Principle: An increase in fluid speed occurs simultaneously with a decrease in static pressure",
+        "parent_thesis": "Continuity Equation (Conservation of Mass in fluid flow): \u2202\u03c1/\u2202t + \u2207\u00b7(\u03c1v) = 0",
+        "formal_proof": "v^2 / 2 + gz + p / \u03c1 = constant. Derived from Euler's equations of motion for inviscid flow.",
+        "context_description": "Relates speed, pressure, and elevation of a flowing fluid."
+    },
+    {
+        "branch": "fluid_dynamics",
+        "domain_partition": "physics_partition",
+        "thesis_statement": "Archimedes' Principle of Buoyancy: An object immersed in a fluid is buoyed up by a force equal to the weight of the fluid displaced",
+        "parent_thesis": "Continuity Equation (Conservation of Mass in fluid flow): \u2202\u03c1/\u2202t + \u2207\u00b7(\u03c1v) = 0",
+        "formal_proof": "F_b = \u03c1 * g * V_disp. Derived from hydrostatic pressure integration over the surface of the submerged object.",
+        "context_description": "Explains the upward force exerted by a fluid on a submerged body."
+    },
+    {
+        "branch": "fluid_dynamics",
+        "domain_partition": "physics_partition",
+        "thesis_statement": "Reynolds Number Criterion: Characterizes fluid flows as laminar or turbulent based on inertial and viscous forces",
+        "parent_thesis": "Navier-Stokes Equations: Describes the motion of viscous fluid substances via momentum conservation",
+        "formal_proof": "Re = \u03c1 v L / \u03bc. Represents the ratio of inertial forces to viscous forces in fluid shear fields.",
+        "context_description": "Dimensionless quantity used to predict fluid flow patterns."
+    },
+    {
+        "branch": "fluid_dynamics",
+        "domain_partition": "physics_partition",
+        "thesis_statement": "Pascal's Law of Hydrostatics: A pressure change at any point in a confined incompressible fluid is transmitted throughout",
+        "parent_thesis": "Newton's Second Law of Motion: F = dp/dt (Force equals the time derivative of momentum)",
+        "formal_proof": "\u0394P = \u03c1 * g * \u0394h. The hydrostatic pressure scale factor in static fluid fluids.",
+        "context_description": "Specifies that pressure exerted anywhere in a confined incompressible fluid is transmitted equally in all directions."
+    },
+    {
+        "branch": "fluid_dynamics",
+        "domain_partition": "physics_partition",
+        "thesis_statement": "Bernoulli principle",
+        "parent_thesis": "Bernoulli's Principle: An increase in fluid speed occurs simultaneously with a decrease in static pressure",
+        "formal_proof": "Bridge alias.",
+        "context_description": "Bridge alias for Bernoulli's Principle."
+    },
+    {
+        "branch": "fluid_dynamics",
+        "domain_partition": "physics_partition",
+        "thesis_statement": "Archimedes principle of buoyancy",
+        "parent_thesis": "Archimedes' Principle of Buoyancy: An object immersed in a fluid is buoyed up by a force equal to the weight of the fluid displaced",
+        "formal_proof": "Bridge alias.",
+        "context_description": "Bridge alias for Archimedes' Principle."
+    },
+    {
+        "branch": "fluid_dynamics",
+        "domain_partition": "physics_partition",
+        "thesis_statement": "Reynolds number turbulence",
+        "parent_thesis": "Reynolds Number Criterion: Characterizes fluid flows as laminar or turbulent based on inertial and viscous forces",
+        "formal_proof": "Bridge alias.",
+        "context_description": "Bridge alias for Reynolds Number."
+    },
+    {
+        "branch": "fluid_dynamics",
+        "domain_partition": "physics_partition",
+        "thesis_statement": "Pascal law of pressure",
+        "parent_thesis": "Pascal's Law of Hydrostatics: A pressure change at any point in a confined incompressible fluid is transmitted throughout",
+        "formal_proof": "Bridge alias.",
+        "context_description": "Bridge alias for Pascal's Law."
+    }
+]

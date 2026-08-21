@@ -1,0 +1,72 @@
+[
+    {
+        "branch": "software_engineering",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Turing completeness limits",
+        "parent_thesis": "Church-Turing Thesis: Any real-world computation can be translated into an equivalent computation involving a Turing machine",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "626037a69cc4c2ae55a10ddc79d238ae9af0bf5aa9d433da4bd86bd5c16c2f1f"
+    },
+    {
+        "branch": "software_engineering",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Halting problem bounds",
+        "parent_thesis": "Halting Problem (Turing Undecidability)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "81b2aa0cf20459ed30cb50f4c075481ef5579d61d19843accee4a1765c664030"
+    },
+    {
+        "branch": "software_engineering",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "CAP theorem distributed systems",
+        "parent_thesis": "Brewer's CAP Theorem: A distributed computer system can simultaneously provide at most two of three guarantees: Consistency, Availability, and Partition tolerance",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "b41d6ca48877d407e9f959305573296eb98f419f20ed08efb02d86961c31d060"
+    },
+    {
+        "branch": "software_engineering",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Time complexity Big O notation",
+        "parent_thesis": "Epsilon-Delta Definition of a Limit: \u2200\u03b5>0 \u2203\u03b4>0 such that 0 < |x - c| < \u03b4 \u2192 |f(x) - L| < \u03b5",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "41b82027f62768e8d72f09fa587c6f9c4353e3dff8d034aa6408bf55b91624ac"
+    },
+    {
+        "branch": "software_engineering",
+        "domain_partition": "engineering_partition",
+        "thesis_statement": "Church-Turing Thesis: Any real-world computation can be translated into an equivalent computation involving a Turing machine",
+        "parent_thesis": "Peano Axiom 5: Mathematical Induction (P(0) \u2227 (\u2200k: P(k) \u2192 P(S(k)))) \u2192 \u2200n P(n)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "16ff5a2fc11c54f7c74e96d465d403d7c8dbf6f91f9a12772be0c6b6d24c2681"
+    },
+    {
+        "branch": "software_engineering",
+        "domain_partition": "engineering_partition",
+        "thesis_statement": "Information Theory (Shannon Entropy): The quantification of information limits the compression rate of data",
+        "parent_thesis": "Shannon Entropy Axiom: H(X) = -\u2211 P(x)log P(x). The fundamental limit to data compression and the expected value of information contained in a message",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "95a5abe926bb2577e9ae269b4cd9cf9b0918f2464c52e57991fed647c5b451f2"
+    },
+    {
+        "branch": "software_engineering",
+        "domain_partition": "engineering_partition",
+        "thesis_statement": "Brewer's CAP Theorem: A distributed computer system can simultaneously provide at most two of three guarantees: Consistency, Availability, and Partition tolerance",
+        "parent_thesis": "Shannon Entropy Axiom: H(X) = -\u2211 P(x)log P(x). The fundamental limit to data compression and the expected value of information contained in a message",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Formulated by Eric Brewer, stating that in the presence of a network partition (P), a distributed system must choose between consistency (C) and availability (A)."
+    },
+    {
+        "branch": "software_engineering",
+        "domain_partition": "engineering_partition",
+        "thesis_statement": "Rice's Theorem: Any non-trivial semantic property of a Turing machine's language is undecidable",
+        "parent_thesis": "Church-Turing Thesis: Any real-world computation can be translated into an equivalent computation involving a Turing machine",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "States that it is impossible to write an algorithm that decides whether an arbitrary Turing machine's behavior satisfies a given semantic property."
+    }
+]

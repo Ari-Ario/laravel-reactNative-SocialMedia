@@ -1,0 +1,227 @@
+[
+    {
+        "branch": "Humanities",
+        "domain_partition": "Phenomenology & Existentialism",
+        "thesis_statement": "Intentionality (Husserl) - All consciousness is consciousness OF something; it is always directed toward an object",
+        "parent_thesis": "Brentano's Thesis: Intentionality is the defining characteristic of all mental phenomena, which are directed toward an object",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Humanities",
+        "domain_partition": "Phenomenology & Existentialism",
+        "thesis_statement": "Dasein (Heidegger) - Human existence is fundamentally defined by its 'being-in-the-world' and its capacity to question its own being",
+        "parent_thesis": "Brentano's Thesis: Intentionality is the defining characteristic of all mental phenomena, which are directed toward an object",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Humanities",
+        "domain_partition": "Phenomenology & Existentialism",
+        "thesis_statement": "Existence Precedes Essence (Sartre) - Humans first exist, encounter themselves in the world, and only afterward define their essence through actions",
+        "parent_thesis": "Brentano's Thesis: Intentionality is the defining characteristic of all mental phenomena, which are directed toward an object",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Humanities",
+        "domain_partition": "Phenomenology & Existentialism",
+        "thesis_statement": "Phenomenological Reduction (Epoch\u00e9) - To grasp the essence of consciousness, one must bracket or suspend judgment about the natural world",
+        "parent_thesis": "Brentano's Thesis: Intentionality is the defining characteristic of all mental phenomena, which are directed toward an object",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Humanities",
+        "domain_partition": "Phenomenology & Existentialism",
+        "thesis_statement": "Radical Freedom (Sartre) - Humans are condemned to be free; we bear absolute responsibility for our choices and actions",
+        "parent_thesis": "Brentano's Thesis: Intentionality is the defining characteristic of all mental phenomena, which are directed toward an object",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Humanities",
+        "domain_partition": "Phenomenology & Existentialism",
+        "thesis_statement": "Bad Faith (Mauvaise Foi) - Adopting the values of the masses and denying one's innate freedom is an act of self-deception",
+        "parent_thesis": "Brentano's Thesis: Intentionality is the defining characteristic of all mental phenomena, which are directed toward an object",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Humanities",
+        "domain_partition": "Phenomenology & Existentialism",
+        "thesis_statement": "The Absurd (Camus) - There is a fundamental conflict between the human tendency to seek inherent value and meaning in life and the silent, meaningless universe",
+        "parent_thesis": "Brentano's Thesis: Intentionality is the defining characteristic of all mental phenomena, which are directed toward an object",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Humanities",
+        "domain_partition": "Phenomenology & Existentialism",
+        "thesis_statement": "Being-toward-death - Authentic existence requires fully confronting the inevitability and finality of one's own death",
+        "parent_thesis": "Brentano's Thesis: Intentionality is the defining characteristic of all mental phenomena, which are directed toward an object",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Humanities",
+        "domain_partition": "Phenomenology & Existentialism",
+        "thesis_statement": "The Other (Levinas) - Ethics is the first philosophy; it begins with the face-to-face encounter and infinite responsibility toward the Other",
+        "parent_thesis": "Brentano's Thesis: Intentionality is the defining characteristic of all mental phenomena, which are directed toward an object",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Humanities",
+        "domain_partition": "Phenomenology & Existentialism",
+        "thesis_statement": "Lifeworld (Lebenswelt) - The background of pre-theoretical, everyday experience is the foundation for all scientific and theoretical knowledge",
+        "parent_thesis": "Brentano's Thesis: Intentionality is the defining characteristic of all mental phenomena, which are directed toward an object",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Humanities",
+        "domain_partition": "Phenomenology & Existentialism",
+        "thesis_statement": "Embodied Consciousness (Merleau-Ponty) - Perception is not a purely mental event, but an act of the physical body engaging with the world",
+        "parent_thesis": "Brentano's Thesis: Intentionality is the defining characteristic of all mental phenomena, which are directed toward an object",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Humanities",
+        "domain_partition": "Phenomenology & Existentialism",
+        "thesis_statement": "Facticity vs Transcendence - Human existence is a tension between the given facts of our situation (facticity) and our ability to project beyond them (transcendence)",
+        "parent_thesis": "Brentano's Thesis: Intentionality is the defining characteristic of all mental phenomena, which are directed toward an object",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Humanities",
+        "domain_partition": "Phenomenology & Existentialism",
+        "thesis_statement": "Will to Power (Nietzsche) - The fundamental drive of all living things is not merely self-preservation, but the expansion of power and self-overcoming",
+        "parent_thesis": "Brentano's Thesis: Intentionality is the defining characteristic of all mental phenomena, which are directed toward an object",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Humanities",
+        "domain_partition": "Phenomenology & Existentialism",
+        "thesis_statement": "Amor Fati (Love of Fate) - One should embrace everything that has happened, is happening, and will happen, without wishing it were different",
+        "parent_thesis": "Brentano's Thesis: Intentionality is the defining characteristic of all mental phenomena, which are directed toward an object",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Humanities",
+        "domain_partition": "Phenomenology & Existentialism",
+        "thesis_statement": "Eternal Recurrence - The ultimate test of life-affirmation is the willingness to live one's exact life over and over again for eternity",
+        "parent_thesis": "Brentano's Thesis: Intentionality is the defining characteristic of all mental phenomena, which are directed toward an object",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Humanities",
+        "domain_partition": "Phenomenology & Existentialism",
+        "thesis_statement": "Angst (Dread\/Anxiety) - True anxiety is not fear of a specific object, but the dizziness of freedom confronting the vastness of possibility",
+        "parent_thesis": "Brentano's Thesis: Intentionality is the defining characteristic of all mental phenomena, which are directed toward an object",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Humanities",
+        "domain_partition": "Phenomenology & Existentialism",
+        "thesis_statement": "Noema and Noesis - Every intentional act consists of a cognitive process (noesis) and the object as it is perceived (noema)",
+        "parent_thesis": "Brentano's Thesis: Intentionality is the defining characteristic of all mental phenomena, which are directed toward an object",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Humanities",
+        "domain_partition": "Phenomenology & Existentialism",
+        "thesis_statement": "The Look (Le Regard) - Being observed by another fundamentally alters one's subjectivity, reducing one to an object in their world",
+        "parent_thesis": "Brentano's Thesis: Intentionality is the defining characteristic of all mental phenomena, which are directed toward an object",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Humanities",
+        "domain_partition": "Phenomenology & Existentialism",
+        "thesis_statement": "Authenticity (Eigentlichkeit) - True living requires acting in accordance with one's own freedom rather than the dictates of the 'They' (Das Man)",
+        "parent_thesis": "Brentano's Thesis: Intentionality is the defining characteristic of all mental phenomena, which are directed toward an object",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Humanities",
+        "domain_partition": "Phenomenology & Existentialism",
+        "thesis_statement": "Throwness (Geworfenheit) - Humans are 'thrown' into a world, culture, and historical moment not of their own choosing",
+        "parent_thesis": "Brentano's Thesis: Intentionality is the defining characteristic of all mental phenomena, which are directed toward an object",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Humanities",
+        "domain_partition": "Phenomenology & Existentialism",
+        "thesis_statement": "Despair (Kierkegaard) - The sickness unto death is the failure to align the finite and infinite aspects of the self",
+        "parent_thesis": "Brentano's Thesis: Intentionality is the defining characteristic of all mental phenomena, which are directed toward an object",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Humanities",
+        "domain_partition": "Phenomenology & Existentialism",
+        "thesis_statement": "Leap of Faith - Ultimate religious or existential truth cannot be reached by reason alone, but requires a subjective, passionate commitment",
+        "parent_thesis": "Brentano's Thesis: Intentionality is the defining characteristic of all mental phenomena, which are directed toward an object",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Humanities",
+        "domain_partition": "Phenomenology & Existentialism",
+        "thesis_statement": "Hermeneutic Circle - Understanding a text or phenomenon requires understanding the parts in relation to the whole, and the whole in relation to the parts",
+        "parent_thesis": "Brentano's Thesis: Intentionality is the defining characteristic of all mental phenomena, which are directed toward an object",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Humanities",
+        "domain_partition": "Phenomenology & Existentialism",
+        "thesis_statement": "Subjectivity is Truth - Objective truth is irrelevant to the individual's existential choices; what matters is the passionate inwardness of belief",
+        "parent_thesis": "Brentano's Thesis: Intentionality is the defining characteristic of all mental phenomena, which are directed toward an object",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Humanities",
+        "domain_partition": "Phenomenology & Existentialism",
+        "thesis_statement": "The Flesh of the World - The perceiver and the perceived are not distinct substances, but are intertwined aspects of the same elemental being",
+        "parent_thesis": "Brentano's Thesis: Intentionality is the defining characteristic of all mental phenomena, which are directed toward an object",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    }
+]

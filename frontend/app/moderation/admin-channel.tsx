@@ -67,7 +67,7 @@ const AdminChannelScreen = () => {
 
   const renderHeader = () => (
     <View style={styles.header}>
-      <BackButton onPress={() => router.back()} />
+      <BackButton onPress={() => { if (router.canGoBack()) router.back(); else router.replace("/(tabs)"); }} />
       <View style={styles.headerTitleContainer}>
         <Ionicons name="shield-checkmark" size={24} color={colors.error} style={{ marginRight: 8 }} />
         <Text style={styles.headerTitle}>Administration</Text>

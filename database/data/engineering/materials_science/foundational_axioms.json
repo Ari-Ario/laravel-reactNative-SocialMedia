@@ -1,0 +1,62 @@
+[
+    {
+        "branch": "materials_science",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Hall-Petch relationship grain size",
+        "parent_thesis": "Hall-Petch Relationship Axiom: The yield strength of a polycrystalline material is inversely proportional to the square root of its average grain size",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "1ebee8d203b5ada4b9aa5a15f2d8cc43808b5b50cdd7f4856f76fd6f509234a1"
+    },
+    {
+        "branch": "materials_science",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Bragg law of X-ray diffraction",
+        "parent_thesis": "Bragg's Law of X-ray Diffraction: Constructive interference occurs when the path difference between diffracted waves is an integer multiple of the wavelength (n\u03bb = 2d sin \u03b8)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "35c8548f1f26a87576e7c7795b42e2b0bcfe26ece95e77411300391df94c055a"
+    },
+    {
+        "branch": "materials_science",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Griffith theory of brittle fracture",
+        "parent_thesis": "Griffith Theory of Brittle Fracture: A crack will propagate when the release of elastic strain energy is at least equal to the surface energy required to create new crack faces",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "521d8b49ebe86c99d00b179127ca42563d293971f0a781494b4d0191bc13cd98"
+    },
+    {
+        "branch": "materials_science",
+        "domain_partition": "engineering_partition",
+        "thesis_statement": "Structure-Property Relationship Axiom: The macroscopic properties of a material are determined by its microscopic atomic or molecular structure",
+        "parent_thesis": "Polymerization Axiom: Monomers covalently bond to form long polymer chains",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "14c625dbb43ac0a876802ef356ef9ac8facb0f5f1a1c1fbae083f3cdf46d42ff"
+    },
+    {
+        "branch": "materials_science",
+        "domain_partition": "engineering_partition",
+        "thesis_statement": "Bragg's Law of X-ray Diffraction: Constructive interference occurs when the path difference between diffracted waves is an integer multiple of the wavelength (n\u03bb = 2d sin \u03b8)",
+        "parent_thesis": "Structure-Property Relationship Axiom: The macroscopic properties of a material are determined by its microscopic atomic or molecular structure",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Formulated by William Lawrence Bragg and William Henry Bragg, describing X-ray reflection from crystal lattice planes."
+    },
+    {
+        "branch": "materials_science",
+        "domain_partition": "engineering_partition",
+        "thesis_statement": "Griffith Theory of Brittle Fracture: A crack will propagate when the release of elastic strain energy is at least equal to the surface energy required to create new crack faces",
+        "parent_thesis": "Structure-Property Relationship Axiom: The macroscopic properties of a material are determined by its microscopic atomic or molecular structure",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Formulated by Alan Arnold Griffith, establishing fracture mechanics principles by balancing elastic strain energy and surface energy."
+    },
+    {
+        "branch": "materials_science",
+        "domain_partition": "engineering_partition",
+        "thesis_statement": "Hall-Petch Relationship Axiom: The yield strength of a polycrystalline material is inversely proportional to the square root of its average grain size",
+        "parent_thesis": "Structure-Property Relationship Axiom: The macroscopic properties of a material are determined by its microscopic atomic or molecular structure",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Expresses how grain boundaries act as obstacles to dislocation movement, strengthening materials as grain size decreases."
+    }
+]

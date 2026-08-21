@@ -1,0 +1,20 @@
+[
+    {
+        "branch": "game_theory",
+        "domain_partition": "math_partition",
+        "thesis_statement": "Nash Equilibrium existence in finite games",
+        "parent_thesis": "Nash Equilibrium Existence Theorem (Every finite game has at least one mixed-strategy Nash equilibrium)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "17c5a33686763d5d793880103777e1adbf6a072a99b233319bd38efc0254812e"
+    },
+    {
+        "branch": "game_theory",
+        "domain_partition": "math_partition",
+        "thesis_statement": "Minimax theorem for zero-sum games",
+        "parent_thesis": "Minimax Theorem: For zero-sum games, max-min strategy equals min-max strategy",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "6b7d318e67f3f0e88d46314660003d47aaac2cd430f866c39baae55d760ddc3c"
+    }
+]

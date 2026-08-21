@@ -1,0 +1,101 @@
+[
+    {
+        "branch": "economics",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Nash equilibrium in game theory",
+        "parent_thesis": "Nash Equilibrium Existence Theorem (Every finite game has at least one mixed-strategy Nash equilibrium)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "3934bc3451294153e044bde1fdcf06ba12adfd0bb1aa31cb63d9f62f6a517cef"
+    },
+    {
+        "branch": "economics",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Law of supply and demand",
+        "parent_thesis": "Law of Supply and Demand: In a competitive market, the unit price for a particular good will vary until it settles at a point where the quantity demanded equals the quantity supplied",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "593c11373146c0ae4a7c27175b4580b69f9618866fd12f6b1d5fa0b15bf76bab"
+    },
+    {
+        "branch": "economics",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Pareto efficiency",
+        "parent_thesis": "Pareto Efficiency Axiom: An allocation is Pareto efficient if no individual can be made better off without making someone else worse off",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "6221669befed439d914df2c8e7f5523e221b46781b5753af42d4cbb43b768110"
+    },
+    {
+        "branch": "economics",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Keynesian multiplier effect",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "d9aa8ca4fb90bb735114ee776d8dc59286a2e1c415e8b11f75bd8f2d6953a3da"
+    },
+    {
+        "branch": "economics",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Comparative advantage in trade",
+        "parent_thesis": "Every choice has an opportunity cost",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "5cb4f23c4bc4766e1a9e01d5d57b915e787d70040fe764372bef3c8ce52190e4"
+    },
+    {
+        "branch": "economics",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Diminishing marginal utility",
+        "parent_thesis": "Law of Diminishing Marginal Utility: As a person increases consumption of a product, there is a decline in the marginal utility that person derives from consuming each additional unit",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "2baf7f256fa330b571176f189e76393bd428e30d462e6902b469fdde37eceb25"
+    },
+    {
+        "branch": "economics",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Efficient-market hypothesis",
+        "parent_thesis": "Efficient-Market Hypothesis (EMH)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "f5f079ec0818303d36db799b577bc27d55747fcd90c5f6a5b978b93e40fd3a49"
+    },
+    {
+        "branch": "economics",
+        "domain_partition": "social_partition",
+        "thesis_statement": "Law of Supply and Demand: In a competitive market, the unit price for a particular good will vary until it settles at a point where the quantity demanded equals the quantity supplied",
+        "parent_thesis": "Von Neumann-Morgenstern Utility Theorem: Rational agents act to maximize expected utility",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "64119b52cd9879bf9431e6c82bc1151f644c55525145da0095ff1619b96935e9"
+    },
+    {
+        "branch": "economics",
+        "domain_partition": "social_partition",
+        "thesis_statement": "Law of Diminishing Marginal Utility: As a person increases consumption of a product, there is a decline in the marginal utility that person derives from consuming each additional unit",
+        "parent_thesis": "Weber-Fechner Law: The magnitude of a subjective sensation increases proportionally to the logarithm of the stimulus intensity (dp = k(dS/S))",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "77f1fc9b6b324b51ac398cd54a590710d43874caa3f42f2eae9160d422dc7bb7"
+    },
+    {
+        "branch": "economics",
+        "domain_partition": "social_partition",
+        "thesis_statement": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints",
+        "parent_thesis": "Transitivity of Strict Preference: (A > B) \u2227 (B > C) \u2192 (A > C)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "8a00eb757d8fd9fb5730f9e973c69a624fa1a0967b4164caf97d4c91af2da91f"
+    },
+    {
+        "branch": "economics",
+        "domain_partition": "social_science",
+        "thesis_statement": "Efficient-Market Hypothesis (EMH)",
+        "parent_thesis": "Shannon-Hartley Theorem (Channel Capacity)",
+        "formal_proof": "If a market perfectly transmits all available information (Shannon capacity optimized), then P_t strictly reflects all known information at time t, preventing arbitrage.",
+        "context_description": "An economic theory stating that asset prices fully reflect all available information, meaning it is impossible to consistently \"beat the market\" on a risk-adjusted basis.",
+        "ast_signature": "e444a09c8d3a6e9c573843a2c8193fae69ce6887d75938885c797331228dd4ca"
+    }
+]

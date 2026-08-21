@@ -1,0 +1,227 @@
+[
+    {
+        "branch": "Computer Science",
+        "domain_partition": "Blockchain & Decentralized Consensus",
+        "thesis_statement": "Nakamoto Consensus (Proof of Work) - Trust in a decentralized network is achieved by requiring computational work to propose blocks",
+        "parent_thesis": "Dialectical Self-Reference (Recursion) - A complete taxonomy of knowledge must contain a recursive model of its own database schema as a node within its network",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Computer Science",
+        "domain_partition": "Blockchain & Decentralized Consensus",
+        "thesis_statement": "Byzantine Fault Tolerance (BFT) - A distributed network can reach consensus even if a subset of nodes are malicious or failing",
+        "parent_thesis": "Dialectical Self-Reference (Recursion) - A complete taxonomy of knowledge must contain a recursive model of its own database schema as a node within its network",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Computer Science",
+        "domain_partition": "Blockchain & Decentralized Consensus",
+        "thesis_statement": "CAP Theorem - A distributed data store can simultaneously provide at most two out of three: Consistency, Availability, and Partition tolerance",
+        "parent_thesis": "Dialectical Self-Reference (Recursion) - A complete taxonomy of knowledge must contain a recursive model of its own database schema as a node within its network",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Computer Science",
+        "domain_partition": "Blockchain & Decentralized Consensus",
+        "thesis_statement": "Proof of Stake (PoS) - Block validators are chosen deterministically based on their economic stake in the network",
+        "parent_thesis": "Dialectical Self-Reference (Recursion) - A complete taxonomy of knowledge must contain a recursive model of its own database schema as a node within its network",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Computer Science",
+        "domain_partition": "Blockchain & Decentralized Consensus",
+        "thesis_statement": "Smart Contracts (Szabo) - Self-executing digital contracts with terms directly written into immutable code",
+        "parent_thesis": "Dialectical Self-Reference (Recursion) - A complete taxonomy of knowledge must contain a recursive model of its own database schema as a node within its network",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Computer Science",
+        "domain_partition": "Blockchain & Decentralized Consensus",
+        "thesis_statement": "Decentralized Autonomous Organization (DAO) - An organization represented by rules encoded as a computer program that is transparent and controlled by members",
+        "parent_thesis": "Dialectical Self-Reference (Recursion) - A complete taxonomy of knowledge must contain a recursive model of its own database schema as a node within its network",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Computer Science",
+        "domain_partition": "Blockchain & Decentralized Consensus",
+        "thesis_statement": "Immutable Ledger Axiom - Once data is appended to the blockchain with sufficient confirmations, it cannot be altered or deleted",
+        "parent_thesis": "Dialectical Self-Reference (Recursion) - A complete taxonomy of knowledge must contain a recursive model of its own database schema as a node within its network",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Computer Science",
+        "domain_partition": "Blockchain & Decentralized Consensus",
+        "thesis_statement": "Cryptoeconomics - Systems can be secured by combining cryptography to prove past actions with economic incentives to encourage future actions",
+        "parent_thesis": "Dialectical Self-Reference (Recursion) - A complete taxonomy of knowledge must contain a recursive model of its own database schema as a node within its network",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Computer Science",
+        "domain_partition": "Blockchain & Decentralized Consensus",
+        "thesis_statement": "Public Key Infrastructure (PKI) - Digital identity and asset ownership are verified using asymmetric cryptographic key pairs",
+        "parent_thesis": "Dialectical Self-Reference (Recursion) - A complete taxonomy of knowledge must contain a recursive model of its own database schema as a node within its network",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Computer Science",
+        "domain_partition": "Blockchain & Decentralized Consensus",
+        "thesis_statement": "Hash Function Collision Resistance - It is computationally infeasible to find two different inputs that produce the same cryptographic hash output",
+        "parent_thesis": "Dialectical Self-Reference (Recursion) - A complete taxonomy of knowledge must contain a recursive model of its own database schema as a node within its network",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Computer Science",
+        "domain_partition": "Blockchain & Decentralized Consensus",
+        "thesis_statement": "Merkle Tree Verification - Large datasets can be efficiently and securely summarized and verified using hash trees",
+        "parent_thesis": "Dialectical Self-Reference (Recursion) - A complete taxonomy of knowledge must contain a recursive model of its own database schema as a node within its network",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Computer Science",
+        "domain_partition": "Blockchain & Decentralized Consensus",
+        "thesis_statement": "The 51% Attack - A malicious entity controlling the majority of the network's hash rate can rewrite the blockchain ledger",
+        "parent_thesis": "Dialectical Self-Reference (Recursion) - A complete taxonomy of knowledge must contain a recursive model of its own database schema as a node within its network",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Computer Science",
+        "domain_partition": "Blockchain & Decentralized Consensus",
+        "thesis_statement": "Double Spending Problem - A digital currency system must prevent a single token from being spent simultaneously in two different transactions",
+        "parent_thesis": "Dialectical Self-Reference (Recursion) - A complete taxonomy of knowledge must contain a recursive model of its own database schema as a node within its network",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Computer Science",
+        "domain_partition": "Blockchain & Decentralized Consensus",
+        "thesis_statement": "Zero-Knowledge Proofs (zk-SNARKs) - A prover can convince a verifier that a statement is true without revealing any information beyond the validity of the statement itself",
+        "parent_thesis": "Dialectical Self-Reference (Recursion) - A complete taxonomy of knowledge must contain a recursive model of its own database schema as a node within its network",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Computer Science",
+        "domain_partition": "Blockchain & Decentralized Consensus",
+        "thesis_statement": "Sybil Attack - A network is vulnerable if a single adversary can subvert the system by creating a large number of pseudonymous identities",
+        "parent_thesis": "Dialectical Self-Reference (Recursion) - A complete taxonomy of knowledge must contain a recursive model of its own database schema as a node within its network",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Computer Science",
+        "domain_partition": "Blockchain & Decentralized Consensus",
+        "thesis_statement": "Layer 2 Scaling Solutions - Transaction throughput can be exponentially increased by processing transactions off-chain and settling on the base layer",
+        "parent_thesis": "Dialectical Self-Reference (Recursion) - A complete taxonomy of knowledge must contain a recursive model of its own database schema as a node within its network",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Computer Science",
+        "domain_partition": "Blockchain & Decentralized Consensus",
+        "thesis_statement": "State Channels - Two parties can transact instantly and infinitely off-chain, using the blockchain only for opening and closing the channel",
+        "parent_thesis": "Dialectical Self-Reference (Recursion) - A complete taxonomy of knowledge must contain a recursive model of its own database schema as a node within its network",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Computer Science",
+        "domain_partition": "Blockchain & Decentralized Consensus",
+        "thesis_statement": "Oracles - Smart contracts require trusted third-party data feeds to interact with off-chain, real-world information",
+        "parent_thesis": "Dialectical Self-Reference (Recursion) - A complete taxonomy of knowledge must contain a recursive model of its own database schema as a node within its network",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Computer Science",
+        "domain_partition": "Blockchain & Decentralized Consensus",
+        "thesis_statement": "Tokenomics (Token Economics) - The design of a token's supply, distribution, and utility dictates the long-term sustainability of its ecosystem",
+        "parent_thesis": "Dialectical Self-Reference (Recursion) - A complete taxonomy of knowledge must contain a recursive model of its own database schema as a node within its network",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Computer Science",
+        "domain_partition": "Blockchain & Decentralized Consensus",
+        "thesis_statement": "Interoperability (Cross-Chain Communication) - Isolated blockchain networks must be able to securely exchange arbitrary data and value",
+        "parent_thesis": "Dialectical Self-Reference (Recursion) - A complete taxonomy of knowledge must contain a recursive model of its own database schema as a node within its network",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Computer Science",
+        "domain_partition": "Blockchain & Decentralized Consensus",
+        "thesis_statement": "Governance Tokens - Protocol parameters and treasury funds can be managed democratically by token holders",
+        "parent_thesis": "Dialectical Self-Reference (Recursion) - A complete taxonomy of knowledge must contain a recursive model of its own database schema as a node within its network",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Computer Science",
+        "domain_partition": "Blockchain & Decentralized Consensus",
+        "thesis_statement": "Non-Fungible Tokens (NFTs) - Digital scarcity and unique ownership can be cryptographically proven on a blockchain",
+        "parent_thesis": "Dialectical Self-Reference (Recursion) - A complete taxonomy of knowledge must contain a recursive model of its own database schema as a node within its network",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Computer Science",
+        "domain_partition": "Blockchain & Decentralized Consensus",
+        "thesis_statement": "Censorship Resistance - A decentralized network guarantees that any valid transaction will eventually be processed, regardless of the sender or receiver",
+        "parent_thesis": "Dialectical Self-Reference (Recursion) - A complete taxonomy of knowledge must contain a recursive model of its own database schema as a node within its network",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Computer Science",
+        "domain_partition": "Blockchain & Decentralized Consensus",
+        "thesis_statement": "Slashing Conditions (PoS) - Malicious validators face economic penalties (slashing of stake) for proposing invalid blocks",
+        "parent_thesis": "Dialectical Self-Reference (Recursion) - A complete taxonomy of knowledge must contain a recursive model of its own database schema as a node within its network",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Computer Science",
+        "domain_partition": "Blockchain & Decentralized Consensus",
+        "thesis_statement": "Gossip Protocol - Information disseminates across a peer-to-peer network quickly and robustly through node-to-node sharing",
+        "parent_thesis": "Dialectical Self-Reference (Recursion) - A complete taxonomy of knowledge must contain a recursive model of its own database schema as a node within its network",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    }
+]

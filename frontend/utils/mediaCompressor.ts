@@ -62,7 +62,7 @@ export class MediaCompressor {
 
         resultUri = result.uri;
         const newFileInfo = await FileSystem.getInfoAsync(resultUri) as any;
-        
+
         if (newFileInfo.size <= SAFE_LIMIT) break;
 
         // More aggressive drops
@@ -90,8 +90,8 @@ export class MediaCompressor {
       if (fileInfo.size > TWO_MB) {
         console.warn(`Video is over 2MB (${(fileInfo.size / 1024 / 1024).toFixed(2)}MB). Ensure it's trimmed and quality is reduced.`);
       }
-    } catch (e) {}
-    
+    } catch (e) { }
+
     return uri;
   }
 

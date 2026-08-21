@@ -1,0 +1,92 @@
+[
+    {
+        "branch": "epistemic_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Epistemic Axiom T \u2014 KP\u2192P (knowledge implies truth)",
+        "parent_thesis": "Law of identity",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "fde9b0f74d752ff9c696858d277da7608e553bb0f56c6b39fdb64e886fc24bbf"
+    },
+    {
+        "branch": "epistemic_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Epistemic Axiom 4 \u2014 KP\u2192KKP (positive introspection)",
+        "parent_thesis": "Law of identity",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "8f17014338f07f1ff5d37931b84986421870bac046d3af85a41f5f734d2b02ae"
+    },
+    {
+        "branch": "epistemic_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Epistemic Axiom 5 \u2014 \u00acKP\u2192K\u00acKP (negative introspection)",
+        "parent_thesis": "Law of identity",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "6e4f20f0a86c0f20db2e760083eb0f69377950ee9ac4da3a16ae15bd730d9936"
+    },
+    {
+        "branch": "epistemic_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Epistemic Axiom B \u2014 P\u2192KB\u00acK\u00acP (belief symmetry)",
+        "parent_thesis": "Law of identity",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "b01b00f017f59a86e250d4931170f7eb69434499f94ca8d072b42103add3eeaa"
+    },
+    {
+        "branch": "epistemic_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Knowledge vs Belief \u2014 K is factive (KP\u2192P), B is not (BP\u22acP)",
+        "parent_thesis": "Law of identity",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "c2423f25988eb766571c550fdc40306ce92c7d08d4fdbfcdd7ee4186be058ffd"
+    },
+    {
+        "branch": "epistemic_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Common Knowledge \u2014 CKP \u2261 everyone knows P and everyone knows everyone knows P",
+        "parent_thesis": "Law of identity",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "f5a89268aa229f8ee68df325d26159507cb543addff049f4e8d55468bed64ee0"
+    },
+    {
+        "branch": "epistemic_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Muddy Children Puzzle \u2014 public announcement logic resolves common knowledge",
+        "parent_thesis": "Law of identity",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "855eed511717428a91e688bcf98377950ba7ae1f724b9285839a03cd5f9986ee"
+    },
+    {
+        "branch": "epistemic_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Kripke Semantics for Epistemic Logic (S5 for knowledge)",
+        "parent_thesis": "Law of identity",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "bc03e6516a1fb28e2f1cb783c921ef631413b3bd618a8b9e885c8d4b1f72ca4a"
+    },
+    {
+        "branch": "epistemic_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Epistemic Axiom K",
+        "parent_thesis": "Law of identity",
+        "formal_proof": "Epistemic distribution axiom: K(P -> Q) -> (KP -> KQ). States that knowledge distributes over logical implication.",
+        "context_description": "Foundational axiom for normal systems of epistemic logic.",
+        "ast_signature": "a399a1651ccabcf37cbfa25928dfed23e014a79f76cbe59fc84bb87b3fb85ffa"
+    },
+    {
+        "branch": "epistemic_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Doxastic Axiom D",
+        "parent_thesis": "Knowledge vs Belief \u2014 K is factive (KP\u2192P), B is not (BP\u22acP)",
+        "formal_proof": "Doxastic consistency axiom: BP -> ~B~P. States that if an agent believes P, then they do not believe not-P.",
+        "context_description": "Foundational axiom asserting the internal consistency of rational beliefs.",
+        "ast_signature": "55c3e0e8ad40703b28791daba1681bf0a3e81bb88b5d69c4fd4ec712643492ad"
+    }
+]

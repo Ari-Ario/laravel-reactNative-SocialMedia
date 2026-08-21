@@ -1636,7 +1636,7 @@ public function endCall(Request $request, $id)
     public function deleteMedia(Request $request, $id, $mediaId)
     {
         $space = CollaborationSpace::findOrFail($id);
-        $user  = auth()->user();
+        $user  = Auth::user();
 
         $participation = $space->participations()
             ->where('user_id', $user->id)
@@ -1668,7 +1668,7 @@ public function endCall(Request $request, $id)
     {
         $request->validate([
             'content' => 'nullable|string',
-            'type' => 'sometimes|in:text,image,video,document,voice,poll,album,post_share,story_share,location,live_location',
+            'type' => 'sometimes|in:text,image,video,document,voice,poll,album,post_share,story_share,location,live_location,ai_idea_share,summary',
             'file_path' => 'sometimes|string',
             'metadata' => 'sometimes|array',
             'reply_to_id' => 'sometimes|nullable|string',
@@ -1957,7 +1957,6 @@ public function endCall(Request $request, $id)
         }
         
         // 3. Perform Deletion
-        // 3. Perform Deletion
         foreach (array_unique($filesToDelete) as $path) {
             // Normalize path (if it's a URL like /storage/path, convert to path)
             $relativePaths = [
@@ -2171,7 +2170,7 @@ public function endCall(Request $request, $id)
 
         $sourceSpace = CollaborationSpace::findOrFail($id);
         $destSpace = CollaborationSpace::findOrFail($request->destination_space_id);
-        $user = auth()->user();
+        $user = Auth::user();
 
         // Check auth in both spaces
         $sourceParticipation = $sourceSpace->participations()->where('user_id', $user->id)->first();
@@ -2501,6 +2500,73 @@ public function endCall(Request $request, $id)
             'interaction_id' => $interaction->id,
             'confidence' => $interaction->confidence_score,
             'suggestion_followup' => $this->generateFollowupSuggestion($space, $request->query)
+        ]);
+    }
+
+    /**
+     * Add an AI-generated summary to the space.
+     */
+    public function addSummary(Request $request, $id)
+    {
+        $request->validate([
+            'summary' => 'required|string',
+            'generated_by' => 'sometimes|string'
+        ]);
+
+        $space = CollaborationSpace::findOrFail($id);
+        $user = auth()->user();
+
+        // 1. Check if user is a participant
+        $participation = $space->participations()
+            ->where('user_id', $user->id)
+            ->first();
+            
+        if (!$participation) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        // 2. Create a summary message in the space content_state
+        $contentState = $space->content_state ?? [];
+        $messages = $contentState['messages'] ?? [];
+
+        $message = [
+            'id' => (string) \Illuminate\Support\Str::uuid(),
+            'user_id' => 0, // AI System
+            'user_name' => 'AI Assistant',
+            'content' => $request->summary,
+            'type' => 'summary',
+            'metadata' => [
+                'is_ai' => true,
+                'generated_by' => $request->generated_by ?? 'ai',
+                'is_summary' => true,
+                'icon' => 'document-text'
+            ],
+            'created_at' => now()->toISOString(),
+        ];
+
+        $messages[] = $message;
+        $contentState['messages'] = $messages;
+        
+        // Optionally update a top-level summary field for easy access
+        $contentState['last_ai_summary'] = [
+            'text' => $request->summary,
+            'timestamp' => now()->toISOString()
+        ];
+
+        $space->update([
+            'content_state' => $contentState,
+            'updated_at' => now(),
+        ]);
+
+        // 3. Broadcast update to all participants
+        broadcast(new \App\Events\SpaceUpdated($space, $user->id, [
+            'update_type' => 'summary_added',
+            'message' => $message
+        ]))->toOthers();
+
+        return response()->json([
+            'message' => 'Summary added successfully',
+            'event' => $message
         ]);
     }
 

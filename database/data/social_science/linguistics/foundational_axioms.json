@@ -1,0 +1,65 @@
+[
+    {
+        "branch": "linguistics",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Chomsky universal grammar",
+        "parent_thesis": "Universal Grammar Hypothesis: The ability to learn grammar is hard-wired into the brain",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "911cff2375598908d9df86bbfc1710d622fcc35851bbfb61adc1469c09b205b4"
+    },
+    {
+        "branch": "linguistics",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Grimm law of sound change",
+        "parent_thesis": "Information-Theoretic Syntax: Language syntax is optimized to transfer information smoothly across a noisy channel, bounded by entropy limits",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "d98d51416138cb5296e712ff17217327f73a90c4b0726f3e19f137b2a8ff778d"
+    },
+    {
+        "branch": "linguistics",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Phonemic contrast",
+        "parent_thesis": "Information-Theoretic Syntax: Language syntax is optimized to transfer information smoothly across a noisy channel, bounded by entropy limits",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "d2e949c7e66f4a7d14fefa3dbdb544343fb53900c72f90c2999b83322e5398bd"
+    },
+    {
+        "branch": "linguistics",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Morphological derivation",
+        "parent_thesis": "Information-Theoretic Syntax: Language syntax is optimized to transfer information smoothly across a noisy channel, bounded by entropy limits",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "2cb7cb0050ab510c9046fff4c7d891845764882f6c4b743c238537cccd3bffba"
+    },
+    {
+        "branch": "linguistics",
+        "domain_partition": "social_partition",
+        "thesis_statement": "Universal Grammar Hypothesis: The ability to learn grammar is hard-wired into the brain",
+        "parent_thesis": "Cognitive Schema Theory: The mind organizes knowledge into units called schemas to process incoming information efficiently",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "fac68b9561ef1929a3a48e7c95c505ca8a1a10ea917d54a0a309de5e7ca5c471"
+    },
+    {
+        "branch": "linguistics",
+        "domain_partition": "social_partition",
+        "thesis_statement": "Large Language Model (LLM) Axiom: Unsupervised statistical prediction of token sequences in deep neural networks exhibits emergent syntactic and semantic structures",
+        "parent_thesis": "Backpropagation Algorithm: Network weights are iteratively updated to minimize a loss function by calculating the gradient via the chain rule of calculus",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "46c779f6a8e67271dd5ed8f00fc25fe065f71304566d5d629c6d870bfaa13b13"
+    },
+    {
+        "branch": "linguistics",
+        "domain_partition": "social_partition",
+        "thesis_statement": "Information-Theoretic Syntax: Language syntax is optimized to transfer information smoothly across a noisy channel, bounded by entropy limits",
+        "parent_thesis": "Shannon Entropy Axiom: H(X) = -\u2211 P(x)log P(x). The fundamental limit to data compression and the expected value of information contained in a message",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "5032afcbb5c1b513b2bc7d8e871b01f37e55d7e2f9fd06a335a524112a519393"
+    }
+]

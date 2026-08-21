@@ -1,0 +1,227 @@
+[
+    {
+        "branch": "Social Science",
+        "domain_partition": "Neurodiversity & Cognitive Pluralism",
+        "thesis_statement": "Neurodiversity Axiom - Neurological variations (e.g., autism, ADHD, dyslexia) are natural, valuable forms of human diversity, not inherent pathologies",
+        "parent_thesis": "Computational Theory of Mind - The human mind functions as an information processing system",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Social Science",
+        "domain_partition": "Neurodiversity & Cognitive Pluralism",
+        "thesis_statement": "Social Model of Disability - Disability is largely created by systemic societal barriers and rigid environments, rather than purely by individual deficits",
+        "parent_thesis": "Computational Theory of Mind - The human mind functions as an information processing system",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Social Science",
+        "domain_partition": "Neurodiversity & Cognitive Pluralism",
+        "thesis_statement": "Cognitive Pluralism - No single cognitive style or neurotype possesses a monopoly on objective reality or optimal problem-solving",
+        "parent_thesis": "Computational Theory of Mind - The human mind functions as an information processing system",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Social Science",
+        "domain_partition": "Neurodiversity & Cognitive Pluralism",
+        "thesis_statement": "Double Empathy Problem - Communication breakdowns between autistic and neurotypical individuals result from mutual misunderstanding, not a unilateral deficit in empathy",
+        "parent_thesis": "Computational Theory of Mind - The human mind functions as an information processing system",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Social Science",
+        "domain_partition": "Neurodiversity & Cognitive Pluralism",
+        "thesis_statement": "Monotropism Hypothesis - Autistic cognition is characterized by a tendency to focus attention narrowly and deeply on a small number of interests",
+        "parent_thesis": "Computational Theory of Mind - The human mind functions as an information processing system",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Social Science",
+        "domain_partition": "Neurodiversity & Cognitive Pluralism",
+        "thesis_statement": "Sensory Processing Variability - Human sensory perception exists on a vast spectrum; environments that are neutral to some are painfully overwhelming to others",
+        "parent_thesis": "Computational Theory of Mind - The human mind functions as an information processing system",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Social Science",
+        "domain_partition": "Neurodiversity & Cognitive Pluralism",
+        "thesis_statement": "Executive Functioning Spectrum - The capacity for planning, working memory, and task initiation varies naturally and is independent of general intelligence",
+        "parent_thesis": "Computational Theory of Mind - The human mind functions as an information processing system",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Social Science",
+        "domain_partition": "Neurodiversity & Cognitive Pluralism",
+        "thesis_statement": "Neurotypical Privilege - Society is structurally designed to accommodate, validate, and reward neurotypical cognitive processing defaults",
+        "parent_thesis": "Computational Theory of Mind - The human mind functions as an information processing system",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Social Science",
+        "domain_partition": "Neurodiversity & Cognitive Pluralism",
+        "thesis_statement": "Masking (Camouflaging) - Neurodivergent individuals frequently suppress their natural behaviors to simulate neurotypicality, resulting in severe psychological burnout",
+        "parent_thesis": "Computational Theory of Mind - The human mind functions as an information processing system",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Social Science",
+        "domain_partition": "Neurodiversity & Cognitive Pluralism",
+        "thesis_statement": "Stimming (Self-Stimulatory Behavior) - Repetitive physical movements or sounds are crucial, adaptive mechanisms for emotional regulation and sensory processing",
+        "parent_thesis": "Computational Theory of Mind - The human mind functions as an information processing system",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Social Science",
+        "domain_partition": "Neurodiversity & Cognitive Pluralism",
+        "thesis_statement": "Spoon Theory - Individuals with chronic conditions or neurodivergences possess a rigidly finite daily capacity for physical and mental energy",
+        "parent_thesis": "Computational Theory of Mind - The human mind functions as an information processing system",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Social Science",
+        "domain_partition": "Neurodiversity & Cognitive Pluralism",
+        "thesis_statement": "Hyperfocus Paradigm - ADHD and autistic cognition can exhibit states of intense, sustained concentration that surpass neurotypical norms",
+        "parent_thesis": "Computational Theory of Mind - The human mind functions as an information processing system",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Social Science",
+        "domain_partition": "Neurodiversity & Cognitive Pluralism",
+        "thesis_statement": "Rejection Sensitive Dysphoria (RSD) - Certain neurotypes experience perceived or actual rejection as acute, overwhelming physical and emotional pain",
+        "parent_thesis": "Computational Theory of Mind - The human mind functions as an information processing system",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Social Science",
+        "domain_partition": "Neurodiversity & Cognitive Pluralism",
+        "thesis_statement": "Autistic Inertia - Difficulty initiating or stopping tasks is rooted in neurological transitioning challenges, not a lack of motivation",
+        "parent_thesis": "Computational Theory of Mind - The human mind functions as an information processing system",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Social Science",
+        "domain_partition": "Neurodiversity & Cognitive Pluralism",
+        "thesis_statement": "Pathology Paradigm Fallacy - Viewing all neurological differences strictly through a medical lens obscures their evolutionary and societal value",
+        "parent_thesis": "Computational Theory of Mind - The human mind functions as an information processing system",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Social Science",
+        "domain_partition": "Neurodiversity & Cognitive Pluralism",
+        "thesis_statement": "Neuro-Affirming Practice - Interventions should focus on supporting an individual's well-being and autonomy, rather than forcing behavioral conformity",
+        "parent_thesis": "Computational Theory of Mind - The human mind functions as an information processing system",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Social Science",
+        "domain_partition": "Neurodiversity & Cognitive Pluralism",
+        "thesis_statement": "Cognitive Liberty - Individuals possess the fundamental right to mental self-determination, including the freedom to alter or retain their neural states",
+        "parent_thesis": "Computational Theory of Mind - The human mind functions as an information processing system",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Social Science",
+        "domain_partition": "Neurodiversity & Cognitive Pluralism",
+        "thesis_statement": "Aphantasia and Hyperphantasia - The capacity for visual mental imagery varies dramatically from complete blindness to vivid photorealism across human populations",
+        "parent_thesis": "Computational Theory of Mind - The human mind functions as an information processing system",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Social Science",
+        "domain_partition": "Neurodiversity & Cognitive Pluralism",
+        "thesis_statement": "Synesthesia Axiom - Cross-wiring of sensory modalities demonstrates that reality can be perceived through fundamentally different, yet equally valid, perceptual architectures",
+        "parent_thesis": "Computational Theory of Mind - The human mind functions as an information processing system",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Social Science",
+        "domain_partition": "Neurodiversity & Cognitive Pluralism",
+        "thesis_statement": "Demand Avoidance (PDA) - Extreme resistance to everyday demands is an anxiety-driven neurological response, not a behavioral choice",
+        "parent_thesis": "Computational Theory of Mind - The human mind functions as an information processing system",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Social Science",
+        "domain_partition": "Neurodiversity & Cognitive Pluralism",
+        "thesis_statement": "Alexithymia - The inability to identify and describe one's own emotions is a distinct trait, often co-occurring with other neurodivergences",
+        "parent_thesis": "Computational Theory of Mind - The human mind functions as an information processing system",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Social Science",
+        "domain_partition": "Neurodiversity & Cognitive Pluralism",
+        "thesis_statement": "Neuroqueer Theory - The intersections of neurodivergence and queer identity fundamentally challenge normative social constructs of behavior and relating",
+        "parent_thesis": "Computational Theory of Mind - The human mind functions as an information processing system",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Social Science",
+        "domain_partition": "Neurodiversity & Cognitive Pluralism",
+        "thesis_statement": "Infodumping as Love Language - Detailed, exhaustive sharing of special interests is a primary modality of neurodivergent bonding and communication",
+        "parent_thesis": "Computational Theory of Mind - The human mind functions as an information processing system",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Social Science",
+        "domain_partition": "Neurodiversity & Cognitive Pluralism",
+        "thesis_statement": "Neuro-Cosmopolitanism - Society reaches its highest potential when it actively cultivates and integrates a multitude of distinct cognitive styles",
+        "parent_thesis": "Computational Theory of Mind - The human mind functions as an information processing system",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Social Science",
+        "domain_partition": "Neurodiversity & Cognitive Pluralism",
+        "thesis_statement": "Nothing About Us Without Us - Policy, research, and design impacting neurodivergent people must be directly led by neurodivergent people",
+        "parent_thesis": "Computational Theory of Mind - The human mind functions as an information processing system",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    }
+]

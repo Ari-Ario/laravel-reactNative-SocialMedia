@@ -1,0 +1,20 @@
+[
+    {
+        "branch": "quantum_probability",
+        "domain_partition": "math_partition",
+        "thesis_statement": "Probability Amplitude Axiom: Quantum states are represented by complex probability amplitudes whose squared modulus determines the observable probability",
+        "parent_thesis": "Kolmogorov Axiom 3: Probability of countable disjoint events is the sum of their probabilities",
+        "formal_proof": "Let \u03c8 be a complex-valued probability amplitude. Born's Rule dictates that the probability density P(x) = |\u03c8(x)|\u00b2 = \u03c8*(x)\u03c8(x). This directly extends classical Kolmogorov probability to non-commuting algebraic structures.",
+        "context_description": "This axiom is the mathematical bedrock of quantum mechanics, defining how we calculate the likelihood of subatomic events before they happen.",
+        "ast_signature": "8eb172961bc00354574a4b129a26a2cbd7de1c5d1d5956c6dfe09b525aaf5b65"
+    },
+    {
+        "branch": "quantum_probability",
+        "domain_partition": "math_partition",
+        "thesis_statement": "Gleason's Theorem in Quantum Foundations",
+        "parent_thesis": "Probability Amplitude Axiom: Quantum states are represented by complex probability amplitudes whose squared modulus determines the observable probability",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Gleason's Theorem: Proves that Born's probability rule is uniquely and mathematically determined by the geometric structure of Hilbert spaces.",
+        "ast_signature": "203a96f35bacecfec179ac5f5f9c62d3c6529e1ce8c0b5df98ed1f6c5fd84d61"
+    }
+]

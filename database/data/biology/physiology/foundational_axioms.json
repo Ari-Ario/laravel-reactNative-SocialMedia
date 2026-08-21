@@ -1,0 +1,63 @@
+[
+    {
+        "branch": "physiology",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Homeostasis negative feedback loop",
+        "parent_thesis": "Michaelis-Menten Kinetics: Describes the rate of enzymatic reactions by relating reaction rate v to substrate concentration [S]",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "3bbdde406a25a5fb7ffce9afb7d95806bd79ae3e075e4852222a61ef9f3788be"
+    },
+    {
+        "branch": "physiology",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Action potential depolarization",
+        "parent_thesis": "Michaelis-Menten Kinetics: Describes the rate of enzymatic reactions by relating reaction rate v to substrate concentration [S]",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "f755835e156a77474e55f97ac7a6c62ff514f5d8e15ef4f9cd1ef12a9defaac1"
+    },
+    {
+        "branch": "physiology",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Starling law of the heart",
+        "parent_thesis": "Michaelis-Menten Kinetics: Describes the rate of enzymatic reactions by relating reaction rate v to substrate concentration [S]",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "b3fc5781dc64be2a24fbe6a52f1520c2980aca8b0be40b3666c84e2792a18363"
+    },
+    {
+        "branch": "physiology",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Bohr effect oxygen affinity",
+        "parent_thesis": "Michaelis-Menten Kinetics: Describes the rate of enzymatic reactions by relating reaction rate v to substrate concentration [S]",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "bed81a9356b10b4650c8e80ff555550210559f64f141a50442208b27903e2146"
+    },
+    {
+        "branch": "physiology",
+        "domain_partition": "biology_partition",
+        "thesis_statement": "Homeostasis Axiom: Biological systems maintain stability while adjusting to conditions that are optimal for survival",
+        "parent_thesis": "Cellular Respiration Axiom: Cells extract energy from organic molecules via metabolic pathways (e.g., Glycolysis, Krebs cycle) to produce ATP",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "bece1fcd778bb2b8e08b1aff2b99d0ee5ea2cbdd324e96fba72682f8a95659db"
+    },
+    {
+        "branch": "physiology",
+        "domain_partition": "biology_partition",
+        "thesis_statement": "Frank-Starling Law of the Heart: The stroke volume of the heart increases in response to an increase in the volume of blood filling the heart (end-diastolic volume) prior to contraction",
+        "parent_thesis": "Homeostasis Axiom: Biological systems maintain stability while adjusting to conditions that are optimal for survival",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Formulated by Otto Frank and Ernest Starling, showing that cardiac muscle stretch directly increases contractility strength, stabilizing cardiac output."
+    },
+    {
+        "branch": "physiology",
+        "domain_partition": "biology_partition",
+        "thesis_statement": "Bohr Effect: Hemoglobin's oxygen binding affinity is inversely related to both acidity and the concentration of carbon dioxide",
+        "parent_thesis": "Homeostasis Axiom: Biological systems maintain stability while adjusting to conditions that are optimal for survival",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Discovered by Christian Bohr, describing how metabolic byproducts (CO2 and H+ ions) promote oxygen release in active tissues."
+    }
+]

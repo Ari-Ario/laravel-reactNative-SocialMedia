@@ -93,6 +93,9 @@ export const MagicEventModal: React.FC<MagicEventModalProps> = ({ visible, event
   };
 
   const getEventDescription = (type: string, data: any) => {
+    if (data?.deduced_insight) {
+      return data.deduced_insight;
+    }
     // Fallback if no specific translation
     const defaultDesc = t('magic_event_generic_desc');
     return t(`magic_event_${type}_desc`, { defaultValue: defaultDesc });
@@ -138,13 +141,27 @@ export const MagicEventModal: React.FC<MagicEventModalProps> = ({ visible, event
                 {getEventDescription(event.event_type, event.event_data)}
               </Text>
 
-              {event.event_data && Object.keys(event.event_data).length > 0 && (
+              {event.event_data && (
                 <View style={styles.detailsBox}>
-                  {Object.entries(event.event_data).map(([key, value]) => (
-                    <View key={key} style={styles.detailRow}>
-                      <Text style={styles.detailKey}>{key.replace(/_/g, ' ')}:</Text>
-                      <Text style={styles.detailValue}>{String(value)}</Text>
+                  {event.event_data.pure_knowledge && (
+                    <View style={styles.detailRow}>
+                      <Text style={styles.detailKey}>Pure Knowledge:</Text>
+                      <Text style={[styles.detailValue, { fontStyle: 'italic', color: '#FFF3E0' }]}>{event.event_data.pure_knowledge}</Text>
                     </View>
+                  )}
+                  {event.event_data.confidence !== undefined && (
+                    <View style={styles.detailRow}>
+                      <Text style={styles.detailKey}>Confidence:</Text>
+                      <Text style={styles.detailValue}>{Math.round(event.event_data.confidence * 100)}%</Text>
+                    </View>
+                  )}
+                  {Object.entries(event.event_data)
+                    .filter(([key]) => key !== 'deduced_insight' && key !== 'pure_knowledge' && key !== 'confidence')
+                    .map(([key, value]) => (
+                      <View key={key} style={styles.detailRow}>
+                        <Text style={styles.detailKey}>{key.replace(/_/g, ' ')}:</Text>
+                        <Text style={styles.detailValue}>{String(value)}</Text>
+                      </View>
                   ))}
                 </View>
               )}

@@ -12,14 +12,18 @@ class UsersTableSeeder extends Seeder
      */
     public function run(): void
     {
-        // Create 10 random users
-        User::factory(10)->create();
+        // Create 10 random users if table is empty
+        if (User::count() === 0) {
+            User::factory(10)->create();
+        }
 
-        // Create a specific test/admin user
-        User::factory()->create([
-            'name' => 'Test User',
-            'username' => 'testuser',
-            'email' => 'test@example.com',
-        ]);
+        // Create a specific test/admin user only if they do not exist
+        if (!User::where('username', 'testuser')->exists()) {
+            User::factory()->create([
+                'name' => 'Test User',
+                'username' => 'testuser',
+                'email' => 'test@example.com',
+            ]);
+        }
     }
 }

@@ -1,0 +1,44 @@
+[
+    {
+        "branch": "artificial_intelligence",
+        "domain_partition": "engineering_partition",
+        "thesis_statement": "Connectionism (Artificial Neural Networks): Macroscopic cognitive processes emerge from interconnected networks of simple units with modifiable weighted links",
+        "parent_thesis": "Hebbian Learning Axiom: Synaptic efficacy increases when presynaptic and postsynaptic neurons fire simultaneously (Neurons that fire together, wire together)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "04c248e13620559095666292c3c770a0e89c765ab9009091a6775e92f8095cd0"
+    },
+    {
+        "branch": "artificial_intelligence",
+        "domain_partition": "engineering_partition",
+        "thesis_statement": "Backpropagation Algorithm: Network weights are iteratively updated to minimize a loss function by calculating the gradient via the chain rule of calculus",
+        "parent_thesis": "Connectionism (Artificial Neural Networks): Macroscopic cognitive processes emerge from interconnected networks of simple units with modifiable weighted links",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "69bad48183846163b8789982451ed3e496c2e95e57b922bfed27ded0730592d0"
+    },
+    {
+        "branch": "artificial_intelligence",
+        "domain_partition": "engineering_partition",
+        "thesis_statement": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function",
+        "parent_thesis": "Connectionism (Artificial Neural Networks): Macroscopic cognitive processes emerge from interconnected networks of simple units with modifiable weighted links",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Formulated by George Cybenko and Kurt Hornik, establishing the mathematical expressive power of neural networks with non-linear activation functions."
+    },
+    {
+        "branch": "artificial_intelligence",
+        "domain_partition": "engineering_partition",
+        "thesis_statement": "No Free Lunch Theorem for Machine Learning: Any two optimization algorithms perform equally well when averaged over all possible objective functions",
+        "parent_thesis": "Kolmogorov Axiom 3: Probability of countable disjoint events is the sum of their probabilities",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Formulated by Wolpert and Macready, showing that no single machine learning algorithm outperforms all others when averaged over all possible data distributions."
+    },
+    {
+        "branch": "artificial_intelligence",
+        "domain_partition": "engineering_partition",
+        "thesis_statement": "Probably Approximately Correct (PAC) Learning Axiom: A concept class is PAC-learnable if a learner can select a hypothesis with low error with high probability using a polynomial number of samples",
+        "parent_thesis": "Kolmogorov Axiom 3: Probability of countable disjoint events is the sum of their probabilities",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Introduced by Leslie Valiant, establishing a mathematical framework for analyzing the complexity and feasibility of machine learning algorithms."
+    }
+]

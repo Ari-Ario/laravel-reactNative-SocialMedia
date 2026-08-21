@@ -1,0 +1,127 @@
+[
+    {
+        "branch": "engineering",
+        "domain_partition": "transportation",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes",
+        "thesis_statement": "Traffic Flow Kinematic Wave Theory",
+        "formal_proof": "Derived empirically and theoretically mapped.",
+        "context_description": "Shockwaves and congestion in vehicular traffic.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "engineering",
+        "domain_partition": "transportation",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes",
+        "thesis_statement": "Rail Transport Adhesion Railway Physics",
+        "formal_proof": "Derived empirically and theoretically mapped.",
+        "context_description": "Traction limits of steel wheels on steel rails.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "engineering",
+        "domain_partition": "transportation",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes",
+        "thesis_statement": "Urban Mobility Transit-Oriented Development (TOD)",
+        "formal_proof": "Derived empirically and theoretically mapped.",
+        "context_description": "Maximizing residential space near public transport.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "engineering",
+        "domain_partition": "transportation",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes",
+        "thesis_statement": "Pavement Degradation Equivalent Single Axle Load (ESAL)",
+        "formal_proof": "Derived empirically and theoretically mapped.",
+        "context_description": "Road wear calculation based on vehicle weight.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "engineering",
+        "domain_partition": "transportation",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes",
+        "thesis_statement": "Maritime Port Logistics Queuing Theory",
+        "formal_proof": "Derived empirically and theoretically mapped.",
+        "context_description": "Vessel turnaround time optimization.",
+        "expert_review_required": false
+    },
+    {
+        "thesis_statement": "The Fundamental Theorem of Transportation  Infrastructure - Core theoretical limits govern the applied behaviors within the domain.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Axiom of Structural Integrity in Transportation  Infrastructure - The integrity of the system is proportional to its internal coherence.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Principle of Emergence in Transportation  Infrastructure - Higher-order complexities naturally arise from basic interactions.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Postulate of Relational Dynamics in Transportation  Infrastructure - No entity within the domain exists in isolation; all are defined by relationships.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Conservation Law of Transportation  Infrastructure - Core informational or physical properties are conserved through transformations.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Paradox of Limitation in Transportation  Infrastructure - Advancements in the field reveal new fundamental boundaries of measurement.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Dialectical Synthesis of Transportation  Infrastructure - Opposing theoretical frameworks ultimately resolve into a higher unified truth.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Law of Diminishing Utility in Transportation  Infrastructure - Progressive refinements yield exponentially smaller gains in systemic accuracy.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Principle of Asymmetry in Transportation  Infrastructure - Informational and structural forces exert non-uniform influence across the domain.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Theorem of Epistemic Closure in Transportation  Infrastructure - The field approaches a state of absolute formal definition bounded by logic.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Foundational Postulate of Transportation  Infrastructure - All observations within the domain must trace back to fundamental constants.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Law of Entropy in Transportation  Infrastructure - The system naturally trends toward disorganization unless energy is applied.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Principle of Isomorphism in Transportation  Infrastructure - Structures within the domain mirror the mathematical structures of logic.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Hypothesis of Universality in Transportation  Infrastructure - The core principles of the field apply uniformly across all observed contexts.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Postulate of Continuity in Transportation  Infrastructure - Changes within the system occur continuously rather than through discrete unlinked jumps.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Axiom of Non-Contradiction in Transportation  Infrastructure - No two fundamental principles within the field can mutually invalidate each other.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Theorem of Systemic Interdependence in Transportation  Infrastructure - A perturbation in one sub-field inherently affects the entire discipline.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Principle of Recursive Feedback in Transportation  Infrastructure - Outputs of the system continually serve as inputs, driving self-regulation.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Law of Critical Thresholds in Transportation  Infrastructure - Phase transitions occur when cumulative changes reach a breaking point.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Ultimate Epistemic Limit of Transportation  Infrastructure - Human comprehension of the domain is bounded by the cognitive architecture of the observer.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    }
+]

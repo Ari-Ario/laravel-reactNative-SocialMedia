@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
@@ -6,10 +6,10 @@ import { MotiView } from 'moti';
 import * as Haptics from 'expo-haptics';
 import { createTextShadow } from '@/utils/styles';
 import { GestureDetector, Gesture } from 'react-native-gesture-handler';
+import { Platform } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
-  useSharedValue as useAnimatedSharedValue,
   runOnJS,
 } from 'react-native-reanimated';
 import { Sticker } from './StoryTypes';
@@ -27,7 +27,7 @@ interface DraggableStickerProps {
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-export const DraggableSticker: React.FC<DraggableStickerProps> = ({
+export const DraggableSticker: React.FC<DraggableStickerProps> = React.memo(({
   sticker,
   isSelected,
   stickerAnimations,
@@ -41,6 +41,22 @@ export const DraggableSticker: React.FC<DraggableStickerProps> = ({
   const translateY = useSharedValue(sticker.y);
   const scale = useSharedValue(sticker.scale || 1);
   const rotation = useSharedValue(sticker.rotation || 0);
+  // JS-thread flag: true while (or just after) a drag occurred, so the
+  // location TouchableOpacity can suppress its onPress handler.
+  const wasDragged = useRef(false);
+  const dragResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const markDragStart = () => {
+    wasDragged.current = true;
+    if (dragResetTimer.current) clearTimeout(dragResetTimer.current);
+  };
+  const markDragEnd = () => {
+    // Keep the flag true for a short window so the onPress that fires
+    // immediately after a finger-lift is still suppressed.
+    dragResetTimer.current = setTimeout(() => {
+      wasDragged.current = false;
+    }, 300);
+  };
 
   useEffect(() => {
     translateX.value = sticker.x;
@@ -55,6 +71,7 @@ export const DraggableSticker: React.FC<DraggableStickerProps> = ({
     }
     return () => {
       stickerAnimations.delete(sticker.id);
+      if (dragResetTimer.current) clearTimeout(dragResetTimer.current);
     };
   }, []);
 
@@ -64,7 +81,11 @@ export const DraggableSticker: React.FC<DraggableStickerProps> = ({
     .minDistance(5)
     .onStart(() => {
       runOnJS(onSelect)(sticker.id);
-      runOnJS(Haptics.impactAsync)(Haptics.ImpactFeedbackStyle.Light);
+      // Haptics are only available on native — skip silently on web
+      if (Platform.OS !== 'web') {
+        runOnJS(Haptics.impactAsync)(Haptics.ImpactFeedbackStyle.Light);
+      }
+      runOnJS(markDragStart)();
     })
     .onUpdate((event) => {
       translateX.value = sticker.x + event.translationX;
@@ -74,6 +95,7 @@ export const DraggableSticker: React.FC<DraggableStickerProps> = ({
       const finalX = sticker.x + event.translationX;
       const finalY = sticker.y + event.translationY;
       runOnJS(onUpdatePosition)(sticker.id, finalX, finalY);
+      runOnJS(markDragEnd)();
     });
 
   const pinchGesture = Gesture.Pinch()
@@ -148,7 +170,14 @@ export const DraggableSticker: React.FC<DraggableStickerProps> = ({
           )}
 
           {sticker.location && (
-            <TouchableOpacity onPress={() => onPressLocation?.(sticker.location)}>
+            <TouchableOpacity
+              onPress={() => {
+                // Suppress the popup if the sticker was just dragged
+                if (wasDragged.current) return;
+                onPressLocation?.(sticker.location);
+              }}
+              activeOpacity={0.8}
+            >
               <BlurView intensity={80} tint="dark" style={styles.integratedLocationSticker}>
                 <Ionicons name="location" size={14} color="#0084ff" />
                 <Text style={styles.integratedLocationStickerText}>{sticker.location.name}</Text>
@@ -180,7 +209,9 @@ export const DraggableSticker: React.FC<DraggableStickerProps> = ({
       </Animated.View>
     </GestureDetector>
   );
-};
+});
+
+DraggableSticker.displayName = 'DraggableSticker';
 
 const styles = StyleSheet.create({
   sticker: {

@@ -1,0 +1,74 @@
+[
+    {
+        "branch": "combinatorics",
+        "domain_partition": "math_partition",
+        "thesis_statement": "Ramsey's Theorem",
+        "parent_thesis": "Pigeonhole Principle",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Ramsey's Theorem: Any color partition of complete graphs contains monochromatic complete subgraphs of specified sizes.",
+        "ast_signature": "9770168651773fd7b8c62667a2fe6e18b1806382099b15a8027d4ef8c2a9c334"
+    },
+    {
+        "branch": "combinatorics",
+        "domain_partition": "math_partition",
+        "thesis_statement": "Dilworth's Theorem on Posets",
+        "parent_thesis": "Zermelo-Fraenkel sets",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Dilworth's Theorem: In any finite partially ordered set, the length of the smallest antichain partition equals the size of the largest chain.",
+        "ast_signature": "9d406b46dedc0890f8f088c0245d0484f3b4d647b457e73a811e12fa4b5b9c84"
+    },
+    {
+        "branch": "combinatorics",
+        "domain_partition": "math_partition",
+        "thesis_statement": "Hall's Marriage Theorem",
+        "parent_thesis": "Rule of Sum: If there are n choices for A and m choices for B (mutually exclusive), there are n+m total choices",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Hall's Marriage Theorem: Provides a necessary and sufficient condition to select a system of distinct representatives for finite collections of sets.",
+        "ast_signature": "856d2a4aa54552e3a230a57a61def77dc056b33ecacc13ca7e22c97d9e3db130"
+    },
+    {
+        "branch": "combinatorics",
+        "domain_partition": "math_partition",
+        "thesis_statement": "Catalan numbers recurrence",
+        "parent_thesis": "Rule of Product: If an event consists of k stages, with n_i choices at stage i, there are n_1*n_2*...*n_k choices",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Catalan Numbers Recurrence: Counts binary trees, polygon triangulations, and path configurations via algebraic recurrence relations.",
+        "ast_signature": "9020d68114b03007f82aa73fda002d4e1bcdd1698c8addd8d2270462ec2cfa0c"
+    },
+    {
+        "branch": "combinatorics",
+        "domain_partition": "math_partition",
+        "thesis_statement": "Four Color Theorem",
+        "parent_thesis": "Graph theory Eulerian paths",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Four Color Theorem: States that any separation of a plane into contiguous regions can be colored using at most four colors without adjacent regions sharing a color.",
+        "ast_signature": "5a3ef58b625c8a83e72afd8a5507cf95f341b4ffd5b152a1adb7d610e1709d9d"
+    },
+    {
+        "branch": "combinatorics",
+        "domain_partition": "math_partition",
+        "thesis_statement": "Kuratowski's Planar Graph Theorem",
+        "parent_thesis": "Graph theory Eulerian paths",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Kuratowski's Theorem: Characterizes planar graphs by showing a finite graph is planar if and only if it does not contain a subgraph homeomorphic to K_5 or K_{3,3}.",
+        "ast_signature": "33f53d86b97cd14bd2e0766e7c7d6551b7680f23d062f39738a2b51438f32091"
+    },
+    {
+        "branch": "combinatorics",
+        "domain_partition": "math_partition",
+        "thesis_statement": "Sperner's Lemma (Triangulations and colored vertices containing a complete simplex)",
+        "parent_thesis": "Rule of Sum: If there are n choices for A and m choices for B (mutually exclusive), there are n+m total choices",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "A combinatorial analog of the Brouwer fixed-point theorem, stating that any colored triangulation of a simplex contains a complete simplex.",
+        "ast_signature": "2690cf6ca18b684dee01e4e603a98c970cd28213e285ba849fae2ce1accd8213"
+    },
+    {
+        "branch": "combinatorics",
+        "domain_partition": "math_partition",
+        "thesis_statement": "Szemer\u00e9di's Regularity Lemma",
+        "parent_thesis": "Ramsey's Theorem",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "States that every sufficiently large graph can be partitioned into a small number of random-like parts, forming a cornerstone of modern graph theory.",
+        "ast_signature": "033bbe1312d9a1496c3e1a25b1d3c6a65ca0a751eeac91e1363f42a31d9342e4"
+    }
+]

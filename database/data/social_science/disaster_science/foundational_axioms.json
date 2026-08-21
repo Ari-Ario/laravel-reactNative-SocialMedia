@@ -1,0 +1,117 @@
+[
+    {
+        "thesis_statement": "Swiss Cheese Model of Systemic Failures - Complex accidents occur only when multiple independent defensive layers simultaneously fail, aligning active failures and latent conditions",
+        "parent_thesis": "1: Being (True)",
+        "branch": "social_science",
+        "domain_partition": "disaster_science",
+        "context_description": "James Reason's model showing how alignment of defensive breaches across multiple systems causes catastrophic systemic accidents."
+    },
+    {
+        "thesis_statement": "Disaster Risk Equation - Systemic risk is directly proportional to hazard likelihood and population vulnerability, scaled by adaptive resilience capacity",
+        "parent_thesis": "Peano axioms",
+        "branch": "social_science",
+        "domain_partition": "disaster_science",
+        "context_description": "The mathematical risk formula where Risk = (Hazard x Vulnerability) / Capacity, establishing indices for social and environmental vulnerability."
+    },
+    {
+        "thesis_statement": "Turner's Organizational Incubation of Disasters - Disasters accumulate undetected during a long incubation period because warning signals are misinterpreted or ignored due to institutional bias",
+        "parent_thesis": "1: Being (True)",
+        "branch": "social_science",
+        "domain_partition": "disaster_science",
+        "context_description": "Barry Turner's sociological model showing that large scale failures arise from the build-up of unperceived discrepancies between reality and official beliefs."
+    },
+    {
+        "thesis_statement": "Holling's Adaptive Resilience Cycle - Socio-ecological systems undergo recurring cycles of growth, conservation, collapse, and reorganization",
+        "parent_thesis": "Darwinian Natural Selection: Organisms better adapted to their environment tend to survive and produce more offspring",
+        "branch": "social_science",
+        "domain_partition": "disaster_science",
+        "context_description": "C.S. Holling's panarchy theory modeling systemic adaptability, structural accumulation, collapse, and evolutionary reorganization phases."
+    },
+    {
+        "thesis_statement": "Emergency Mitigation Cycle - Effective disaster management requires a continuous loop of mitigation, preparedness, response, and recovery",
+        "parent_thesis": "1: Being (True)",
+        "branch": "social_science",
+        "domain_partition": "disaster_science",
+        "context_description": "The four-phase cyclic standard defining policy and operational workflows to minimize systemic exposure to disasters."
+    },
+    {
+        "thesis_statement": "The Fundamental Theorem of Disaster Science, Emergency Management  Risk Resilience - Core theoretical limits govern the applied behaviors within the domain.",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "The Axiom of Structural Integrity in Disaster Science, Emergency Management  Risk Resilience - The integrity of the system is proportional to its internal coherence.",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "The Principle of Emergence in Disaster Science, Emergency Management  Risk Resilience - Higher-order complexities naturally arise from basic interactions.",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "The Postulate of Relational Dynamics in Disaster Science, Emergency Management  Risk Resilience - No entity within the domain exists in isolation; all are defined by relationships.",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "The Conservation Law of Disaster Science, Emergency Management  Risk Resilience - Core informational or physical properties are conserved through transformations.",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "The Paradox of Limitation in Disaster Science, Emergency Management  Risk Resilience - Advancements in the field reveal new fundamental boundaries of measurement.",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "The Dialectical Synthesis of Disaster Science, Emergency Management  Risk Resilience - Opposing theoretical frameworks ultimately resolve into a higher unified truth.",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "The Law of Diminishing Utility in Disaster Science, Emergency Management  Risk Resilience - Progressive refinements yield exponentially smaller gains in systemic accuracy.",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "The Principle of Asymmetry in Disaster Science, Emergency Management  Risk Resilience - Informational and structural forces exert non-uniform influence across the domain.",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "The Theorem of Epistemic Closure in Disaster Science, Emergency Management  Risk Resilience - The field approaches a state of absolute formal definition bounded by logic.",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "The Foundational Postulate of Disaster Science, Emergency Management  Risk Resilience - All observations within the domain must trace back to fundamental constants.",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "The Law of Entropy in Disaster Science, Emergency Management  Risk Resilience - The system naturally trends toward disorganization unless energy is applied.",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "The Principle of Isomorphism in Disaster Science, Emergency Management  Risk Resilience - Structures within the domain mirror the mathematical structures of logic.",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "The Hypothesis of Universality in Disaster Science, Emergency Management  Risk Resilience - The core principles of the field apply uniformly across all observed contexts.",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "The Postulate of Continuity in Disaster Science, Emergency Management  Risk Resilience - Changes within the system occur continuously rather than through discrete unlinked jumps.",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "The Axiom of Non-Contradiction in Disaster Science, Emergency Management  Risk Resilience - No two fundamental principles within the field can mutually invalidate each other.",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "The Theorem of Systemic Interdependence in Disaster Science, Emergency Management  Risk Resilience - A perturbation in one sub-field inherently affects the entire discipline.",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "The Principle of Recursive Feedback in Disaster Science, Emergency Management  Risk Resilience - Outputs of the system continually serve as inputs, driving self-regulation.",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "The Law of Critical Thresholds in Disaster Science, Emergency Management  Risk Resilience - Phase transitions occur when cumulative changes reach a breaking point.",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "The Ultimate Epistemic Limit of Disaster Science, Emergency Management  Risk Resilience - Human comprehension of the domain is bounded by the cognitive architecture of the observer.",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    }
+]

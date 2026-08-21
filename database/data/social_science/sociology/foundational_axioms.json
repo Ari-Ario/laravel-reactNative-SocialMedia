@@ -1,0 +1,110 @@
+[
+    {
+        "branch": "sociology",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Marx dialectical materialism",
+        "parent_thesis": "Historical Materialism Axiom: Material and economic conditions fundamentally determine the organization of society and its historical development",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "4d936fd81c9557b1eb34925137c630133441bde7ccacd9fe7fd9b59876162439"
+    },
+    {
+        "branch": "sociology",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Weber iron cage rationality",
+        "parent_thesis": "State Monopoly on Violence (Weber): The state is a human community that successfully claims the monopoly of the legitimate use of physical force within a given territory",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "83ec59f6c4e2f865bf8834f6347a157f56d966bea2e759b569071ab0b9cdbb75"
+    },
+    {
+        "branch": "sociology",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Durkheim social facts and anomie",
+        "parent_thesis": "Tribal Cohesion (Dunbar's Axiom): Stable social group size is constrained to roughly 150 members due to neocortical limits",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "aec989e51fce3cfb246ccceff3f4cfb34fcfd0f4f3e2791e28245725b64ec499"
+    },
+    {
+        "branch": "sociology",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Social stratification inequality",
+        "parent_thesis": "Social Stratification Axiom: Societies categorize their people into socioeconomic strata based on occupation, income, wealth, and power",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "c5d8b7399e30b8754b1366a7a1280203c41da816ff304e5cadea8eeb769da290"
+    },
+    {
+        "branch": "sociology",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Structural functionalism",
+        "parent_thesis": "Homeostasis Axiom: Biological systems maintain stability while adjusting to conditions that are optimal for survival",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "e21f27717986c8d0ec54dbf6f96d6d152fc07b91c68e561973628e2d43a70e52"
+    },
+    {
+        "branch": "sociology",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Conflict theory",
+        "parent_thesis": "Historical Materialism Axiom: Material and economic conditions fundamentally determine the organization of society and its historical development",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "374d16e17cf64aa2bcec70c053eaeb5725f6189648c8b7279b1c59dcd1833cfc"
+    },
+    {
+        "branch": "sociology",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Symbolic interactionism",
+        "parent_thesis": "Cognitive Schema Theory: The mind organizes knowledge into units called schemas to process incoming information efficiently",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "2c4acb45ae6433e19381559cac1b6a0f8dc4c73709c3c8c30a62835d41e3cb0b"
+    },
+    {
+        "branch": "sociology",
+        "domain_partition": "social_partition",
+        "thesis_statement": "Social Stratification Axiom: Societies categorize their people into socioeconomic strata based on occupation, income, wealth, and power",
+        "parent_thesis": "Darwinian Natural Selection: Organisms better adapted to their environment tend to survive and produce more offspring",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "5a7c8c1c2510b0c912a59b94bc329eba0ce03f354e54d9558f303df394bcf546"
+    },
+    {
+        "branch": "sociology",
+        "domain_partition": "social_partition",
+        "thesis_statement": "Social Exchange Theory Axiom: Human social interactions are a cost-benefit analysis designed to maximize relational utility",
+        "parent_thesis": "Pareto Efficiency Axiom: An allocation is Pareto efficient if no individual can be made better off without making someone else worse off",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "3fdaee8bacba3265fbf8aea7dc485e2db60fcd3b228d1526e1ceb6b4d246e5e6"
+    },
+    {
+        "branch": "sociology",
+        "domain_partition": "social_partition",
+        "thesis_statement": "Tribal Cohesion (Dunbar's Axiom): Stable social group size is constrained to roughly 150 members due to neocortical limits",
+        "parent_thesis": "Kin Selection (Hamilton's Rule): rB > C (Genetic relatedness times benefit must exceed cost for altruism to evolve)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "75464bd7546c146f2516f3341503c98a919e059db6722ec45acb81deda72aa96"
+    },
+    {
+        "branch": "sociology",
+        "domain_partition": "social_science",
+        "thesis_statement": "Environmental Determinism and Cultural Adaptation",
+        "parent_thesis": "Competitive Exclusion Principle (Gause's Law)",
+        "formal_proof": "Societal superstructures (S) are bounded variables influenced heavily by geographic, meteorological, and ecological base parameters (E). Adaptation acts as the survival function maximizing utility against E.",
+        "context_description": "Human societies, cultures, and economic systems are fundamentally shaped by the physical environment and the ecological resources available to them.",
+        "ast_signature": "4d6d8aec9b892a7e9b5535fa0de45e22dae75e62bade66bc65a7d3b9b7261de8"
+    },
+    {
+        "branch": "sociology",
+        "domain_partition": "social_science",
+        "thesis_statement": "Tragedy of the Commons (Resource Depletion)",
+        "parent_thesis": "Lotka-Volterra Predator-Prey Equations",
+        "formal_proof": "In a shared-resource system, individual utility maximization (rational choice) leads to overall resource depletion, breaking the Lotka-Volterra equilibrium and forcing rapid population collapse.",
+        "context_description": "When individuals act strictly in their own self-interest by consuming a shared public resource, they ultimately deplete it, leading to a collapse that hurts everyone.",
+        "ast_signature": "fbdfc7a866b7843ad1779b62fe1fa12de17c3e3c0ae071d788259b86dd200739"
+    }
+]

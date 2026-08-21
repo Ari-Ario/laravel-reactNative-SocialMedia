@@ -1,0 +1,222 @@
+[
+    {
+        "thesis_statement": "Emergence - Complex systems exhibit properties that are not predictable from the properties of their isolated parts",
+        "parent_thesis": "1: Being (True)"
+    },
+    {
+        "thesis_statement": "Cybernetics (Feedback Loops) - Systems regulate themselves through information feedback",
+        "parent_thesis": "1: Being (True)"
+    },
+    {
+        "thesis_statement": "Chaos Theory (Butterfly Effect) - Small differences in initial conditions yield widely diverging outcomes for nonlinear dynamical systems",
+        "parent_thesis": "1: Being (True)"
+    },
+    {
+        "thesis_statement": "Self-Organized Criticality - Classes of dynamical systems have a critical point as an attractor",
+        "parent_thesis": "1: Being (True)"
+    },
+    {
+        "thesis_statement": "Scale-Free Networks - Many empirical complex networks have a degree distribution that follows a power law",
+        "parent_thesis": "1: Being (True)"
+    },
+    {
+        "thesis_statement": "Principle of Systems theory - A fundamental concept in the study of Systems theory",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "Principle of Glossary of systems theory - A fundamental concept in the study of Systems theory",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "Principle of List of types of systems theory - A fundamental concept in the study of Systems theory",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "Principle of Active and passive transformation - A fundamental concept in the study of Systems theory",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "Principle of Activity cycle diagram - A fundamental concept in the study of Systems theory",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "Principle of Allopoiesis - A fundamental concept in the study of Systems theory",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "Principle of Anticausal system - A fundamental concept in the study of Systems theory",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "Principle of Antifragility - A fundamental concept in the study of Systems theory",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "Principle of Autopoiesis - A fundamental concept in the study of Systems theory",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "Principle of Behavioral modeling - A fundamental concept in the study of Systems theory",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "Principle of Biomatrix systems theory - A fundamental concept in the study of Systems theory",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "Principle of Bistritz stability criterion - A fundamental concept in the study of Systems theory",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "Principle of Black box - A fundamental concept in the study of Systems theory",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "Principle of Black box model of power converter - A fundamental concept in the study of Systems theory",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "Principle of Boundary critique - A fundamental concept in the study of Systems theory",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "Principle of Brittle system - A fundamental concept in the study of Systems theory",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "Principle of Campbell diagram - A fundamental concept in the study of Systems theory",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "Principle of Catastrophe theory - A fundamental concept in the study of Systems theory",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "Principle of Causal system - A fundamental concept in the study of Systems theory",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "Principle of Cellular automaton - A fundamental concept in the study of Systems theory",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "Principle of Cellular organizational structure - A fundamental concept in the study of Systems theory",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "Principle of Centralisation - A fundamental concept in the study of Systems theory",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "Principle of Closed system - A fundamental concept in the study of Systems theory",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "Principle of Comparison of system dynamics software - A fundamental concept in the study of Systems theory",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "Principle of Conatus - A fundamental concept in the study of Systems theory",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "Principle of Constructivism (philosophy of science) - A fundamental concept in the study of Systems theory",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "Principle of Control system - A fundamental concept in the study of Systems theory",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "Principle of Credibility thesis - A fundamental concept in the study of Systems theory",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "Principle of Critical mass (sociodynamics) - A fundamental concept in the study of Systems theory",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "Principle of Critical systems thinking - A fundamental concept in the study of Systems theory",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "Principle of Critical transition - A fundamental concept in the study of Systems theory",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "Principle of Cross Gramian - A fundamental concept in the study of Systems theory",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "Principle of Cyber-physical system - A fundamental concept in the study of Systems theory",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "Principle of Decentralised system - A fundamental concept in the study of Systems theory",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "Principle of Design structure matrix - A fundamental concept in the study of Systems theory",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "Principle of Developmental systems theory - A fundamental concept in the study of Systems theory",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "Principle of Dissipative soliton - A fundamental concept in the study of Systems theory",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "Principle of Dissipative system - A fundamental concept in the study of Systems theory",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "Principle of DSRP - A fundamental concept in the study of Systems theory",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "Principle of Dualistic Petri nets - A fundamental concept in the study of Systems theory",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "Principle of Dynamical structure function - A fundamental concept in the study of Systems theory",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "Principle of Dynamical system - A fundamental concept in the study of Systems theory",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "Principle of Dynaxibility - A fundamental concept in the study of Systems theory",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "Principle of Dynaxity - A fundamental concept in the study of Systems theory",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "Principle of Ecological systems theory - A fundamental concept in the study of Systems theory",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "Principle of Systems ecology - A fundamental concept in the study of Systems theory",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "Principle of Economy (linguistics) - A fundamental concept in the study of Systems theory",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "Principle of Eigensystem realization algorithm - A fundamental concept in the study of Systems theory",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "Principle of Emergy - A fundamental concept in the study of Systems theory",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "Principle of Energy modeling - A fundamental concept in the study of Systems theory",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    }
+]

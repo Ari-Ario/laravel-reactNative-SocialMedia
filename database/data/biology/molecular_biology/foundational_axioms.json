@@ -1,0 +1,11 @@
+[
+    {
+        "branch": "molecular_biology",
+        "domain_partition": "biology_partition",
+        "thesis_statement": "Thermodynamic Protein Folding Axiom: Amino acid sequences autonomously fold into the lowest-energy 3D conformations (Anfinsen's dogma)",
+        "parent_thesis": "Molecular Orbital Theory Axiom: Atomic orbitals combine to form molecular orbitals governed by the Schr\u00f6dinger equation, dictating chemical bonding",
+        "formal_proof": "Gibbs Free Energy \u0394G = \u0394H - T\u0394S. A protein chain achieves its native state when \u0394G is minimized. The enthalpy (\u0394H) is determined by molecular orbital interactions (hydrogen bonds, van der Waals forces) overcoming the loss of conformational entropy (-T\u0394S).",
+        "context_description": "Proteins are the machines of biology. This axiom proves that they fold into their specific, functional 3D shapes purely because of the physical laws of energy minimization.",
+        "ast_signature": "4584f08ef4238a4e3e2ce70e0b11dec095e981b8e233fd3fef4b94e8ad08a2a5"
+    }
+]

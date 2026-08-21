@@ -1,0 +1,58 @@
+[
+    {
+        "branch": "stoichiometry",
+        "domain_partition": "chemistry_partition",
+        "thesis_statement": "Law of Definite Proportions: A chemical compound always contains exactly the same proportion of elements by mass",
+        "parent_thesis": "Conservation of Mass: Matter cannot be created or destroyed in an isolated system (Non-relativistic limit)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine."
+    },
+    {
+        "branch": "stoichiometry",
+        "domain_partition": "chemistry_partition",
+        "thesis_statement": "Law of Multiple Proportions: If two elements form more than one compound, the mass ratios of the second element combine with a fixed mass of the first in small whole numbers",
+        "parent_thesis": "Law of Definite Proportions: A chemical compound always contains exactly the same proportion of elements by mass",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine."
+    },
+    {
+        "branch": "stoichiometry",
+        "domain_partition": "chemistry_partition",
+        "thesis_statement": "Mole Concept & Avogadro's Number: One mole of a substance contains 6.02214076\\u00d710^23 elementary entities",
+        "parent_thesis": "Law of Definite Proportions: A chemical compound always contains exactly the same proportion of elements by mass",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine."
+    },
+    {
+        "branch": "stoichiometry",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Lavoisier mass conservation",
+        "parent_thesis": "First law of thermodynamics energy conservation",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine."
+    },
+    {
+        "branch": "stoichiometry",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Proust law of definite proportions",
+        "parent_thesis": "First law of thermodynamics energy conservation",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine."
+    },
+    {
+        "branch": "stoichiometry",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Dalton law of multiple proportions",
+        "parent_thesis": "First law of thermodynamics energy conservation",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine."
+    },
+    {
+        "branch": "stoichiometry",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Avogadro constant",
+        "parent_thesis": "First law of thermodynamics energy conservation",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine."
+    }
+]

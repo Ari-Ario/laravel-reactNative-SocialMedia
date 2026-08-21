@@ -1,0 +1,202 @@
+[
+    {
+        "thesis_statement": "SAID Principle (Specific Adaptation to Imposed Demands) - The human body adapts specifically to the type of demand placed on it",
+        "parent_thesis": "Natural selection survival fitness"
+    },
+    {
+        "thesis_statement": "Principle of Progressive Overload - Tissues must be exposed to a stimulus greater than they are accustomed to in order to improve function",
+        "parent_thesis": "First law of thermodynamics energy conservation"
+    },
+    {
+        "thesis_statement": "Henneman's Size Principle - Motor units are recruited in an orderly sequence from smallest to largest according to load",
+        "parent_thesis": "Natural selection survival fitness"
+    },
+    {
+        "thesis_statement": "Principle of Reversibility - Physiological adaptations gained by exercise are lost when the training stimulus is removed",
+        "parent_thesis": "First law of thermodynamics energy conservation"
+    },
+    {
+        "thesis_statement": "Biomechanical Law of Levers - Bones act as levers, joints as fulcrums, and muscles provide force to move resistance",
+        "parent_thesis": "Newton first law of motion"
+    },
+    {
+        "thesis_statement": "Sliding Filament Theory - Muscle contraction occurs via the sliding of actin over myosin filaments within the sarcomere",
+        "parent_thesis": "1: Being (True)"
+    },
+    {
+        "thesis_statement": "Wolff's Law - Bone in a healthy person or animal will adapt to the loads under which it is placed",
+        "parent_thesis": "Natural selection survival fitness"
+    },
+    {
+        "thesis_statement": "Davis's Law - Soft tissue heals according to the manner in which it is mechanically stressed",
+        "parent_thesis": "Natural selection survival fitness"
+    },
+    {
+        "thesis_statement": "Force-Velocity Curve - There is an inverse relationship between the force a muscle can generate and the velocity at which it contracts",
+        "parent_thesis": "Newton's Second Law of Motion: F = dp/dt (Force equals the time derivative of momentum)"
+    },
+    {
+        "thesis_statement": "Principle of Diminishing Returns in Adaptation - As biological systems approach their genetic potential, the rate of adaptation to stimuli exponentially decreases",
+        "parent_thesis": "Epsilon-Delta Definition of a Limit: \u2200\u03b5>0 \u2203\u03b4>0 such that 0 < |x - c| < \u03b4 \u2192 |f(x) - L| < \u03b5"
+    },
+    {
+        "thesis_statement": "Principle of Sports science - A fundamental concept in the study of Sports science",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "Principle of AISTS - A fundamental concept in the study of Sports science",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "Principle of Biomechanics of baseball pitching - A fundamental concept in the study of Sports science",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "Principle of Computer science in sport - A fundamental concept in the study of Sports science",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "Principle of Confederation of African Esports - A fundamental concept in the study of Sports science",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "Principle of Diving physics - A fundamental concept in the study of Sports science",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "Principle of ESPRIT project - A fundamental concept in the study of Sports science",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "Principle of Ethnosport - A fundamental concept in the study of Sports science",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "Principle of European College of Sport Science - A fundamental concept in the study of Sports science",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "Principle of Faculty of Sport and Tourism - A fundamental concept in the study of Sports science",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "Principle of German Sport University Cologne - A fundamental concept in the study of Sports science",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "Principle of Heuristics and sports - A fundamental concept in the study of Sports science",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "Principle of High-performance sport - A fundamental concept in the study of Sports science",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "Principle of Jumping - A fundamental concept in the study of Sports science",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "Principle of List of jumping activities - A fundamental concept in the study of Sports science",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "Principle of Match performance indicator - A fundamental concept in the study of Sports science",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "Principle of Mechanics of Oscar Pistorius's running blades - A fundamental concept in the study of Sports science",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "Principle of Mind Sports South Africa - A fundamental concept in the study of Sports science",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "Principle of MIT Sloan Sports Analytics Conference - A fundamental concept in the study of Sports science",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "Principle of Montenegrin Sports Academy - A fundamental concept in the study of Sports science",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "Principle of Movement assessment - A fundamental concept in the study of Sports science",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "Principle of Neurobiological effects of physical exercise - A fundamental concept in the study of Sports science",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "Principle of Notational analysis - A fundamental concept in the study of Sports science",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "Principle of Park effects - A fundamental concept in the study of Sports science",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "Principle of Physical education - A fundamental concept in the study of Sports science",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "Principle of Rating of perceived exertion - A fundamental concept in the study of Sports science",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "Principle of Relative age effect - A fundamental concept in the study of Sports science",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "Principle of Sabermetrics - A fundamental concept in the study of Sports science",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "Principle of Shep diagram - A fundamental concept in the study of Sports science",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "Principle of Social influences on fitness behavior - A fundamental concept in the study of Sports science",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "Principle of Sport pedagogy - A fundamental concept in the study of Sports science",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "Principle of Sport Sciences Research Institute of Iran - A fundamental concept in the study of Sports science",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "Principle of Sports biomechanics - A fundamental concept in the study of Sports science",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "Principle of Sport communication - A fundamental concept in the study of Sports science",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "Principle of Sports economics - A fundamental concept in the study of Sports science",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "Principle of Sports periodization - A fundamental concept in the study of Sports science",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "Principle of Sports rating system - A fundamental concept in the study of Sports science",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "Principle of Stoke Mandeville Stadium - A fundamental concept in the study of Sports science",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "Principle of Tanking - A fundamental concept in the study of Sports science",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "Principle of Water stop (sports) - A fundamental concept in the study of Sports science",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    }
+]

@@ -1,0 +1,62 @@
+[
+    {
+        "branch": "surgery",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Aseptic technique principles",
+        "parent_thesis": "Michaelis-Menten Kinetics: Describes the rate of enzymatic reactions by relating reaction rate v to substrate concentration [S]",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "99c87580184ecb8d50374562efe09a2188e8f1fb4bf4ef0d6aba1847fde3a820"
+    },
+    {
+        "branch": "surgery",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Wound healing phases",
+        "parent_thesis": "Michaelis-Menten Kinetics: Describes the rate of enzymatic reactions by relating reaction rate v to substrate concentration [S]",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "c825242ddefce0c0d6abfc438f7e01547522a746df9c402e928f0962dfb990fe"
+    },
+    {
+        "branch": "surgery",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Hemostasis cascade",
+        "parent_thesis": "Michaelis-Menten Kinetics: Describes the rate of enzymatic reactions by relating reaction rate v to substrate concentration [S]",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "71262f579543a712e30e6b604519e6044e80ca0520fd00eb335b22a2731d16ce"
+    },
+    {
+        "branch": "surgery",
+        "domain_partition": "biology_partition",
+        "thesis_statement": "Surgical Intervention Axiom: Mechanical disruption or reconstruction of tissues can restore systemic anatomical and physiological function",
+        "parent_thesis": "Pathological Mechanism Axiom: Disease occurs due to a structural or functional disruption of homeostasis at the cellular or systemic level",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "097ee07b1ecbd770f82f009b3b706c58345430d5bc55a54708e7c847df954401"
+    },
+    {
+        "branch": "surgery",
+        "domain_partition": "biology_partition",
+        "thesis_statement": "Aseptic Technique Axiom: Surgical site infection is prevented by maintaining a sterile field to exclude exogenous microbial contamination",
+        "parent_thesis": "Surgical Intervention Axiom: Mechanical disruption or reconstruction of tissues can restore systemic anatomical and physiological function",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "First introduced systematically by Lister and Semmelweis, establishing barrier, sterilization, and antiseptic protocols in operating environments."
+    },
+    {
+        "branch": "surgery",
+        "domain_partition": "biology_partition",
+        "thesis_statement": "Wound Healing Cascade: Tissue repair progresses sequentially through overlapping phases of hemostasis, inflammation, proliferation, and maturation",
+        "parent_thesis": "Surgical Intervention Axiom: Mechanical disruption or reconstruction of tissues can restore systemic anatomical and physiological function",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Details cellular signaling and matrix deposition (platelets, neutrophils, fibroblasts, keratinocytes, collagen synthesis) repairing tissue barriers."
+    },
+    {
+        "branch": "surgery",
+        "domain_partition": "biology_partition",
+        "thesis_statement": "Surgical Hemostasis Axiom: Mechanical or thermal intervention is required to achieve cessation of bleeding and maintain circulatory volume during surgery",
+        "parent_thesis": "Surgical Intervention Axiom: Mechanical disruption or reconstruction of tissues can restore systemic anatomical and physiological function",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Describes physical techniques (clamping, ligatures, sutures, electrocautery) supplementing physiological coagulation cascades under surgical duress."
+    }
+]

@@ -1,0 +1,122 @@
+[
+    {
+        "thesis_statement": "Time Complexity (Big O) bounds the asymptotic growth of an algorithm's runtime",
+        "parent_thesis": "Epsilon-Delta Definition of a Limit: \u2200\u03b5>0 \u2203\u03b4>0 such that 0 < |x - c| < \u03b4 \u2192 |f(x) - L| < \u03b5"
+    },
+    {
+        "thesis_statement": "P vs NP Problem - If a problem's solution can be quickly verified, can it also be quickly solved?",
+        "parent_thesis": "1: Being (True)"
+    },
+    {
+        "thesis_statement": "Turing Completeness - A system of data-manipulation rules that can simulate any Turing machine",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "Church-Turing Thesis - A function on the natural numbers is computable if and only if it is computable by a Turing machine",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "Halting Problem - It is undecidable to determine whether an arbitrary program will finish running or run forever",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "Church-Turing Thesis - A function on the natural numbers is computable by a human being following an algorithm, ignoring resource limitations, if and only if it is computable by a Turing machine",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "Halting Problem (Turing) - It is undecidable whether a given computer program and an input will eventually halt or run forever",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "Rice's Theorem - All non-trivial, semantic properties of programs are undecidable",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "Cook-Levin Theorem - The Boolean satisfiability problem (SAT) is NP-complete",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "Shannon's Source Coding Theorem - Limits the maximum data compression possible",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "Shannon-Hartley Theorem - Calculates the maximum channel capacity for a communication channel with given bandwidth and noise",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "CAP Theorem (Re-stated) - Distributed systems can only guarantee two of Consistency, Availability, Partition Tolerance",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "PAC Learning - A mathematical framework for the analysis of machine learning algorithms",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "No Free Lunch Theorem (Optimization) - All optimization algorithms perform equally well when their performance is averaged over all possible objective functions",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "Moore's Law - The number of transistors on a microchip doubles about every two years",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "Amdahl's Law - The theoretical speedup in latency of the execution of a task at fixed workload that can be expected of a system whose resources are improved",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "Gustafson's Law - Gives the theoretical speedup in latency of the execution of a task at fixed execution time that can be expected of a system whose resources are improved",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "Brooks's Law - Adding human resources to a late software project makes it later",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "Conway's Law - Organizations which design systems are constrained to produce designs which are copies of the communication structures of these organizations",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "Postel's Law (Robustness Principle) - Be conservative in what you do, be liberal in what you accept from others",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "Linus's Law - Given enough eyeballs, all bugs are shallow",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "Wirth's Law - Software is getting slower more rapidly than hardware becomes faster",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "Principle of Least Privilege - Every program and every privileged user of the system should operate using the least amount of privilege necessary to complete the job",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "Kerckhoffs's Principle - A cryptosystem should be secure even if everything about the system, except the key, is public knowledge",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "Byzantine Generals Problem - A condition of a distributed computer system where components may fail and there is imperfect information on whether a component has failed",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "The Fundamental Theorem of Deep Computer Science  Information Systems - Core theoretical limits govern the applied behaviors within the domain.",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "The Axiom of Structural Integrity in Deep Computer Science  Information Systems - The integrity of the system is proportional to its internal coherence.",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "The Principle of Emergence in Deep Computer Science  Information Systems - Higher-order complexities naturally arise from basic interactions.",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "The Postulate of Relational Dynamics in Deep Computer Science  Information Systems - No entity within the domain exists in isolation; all are defined by relationships.",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "The Conservation Law of Deep Computer Science  Information Systems - Core informational or physical properties are conserved through transformations.",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    }
+]

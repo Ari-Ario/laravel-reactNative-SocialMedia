@@ -1,0 +1,98 @@
+[
+    {
+        "thesis_statement": "Fitts's Law - The time required to rapidly move to a target area is a function of the ratio between the distance to the target and the width of the target",
+        "parent_thesis": "Newton's Second Law of Motion: F = dp/dt (Force equals the time derivative of momentum)"
+    },
+    {
+        "thesis_statement": "Hick's Law - The time it takes for a person to make a decision increases logarithmically as the number of choices increases",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "Concept of Affordances (Gibson) - Objects inherently signal to the human cognitive system how they should be interacted with",
+        "parent_thesis": "1: Being (True)"
+    },
+    {
+        "thesis_statement": "Fitts-Posner Motor Learning - Humans acquire physical skills moving from Cognitive, to Associative, to Autonomous stages",
+        "parent_thesis": "1: Being (True)"
+    },
+    {
+        "thesis_statement": "The Fundamental Theorem of Ergonomics, Human Factors  Interface Design - Core theoretical limits govern the applied behaviors within the domain.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Axiom of Structural Integrity in Ergonomics, Human Factors  Interface Design - The integrity of the system is proportional to its internal coherence.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Principle of Emergence in Ergonomics, Human Factors  Interface Design - Higher-order complexities naturally arise from basic interactions.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Postulate of Relational Dynamics in Ergonomics, Human Factors  Interface Design - No entity within the domain exists in isolation; all are defined by relationships.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Conservation Law of Ergonomics, Human Factors  Interface Design - Core informational or physical properties are conserved through transformations.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Paradox of Limitation in Ergonomics, Human Factors  Interface Design - Advancements in the field reveal new fundamental boundaries of measurement.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Dialectical Synthesis of Ergonomics, Human Factors  Interface Design - Opposing theoretical frameworks ultimately resolve into a higher unified truth.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Law of Diminishing Utility in Ergonomics, Human Factors  Interface Design - Progressive refinements yield exponentially smaller gains in systemic accuracy.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Principle of Asymmetry in Ergonomics, Human Factors  Interface Design - Informational and structural forces exert non-uniform influence across the domain.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Theorem of Epistemic Closure in Ergonomics, Human Factors  Interface Design - The field approaches a state of absolute formal definition bounded by logic.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Foundational Postulate of Ergonomics, Human Factors  Interface Design - All observations within the domain must trace back to fundamental constants.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Law of Entropy in Ergonomics, Human Factors  Interface Design - The system naturally trends toward disorganization unless energy is applied.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Principle of Isomorphism in Ergonomics, Human Factors  Interface Design - Structures within the domain mirror the mathematical structures of logic.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Hypothesis of Universality in Ergonomics, Human Factors  Interface Design - The core principles of the field apply uniformly across all observed contexts.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Postulate of Continuity in Ergonomics, Human Factors  Interface Design - Changes within the system occur continuously rather than through discrete unlinked jumps.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Axiom of Non-Contradiction in Ergonomics, Human Factors  Interface Design - No two fundamental principles within the field can mutually invalidate each other.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Theorem of Systemic Interdependence in Ergonomics, Human Factors  Interface Design - A perturbation in one sub-field inherently affects the entire discipline.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Principle of Recursive Feedback in Ergonomics, Human Factors  Interface Design - Outputs of the system continually serve as inputs, driving self-regulation.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Law of Critical Thresholds in Ergonomics, Human Factors  Interface Design - Phase transitions occur when cumulative changes reach a breaking point.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Ultimate Epistemic Limit of Ergonomics, Human Factors  Interface Design - Human comprehension of the domain is bounded by the cognitive architecture of the observer.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    }
+]

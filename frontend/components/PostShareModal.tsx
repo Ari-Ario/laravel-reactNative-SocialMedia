@@ -46,9 +46,10 @@ interface PostShareModalProps {
     context_tag?: string;
     personal_note?: string;
   };
+  idea?: any;
 }
 
-export default function PostShareModal({ visible, onClose, post, story, location, initialRecipient }: PostShareModalProps) {
+export default function PostShareModal({ visible, onClose, post, story, location, idea, initialRecipient }: PostShareModalProps) {
   const insets = useSafeAreaInsets();
   const { colors, activeScheme } = useAppTheme();
   const { t, isRTL } = useTranslation();
@@ -152,9 +153,10 @@ export default function PostShareModal({ visible, onClose, post, story, location
     try {
       const collaborationService = CollaborationService.getInstance();
       const baseUrl = getApiBaseImage();
-      const itemToShare = post || story || location;
+      const itemToShare = post || story || location || idea;
       const isStory = !!story;
       const isLocation = !!location;
+      const isIdea = !!idea;
 
       let shareUrl = '';
       let content = '';
@@ -172,6 +174,17 @@ export default function PostShareModal({ visible, onClose, post, story, location
           longitude: location.longitude,
           is_internal_share: true,
           location_url: shareUrl,
+          appended_message: additionalMessage.trim() || undefined
+        };
+      } else if (isIdea) {
+        content = idea.content;
+        type = 'ai_idea_share';
+        metadata = {
+          idea_id: idea.id,
+          idea_type: idea.type,
+          content: idea.content,
+          confidence: idea.metadata?.confidence,
+          is_internal_share: true,
           appended_message: additionalMessage.trim() || undefined
         };
       } else {
@@ -237,6 +250,7 @@ export default function PostShareModal({ visible, onClose, post, story, location
       const baseUrl = getApiBaseImage();
       const isStory = !!story;
       const isLocation = !!location;
+      const isIdea = !!idea;
 
       let shareUrl = '';
       let message = '';
@@ -246,6 +260,9 @@ export default function PostShareModal({ visible, onClose, post, story, location
         shareUrl = `https://maps.google.com/?q=${location.latitude},${location.longitude}`;
         message = `📍 *${location.name || t('share_location')}*\n${location.address || ''}\n\n🗺️ ${shareUrl}`;
         title = t('share_location');
+      } else if (isIdea) {
+        message = `${idea.content}\n\nConfidence: ${Math.round((idea.metadata?.confidence || 0) * 100)}% | Zmzir AI Insight`;
+        title = t('share_idea');
       } else {
         shareUrl = isStory
           ? `${baseUrl}/story/${story.id}`
@@ -285,10 +302,11 @@ export default function PostShareModal({ visible, onClose, post, story, location
   };
 
   const renderPreview = () => {
-    if (!post && !story && !location) return null;
+    if (!post && !story && !location && !idea) return null;
 
     const isStory = !!story;
     const isLocation = !!location;
+    const isIdea = !!idea;
     const baseUrl = getApiBaseImage();
 
     let title = '';
@@ -300,6 +318,10 @@ export default function PostShareModal({ visible, onClose, post, story, location
       title = location.name || 'Location Pin';
       subtitle = location.address || `${location.latitude?.toFixed(4)}, ${location.longitude?.toFixed(4)}`;
       typeIcon = 'location';
+    } else if (isIdea) {
+      title = t('ai_insight');
+      subtitle = idea.content;
+      typeIcon = 'sparkles';
     } else if (isStory) {
       title = story.user?.name || 'Story';
       subtitle = story.caption || 'Shared a story';
@@ -406,7 +428,7 @@ export default function PostShareModal({ visible, onClose, post, story, location
 
           <View style={[styles.header, { borderBottomColor: colors.border }]}>
             <Text style={[styles.title, { color: colors.text }]}>
-              {location ? t('share_location') : story ? t('share_story') : t('share_post')}
+              {location ? t('share_location') : story ? t('share_story') : idea ? t('share_idea') : t('share_post')}
             </Text>
             <TouchableOpacity onPress={onClose} style={styles.closeButton}>
               <Ionicons name="close" size={24} color={colors.text} />

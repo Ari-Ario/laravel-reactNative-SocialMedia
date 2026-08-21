@@ -1,0 +1,110 @@
+[
+    {
+        "branch": "calculus",
+        "domain_partition": "math_partition",
+        "thesis_statement": "Taylor's Theorem",
+        "parent_thesis": "Mean Value Theorem (\u2203c \u2208 (a,b) such that f'(c) = [f(b)-f(a)]/(b-a))",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "16b3baebb849c782bd97af34a1c127adaac5955819ae9e2447cfe57eaa42c13b"
+    },
+    {
+        "branch": "calculus",
+        "domain_partition": "math_partition",
+        "thesis_statement": "Bolzano-Weierstrass Theorem",
+        "parent_thesis": "Construction of Real Numbers (R) via Dedekind Cuts",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "853b3bb144a0751c8862d461ecd4f652f5748c79c08f2a2344b165c819da8900"
+    },
+    {
+        "branch": "calculus",
+        "domain_partition": "math_partition",
+        "thesis_statement": "Heine-Borel Theorem",
+        "parent_thesis": "Bolzano-Weierstrass Theorem",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "30c61386ee54f786dd57cf5e474c71f174b52eb0ed6e70de8157550fcd116d13"
+    },
+    {
+        "branch": "calculus",
+        "domain_partition": "math_partition",
+        "thesis_statement": "Extreme Value Theorem",
+        "parent_thesis": "Heine-Borel Theorem",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "faaa0e875516832554fc6f28c1733e8b99ff7752412c1123819591d953ca43db"
+    },
+    {
+        "branch": "calculus",
+        "domain_partition": "math_partition",
+        "thesis_statement": "Generalized Stokes' Theorem",
+        "parent_thesis": "Fundamental Theorem of Calculus Part 2 (\u222b_a^b f(x)dx = F(b) - F(a))",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "20da64ff677902f61c51012cad641a53099a72ef282358800c5436e027e60183"
+    },
+    {
+        "branch": "calculus",
+        "domain_partition": "math_partition",
+        "thesis_statement": "Definition of Lebesgue Measure and Integration",
+        "parent_thesis": "Definition of a Metric Space",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Extends the notion of integration to a larger class of functions using measure theory on sigma-algebras.",
+        "ast_signature": "7b108038a557bbbfe0a5b930c7cd44f29640c5624bc556dcee8837827bdfd5eb"
+    },
+    {
+        "branch": "calculus",
+        "domain_partition": "math_partition",
+        "thesis_statement": "Lebesgue Dominated Convergence Theorem",
+        "parent_thesis": "Definition of Lebesgue Measure and Integration",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "States that if a sequence of integrable functions converges pointwise and is dominated by an integrable function, its limit is integrable and its integrals converge.",
+        "ast_signature": "6733007315dd7bad44aedc7ea05deb0000bcb3a2a63fa4b58892fb2db5c15c2d"
+    },
+    {
+        "branch": "calculus",
+        "domain_partition": "math_partition",
+        "thesis_statement": "Radon-Nikodym Theorem",
+        "parent_thesis": "Lebesgue Dominated Convergence Theorem",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Establishes the existence of density functions for measures that are absolutely continuous with respect to another measure.",
+        "ast_signature": "3f614ae6ff2121818b4ec5ca0df818df0a614fe76b097da80f431b15b7b76f44"
+    },
+    {
+        "branch": "calculus",
+        "domain_partition": "math_partition",
+        "thesis_statement": "Baire Category Theorem",
+        "parent_thesis": "Definition of a Metric Space",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "A complete metric space cannot be written as a countable union of nowhere dense sets.",
+        "ast_signature": "2e58ce10cd4cfe7d6a73fa5db9be683ec0ef7fb27211ef8ffc229838b7810087"
+    },
+    {
+        "branch": "calculus",
+        "domain_partition": "math_partition",
+        "thesis_statement": "Stone-Weierstrass Theorem",
+        "parent_thesis": "Heine-Borel Theorem",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Generalizes the Weierstrass approximation theorem to continuous functions on compact spaces using algebras of functions.",
+        "ast_signature": "728e8ecef52018cf1fbb8cb3af6366df726c786bfebf4d4afed5148bf42cb61e"
+    },
+    {
+        "branch": "calculus",
+        "domain_partition": "math_partition",
+        "thesis_statement": "Banach Fixed-Point Theorem (Contraction Mapping Principle)",
+        "parent_thesis": "Definition of a Metric Space",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Any contraction mapping on a non-empty complete metric space has a unique fixed point.",
+        "ast_signature": "3e42adc1e0c0d5aa93e97b73ca0933c965c41cefa54784833678881f6eb3a567"
+    },
+    {
+        "branch": "calculus",
+        "domain_partition": "math_partition",
+        "thesis_statement": "Riesz-Fischer Theorem",
+        "parent_thesis": "Riesz Representation Theorem",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Asserts that the space L^2 of square-integrable functions is complete, hence a Hilbert space.",
+        "ast_signature": "07f47b4fff7aec56162f874a7dc0fe82978d2ffb5e9ce2161c0b3067a4970bda"
+    }
+]

@@ -1,0 +1,127 @@
+[
+    {
+        "branch": "biology",
+        "domain_partition": "advanced_subdisciplines",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes",
+        "thesis_statement": "Mycorrhizal Symbiotic Networks",
+        "formal_proof": "Derived empirically and theoretically mapped.",
+        "context_description": "Fungal-plant root mutualism in mycology.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "biology",
+        "domain_partition": "advanced_subdisciplines",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes",
+        "thesis_statement": "Entomological Metamorphosis Pathways",
+        "formal_proof": "Derived empirically and theoretically mapped.",
+        "context_description": "Holometabolous vs hemimetabolous development in insects.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "biology",
+        "domain_partition": "advanced_subdisciplines",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes",
+        "thesis_statement": "Phycological Photosynthetic Pigmentation",
+        "formal_proof": "Derived empirically and theoretically mapped.",
+        "context_description": "Algal light harvesting adaptations.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "biology",
+        "domain_partition": "advanced_subdisciplines",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes",
+        "thesis_statement": "Extremophile Biosignature Viability",
+        "formal_proof": "Derived empirically and theoretically mapped.",
+        "context_description": "Survival of life in extreme space or terrestrial conditions (Astrobiology).",
+        "expert_review_required": false
+    },
+    {
+        "branch": "biology",
+        "domain_partition": "advanced_subdisciplines",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes",
+        "thesis_statement": "Eusociality & Haplodiploidy Mechanism",
+        "formal_proof": "Derived empirically and theoretically mapped.",
+        "context_description": "Evolution of castes and colony behavior.",
+        "expert_review_required": false
+    },
+    {
+        "thesis_statement": "The Fundamental Theorem of Advanced Biological - Core theoretical limits govern the applied behaviors within the domain.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Axiom of Structural Integrity in Advanced Biological - The integrity of the system is proportional to its internal coherence.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Principle of Emergence in Advanced Biological - Higher-order complexities naturally arise from basic interactions.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Postulate of Relational Dynamics in Advanced Biological - No entity within the domain exists in isolation; all are defined by relationships.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Conservation Law of Advanced Biological - Core informational or physical properties are conserved through transformations.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Paradox of Limitation in Advanced Biological - Advancements in the field reveal new fundamental boundaries of measurement.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Dialectical Synthesis of Advanced Biological - Opposing theoretical frameworks ultimately resolve into a higher unified truth.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Law of Diminishing Utility in Advanced Biological - Progressive refinements yield exponentially smaller gains in systemic accuracy.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Principle of Asymmetry in Advanced Biological - Informational and structural forces exert non-uniform influence across the domain.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Theorem of Epistemic Closure in Advanced Biological - The field approaches a state of absolute formal definition bounded by logic.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Foundational Postulate of Advanced Biological - All observations within the domain must trace back to fundamental constants.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Law of Entropy in Advanced Biological - The system naturally trends toward disorganization unless energy is applied.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Principle of Isomorphism in Advanced Biological - Structures within the domain mirror the mathematical structures of logic.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Hypothesis of Universality in Advanced Biological - The core principles of the field apply uniformly across all observed contexts.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Postulate of Continuity in Advanced Biological - Changes within the system occur continuously rather than through discrete unlinked jumps.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Axiom of Non-Contradiction in Advanced Biological - No two fundamental principles within the field can mutually invalidate each other.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Theorem of Systemic Interdependence in Advanced Biological - A perturbation in one sub-field inherently affects the entire discipline.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Principle of Recursive Feedback in Advanced Biological - Outputs of the system continually serve as inputs, driving self-regulation.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Law of Critical Thresholds in Advanced Biological - Phase transitions occur when cumulative changes reach a breaking point.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Ultimate Epistemic Limit of Advanced Biological - Human comprehension of the domain is bounded by the cognitive architecture of the observer.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    }
+]

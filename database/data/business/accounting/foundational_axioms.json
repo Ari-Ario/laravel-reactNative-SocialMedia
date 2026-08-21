@@ -1,0 +1,18 @@
+[
+    {
+        "thesis_statement": "Fundamental Accounting Equation - Assets = Liabilities + Equity",
+        "parent_thesis": "1: Being (True)"
+    },
+    {
+        "thesis_statement": "Accrual Principle - Transactions are recorded in the periods in which the events occur, regardless of when cash is exchanged",
+        "parent_thesis": "Fundamental Accounting Equation - Assets = Liabilities + Equity"
+    },
+    {
+        "thesis_statement": "Going Concern Principle - Financial statements are prepared with the assumption that the business will continue operating indefinitely",
+        "parent_thesis": "Fundamental Accounting Equation - Assets = Liabilities + Equity"
+    },
+    {
+        "thesis_statement": "Matching Principle - Expenses must be matched with revenues in the period in which the revenues are earned",
+        "parent_thesis": "Fundamental Accounting Equation - Assets = Liabilities + Equity"
+    }
+]

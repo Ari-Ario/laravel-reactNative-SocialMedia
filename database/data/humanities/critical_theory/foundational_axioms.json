@@ -1,0 +1,237 @@
+[
+    {
+        "thesis_statement": "Gramscian Cultural Hegemony - The ruling class maintains dominance by projecting its own worldview as universally accepted common sense, co-opting subordinate classes",
+        "parent_thesis": "1: Being (True)",
+        "branch": "humanities",
+        "domain_partition": "critical_theory",
+        "context_description": "Antonio Gramsci's concept of hegemony, explaining how power is maintained through cultural consent rather than physical coercion alone."
+    },
+    {
+        "thesis_statement": "Said's Orientalist Discourse - Western imperial power historically constructs and represents the Eastern world as its inferior and exotic 'Other' to justify domination",
+        "parent_thesis": "1: Being (True)",
+        "branch": "humanities",
+        "domain_partition": "critical_theory",
+        "context_description": "Edward Said's critique of post-colonial power dynamics, showing how knowledge creation acts as an instrument of imperial domination."
+    },
+    {
+        "thesis_statement": "Derridean Diff\u00e9rance - Linguistic meaning is never static, but is defined by differences between signs and is infinitely deferred",
+        "parent_thesis": "1: Being (True)",
+        "branch": "humanities",
+        "domain_partition": "critical_theory",
+        "context_description": "Jacques Derrida's deconstruction tool showing that signifiers never fully align with a stable signified, destabilizing absolute textual truth."
+    },
+    {
+        "thesis_statement": "Foucault's Biopolitical Regulation - Modern sovereign power operates by monitoring, standardizing, and optimizing the biological processes of human populations",
+        "parent_thesis": "1: Being (True)",
+        "branch": "humanities",
+        "domain_partition": "critical_theory",
+        "context_description": "Michel Foucault's analysis of biopower, shifting focus from classical sovereign execution to the administrative control over bodies and biological systems."
+    },
+    {
+        "thesis_statement": "Habermasian Communicative Action - Rational social cohesion requires free, uncoerced discourse oriented toward mutual understanding rather than strategic manipulation",
+        "parent_thesis": "1: Being (True)",
+        "branch": "humanities",
+        "domain_partition": "critical_theory",
+        "context_description": "J\u00fcrgen Habermas's theory of communicative rationality, defining ideal speech situations free from power-distorted communication."
+    },
+    {
+        "thesis_statement": "Principle of Critical theory - A fundamental concept in the study of Critical theory",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Outline of critical theory - A fundamental concept in the study of Critical theory",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of 2020s critical race theory controversies - A fundamental concept in the study of Critical theory",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Adversarial Design - A fundamental concept in the study of Critical theory",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of The Aesthetic Contract - A fundamental concept in the study of Critical theory",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Aesthetic Journalism - A fundamental concept in the study of Critical theory",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Critical animal studies - A fundamental concept in the study of Critical theory",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Archetypal literary criticism - A fundamental concept in the study of Critical theory",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Arena (publishing co-operative) - A fundamental concept in the study of Critical theory",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of The arts and politics - A fundamental concept in the study of Critical theory",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Berlin Childhood around 1900 - A fundamental concept in the study of Critical theory",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Binary opposition - A fundamental concept in the study of Critical theory",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Black Sexual Politics - A fundamental concept in the study of Critical theory",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Budapest School - A fundamental concept in the study of Critical theory",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Censorship of school curricula in the United States - A fundamental concept in the study of Critical theory",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Christian privilege - A fundamental concept in the study of Critical theory",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Citationality - A fundamental concept in the study of Critical theory",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Coloniality of gender - A fundamental concept in the study of Critical theory",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Coloniality of knowledge - A fundamental concept in the study of Critical theory",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Comparative literature - A fundamental concept in the study of Critical theory",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of The Concept of Nature in Marx - A fundamental concept in the study of Critical theory",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Constellations (journal) - A fundamental concept in the study of Critical theory",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Continental philosophy - A fundamental concept in the study of Critical theory",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Crip theory - A fundamental concept in the study of Critical theory",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Critical autism studies - A fundamental concept in the study of Critical theory",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Critical cartography - A fundamental concept in the study of Critical theory",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Critical criminology - A fundamental concept in the study of Critical theory",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Critical design - A fundamental concept in the study of Critical theory",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Critical discourse analysis - A fundamental concept in the study of Critical theory",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Critical geopolitics - A fundamental concept in the study of Critical theory",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Critical historiography - A fundamental concept in the study of Critical theory",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Critical Inquiry - A fundamental concept in the study of Critical theory",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Critical international relations theory - A fundamental concept in the study of Critical theory",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Critical language awareness - A fundamental concept in the study of Critical theory",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Critical legal studies - A fundamental concept in the study of Critical theory",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Critical management studies - A fundamental concept in the study of Critical theory",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Critical medical anthropology - A fundamental concept in the study of Critical theory",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Critical pedagogy - A fundamental concept in the study of Critical theory",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Critical practice - A fundamental concept in the study of Critical theory",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Critical Psychiatry Network - A fundamental concept in the study of Critical theory",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Critical psychology - A fundamental concept in the study of Critical theory",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Critical realism (philosophy of the social sciences) - A fundamental concept in the study of Critical theory",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Critical Sociology (journal) - A fundamental concept in the study of Critical theory",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Critical technical practice - A fundamental concept in the study of Critical theory",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Critical terrorism studies - A fundamental concept in the study of Critical theory",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of List of works in critical theory - A fundamental concept in the study of Critical theory",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Critical university studies - A fundamental concept in the study of Critical theory",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Critique - A fundamental concept in the study of Critical theory",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Critique of ideology - A fundamental concept in the study of Critical theory",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of CTheory - A fundamental concept in the study of Critical theory",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    }
+]

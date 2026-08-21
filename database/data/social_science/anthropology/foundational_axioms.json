@@ -1,0 +1,65 @@
+[
+    {
+        "branch": "anthropology",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Cultural relativism",
+        "parent_thesis": "Cultural Relativism: A person's beliefs, values, and practices should be understood based on that person's own culture, rather than be judged against the criteria of another",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "50ded8b31a0c3e25fbd23915f0ae539a79ce480040b92575b28e00ff634c8145"
+    },
+    {
+        "branch": "anthropology",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Linguistic relativity Sapir-Whorf",
+        "parent_thesis": "Universal Grammar Hypothesis: The ability to learn grammar is hard-wired into the brain",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "adbbc9d54fa8a0e0d20eccb1b6861addb916fa367df753189ca5c022d8aa380f"
+    },
+    {
+        "branch": "anthropology",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Out of Africa human migration theory",
+        "parent_thesis": "Common Descent: All life on Earth is related and has descended from a common ancestor",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "5bb9072ebd0325ebce56b7c6db60f79927e412f7c548ff778118bf0fb58476cb"
+    },
+    {
+        "branch": "anthropology",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Kinship terminology systems",
+        "parent_thesis": "Kin Selection (Hamilton's Rule): rB > C (Genetic relatedness times benefit must exceed cost for altruism to evolve)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "3852f3f9fb7674de106cd8cae7b26919354c5b513539214ee88976ed98caaa6f"
+    },
+    {
+        "branch": "anthropology",
+        "domain_partition": "social_partition",
+        "thesis_statement": "Cultural Relativism: A person's beliefs, values, and practices should be understood based on that person's own culture, rather than be judged against the criteria of another",
+        "parent_thesis": "Common Descent: All life on Earth is related and has descended from a common ancestor",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "dfbee16e838e05ae61fb7e2138e68454da7c99b5f3bf17617334b42028ec51eb"
+    },
+    {
+        "branch": "anthropology",
+        "domain_partition": "social_science",
+        "thesis_statement": "Hominid Bipedalism Adaptation (Energy Efficiency)",
+        "parent_thesis": "Darwinian Natural Selection: Organisms better adapted to their environment tend to survive and produce more offspring",
+        "formal_proof": "Mathematical modeling of bipedal locomotion demonstrates a 75% reduction in caloric expenditure compared to quadrupedalism, maximizing evolutionary fitness (W) in savanna environments.",
+        "context_description": "Early human ancestors evolved to walk on two legs because it was significantly more energy-efficient for covering long distances, giving a massive survival advantage.",
+        "ast_signature": "9443ecf0d68dbd56aa6227cd6fdf789a64a8210d556c641be14f849b044e7a0b"
+    },
+    {
+        "branch": "anthropology",
+        "domain_partition": "social_science",
+        "thesis_statement": "Dunbar's Number (Cognitive Limit of Social Groups)",
+        "parent_thesis": "Cognitive Load Theory",
+        "formal_proof": "Social network size (N) correlates logarithmically with neocortical volume. When N > 150, cognitive load strictly exceeds channel capacity (Shannon-Hartley limit), causing social cohesion failure without synthetic structures.",
+        "context_description": "Humans can only maintain about 150 stable social relationships due to the physical processing limits of the brain. Larger groups require rules, laws, and institutions to survive.",
+        "ast_signature": "de73c8fcb524a7f3356e23e3ac7542adbcf394d958f2909345cac170d70c4eef"
+    }
+]

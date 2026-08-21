@@ -1,0 +1,92 @@
+[
+    {
+        "branch": "higher_order_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Second-Order Logic quantifies over predicates and functions",
+        "parent_thesis": "First-order logic validities",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "f25fc126a079dbcf4e42f21a432908a5c767db878688d18aa0bff290b6fe5240"
+    },
+    {
+        "branch": "higher_order_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Second-Order Arithmetic (Z2) \u2014 conservative extension",
+        "parent_thesis": "Second-Order Logic quantifies over predicates and functions",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "6f7c499c7c1945c761c64d41efbfe17d8fdf503cf54d6fb6751236ea15702874"
+    },
+    {
+        "branch": "higher_order_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Monadic Second-Order Logic (MSO) \u2014 decidable fragment",
+        "parent_thesis": "Second-Order Logic quantifies over predicates and functions",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "0f72e092702a00ec255469fe5141770e8d4b127148deda6f8d1cd8c5ea9f4a3d"
+    },
+    {
+        "branch": "higher_order_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "G\u00f6del First Incompleteness Theorem \u2014 consistent PA contains unprovable truths",
+        "parent_thesis": "Peano Axiom \u2014 Mathematical Induction Schema",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "686e5aed6732da9562c2c3a9c123e6757ed971a23afde61eeb542961f398526c"
+    },
+    {
+        "branch": "higher_order_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "G\u00f6del Second Incompleteness Theorem \u2014 PA cannot prove own consistency",
+        "parent_thesis": "G\u00f6del First Incompleteness Theorem \u2014 consistent PA contains unprovable truths",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "8eac377acc6d36c48418060e37f5f21ef004fdbd6ec729bf3e6c8123a375e306"
+    },
+    {
+        "branch": "higher_order_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Church-Turing Thesis \u2014 effective computability = Turing computability",
+        "parent_thesis": "Halting Problem Undecidability (Turing 1936)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "63aee270c8901973535a6a1f97ac61a6b8e86df228dccc833c15c72070cfdc56"
+    },
+    {
+        "branch": "higher_order_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Halting Problem Undecidability (Turing 1936)",
+        "parent_thesis": "G\u00f6del First Incompleteness Theorem \u2014 consistent PA contains unprovable truths",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "48081fbddc220ab006497238b934806d4dbb3660408fc4c7e7a0d489ebae167a"
+    },
+    {
+        "branch": "higher_order_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Higher-Order Logic (HOL) \u2014 quantification over functions of any type",
+        "parent_thesis": "Second-Order Logic quantifies over predicates and functions",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "28c4dc15fd64d03684968717e4e19a4858ed01cce9764a1ba2e46325b77f5876"
+    },
+    {
+        "branch": "higher_order_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Simple Type Theory (Church 1940) \u2014 \u03bb-calculus with types",
+        "parent_thesis": "Higher-Order Logic (HOL) \u2014 quantification over functions of any type",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "8feeb1ce46e8540ab7429f5792153584a1e9bbbee279cf300445c18becbdc33b"
+    },
+    {
+        "branch": "higher_order_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Henkin Semantics \u2014 second-order logic becomes complete under general models",
+        "parent_thesis": "Second-Order Logic quantifies over predicates and functions",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "6447a1f2b00c95ece18ce0eb89c7cc99ec1c06c2d446f47ebb2e52a130f935d0"
+    }
+]

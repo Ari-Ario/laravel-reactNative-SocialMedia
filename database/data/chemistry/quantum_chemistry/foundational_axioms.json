@@ -1,0 +1,26 @@
+[
+    {
+        "branch": "quantum_chemistry",
+        "domain_partition": "chemistry_partition",
+        "thesis_statement": "Hartree-Fock Approximation: The wave function of a multi-electron system is approximated by a single Slater determinant of spin-orbitals",
+        "parent_thesis": "Pauli Exclusion Principle: Two identical fermions cannot occupy the same quantum state simultaneously",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine."
+    },
+    {
+        "branch": "quantum_chemistry",
+        "domain_partition": "chemistry_partition",
+        "thesis_statement": "Density Functional Theory (DFT): The ground-state properties of a many-electron system are uniquely determined by its electron density",
+        "parent_thesis": "Born-Oppenheimer Approximation: The motion of atomic nuclei and electrons in a molecule can be treated separately",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine."
+    },
+    {
+        "branch": "quantum_chemistry",
+        "domain_partition": "chemistry_partition",
+        "thesis_statement": "H\u00fcckel Molecular Orbital Theory (HMO): The \u03c0-electron wave functions of conjugated systems are approximated by linear combinations of p-orbitals",
+        "parent_thesis": "Molecular Orbital Theory Axiom: Atomic orbitals combine to form molecular orbitals governed by the Schr\u00f6dinger equation, dictating chemical bonding",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine."
+    }
+]

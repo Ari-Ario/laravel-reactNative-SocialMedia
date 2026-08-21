@@ -1,0 +1,19 @@
+[
+    {
+        "branch": "epidemiology",
+        "domain_partition": "biology_partition",
+        "thesis_statement": "Epidemiological Triad (SIR Model): Disease transmission depends on the interaction between an agent, a host, and the environment",
+        "parent_thesis": "Germ Theory of Disease: Many diseases are caused by the presence and actions of specific microorganisms within the body",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "e24f4b501a0258ce906804b1820390665feaaf5a7acdb4b0db3c0e786072480b"
+    },
+    {
+        "branch": "epidemiology",
+        "domain_partition": "biology_partition",
+        "thesis_statement": "Kermack-McKendrick SIR Model: Describes the dynamics of infectious disease transmission through susceptible, infectious, and recovered compartments",
+        "parent_thesis": "Epidemiological Triad (SIR Model): Disease transmission depends on the interaction between an agent, a host, and the environment",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Formulated by Kermack and McKendrick, modeling epidemic outbreaks using differential equations for compartments S, I, and R relative to contact and recovery rates."
+    }
+]

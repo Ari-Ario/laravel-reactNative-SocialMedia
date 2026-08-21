@@ -1,0 +1,246 @@
+[
+    {
+        "thesis_statement": "Principle of Legality (Nullum crimen sine lege) - No one can be punished for doing something that is not prohibited by law",
+        "parent_thesis": "1: Being (True)"
+    },
+    {
+        "thesis_statement": "Stare Decisis (Legal Precedent) - Courts must stand by things decided to ensure legal stability",
+        "parent_thesis": "1: Being (True)"
+    },
+    {
+        "thesis_statement": "Presumption of Innocence - A person is considered innocent unless proven guilty",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Habeas Corpus - A person under arrest must be brought before a judge to secure their release unless lawful grounds are shown",
+        "parent_thesis": "1: Being (True)"
+    },
+    {
+        "thesis_statement": "Principle of Proportionality - The severity of a punishment must fit the severity of the crime",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Kelsen's Grundnorm - The fundamental basic norm upon which all other legal norms in a system depend for their validity",
+        "parent_thesis": "1: Being (True)"
+    },
+    {
+        "thesis_statement": "Hart's Rule of Recognition - The foundational master meta-rule that identifies which rules are recognized as valid law",
+        "parent_thesis": "1: Being (True)"
+    },
+    {
+        "thesis_statement": "Mens Rea and Actus Reus - Criminal liability inherently requires both a guilty act and a guilty state of mind",
+        "parent_thesis": "1: Being (True)"
+    },
+    {
+        "thesis_statement": "Double Jeopardy Prohibition - No individual can be prosecuted twice for the same offense following a legitimate conviction or acquittal",
+        "parent_thesis": "1: Being (True)"
+    },
+    {
+        "thesis_statement": "Ex Post Facto Law Prohibition - Laws cannot criminalize acts that were legal when committed",
+        "parent_thesis": "1: Being (True)"
+    },
+    {
+        "thesis_statement": "Rawls' Difference Principle in Law - Legal and economic inequalities must be arranged so they are to the greatest benefit of the least advantaged",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Legal doctrine - A fundamental concept in the study of Legal doctrines and principles",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Legal maxim - A fundamental concept in the study of Legal doctrines and principles",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Abatement ab initio - A fundamental concept in the study of Legal doctrines and principles",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Abstention doctrine - A fundamental concept in the study of Legal doctrines and principles",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Abstraction principle (law) - A fundamental concept in the study of Legal doctrines and principles",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Acquiescence - A fundamental concept in the study of Legal doctrines and principles",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Act of state doctrine - A fundamental concept in the study of Legal doctrines and principles",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Actio libera in causa - A fundamental concept in the study of Legal doctrines and principles",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Administration of justice - A fundamental concept in the study of Legal doctrines and principles",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Agent of record - A fundamental concept in the study of Legal doctrines and principles",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Aggregate effects doctrine - A fundamental concept in the study of Legal doctrines and principles",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Alternative liability - A fundamental concept in the study of Legal doctrines and principles",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Assignment of income doctrine - A fundamental concept in the study of Legal doctrines and principles",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Assumption of risk - A fundamental concept in the study of Legal doctrines and principles",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Assured clear distance ahead - A fundamental concept in the study of Legal doctrines and principles",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Attractive nuisance doctrine - A fundamental concept in the study of Legal doctrines and principles",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Attribution (law) - A fundamental concept in the study of Legal doctrines and principles",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Audi alteram partem - A fundamental concept in the study of Legal doctrines and principles",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Basic structure doctrine - A fundamental concept in the study of Legal doctrines and principles",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Beneficium inventarii - A fundamental concept in the study of Legal doctrines and principles",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Benefit of the inventory - A fundamental concept in the study of Legal doctrines and principles",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Best interests - A fundamental concept in the study of Legal doctrines and principles",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Blue pencil doctrine - A fundamental concept in the study of Legal doctrines and principles",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Born secret - A fundamental concept in the study of Legal doctrines and principles",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Boulevard rule - A fundamental concept in the study of Legal doctrines and principles",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Brady disclosure - A fundamental concept in the study of Legal doctrines and principles",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Burden of proof (law) - A fundamental concept in the study of Legal doctrines and principles",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Bwllfa principle - A fundamental concept in the study of Legal doctrines and principles",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Capacity (law) - A fundamental concept in the study of Legal doctrines and principles",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Carltona doctrine - A fundamental concept in the study of Legal doctrines and principles",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Castle doctrine - A fundamental concept in the study of Legal doctrines and principles",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Caveat emptor - A fundamental concept in the study of Legal doctrines and principles",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Caveat venditor - A fundamental concept in the study of Legal doctrines and principles",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Certainty in English law - A fundamental concept in the study of Legal doctrines and principles",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Child migration - A fundamental concept in the study of Legal doctrines and principles",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Clausula rebus sic stantibus - A fundamental concept in the study of Legal doctrines and principles",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Clean hands doctrine - A fundamental concept in the study of Legal doctrines and principles",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Cogitationis poenam nemo patitur - A fundamental concept in the study of Legal doctrines and principles",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Collateral source rule - A fundamental concept in the study of Legal doctrines and principles",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Command responsibility - A fundamental concept in the study of Legal doctrines and principles",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Commanding precedent - A fundamental concept in the study of Legal doctrines and principles",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Common employment - A fundamental concept in the study of Legal doctrines and principles",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Comparative negligence - A fundamental concept in the study of Legal doctrines and principles",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Competing harms - A fundamental concept in the study of Legal doctrines and principles",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Condemned property - A fundamental concept in the study of Legal doctrines and principles",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Consideration - A fundamental concept in the study of Legal doctrines and principles",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Convention (political norm) - A fundamental concept in the study of Legal doctrines and principles",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Constitutional conventions of the United Kingdom - A fundamental concept in the study of Legal doctrines and principles",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Contra principia negantem non est disputandum - A fundamental concept in the study of Legal doctrines and principles",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Contra proferentem - A fundamental concept in the study of Legal doctrines and principles",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    }
+]

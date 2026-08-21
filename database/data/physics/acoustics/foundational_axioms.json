@@ -1,0 +1,58 @@
+[
+    {
+        "branch": "acoustics",
+        "domain_partition": "physics_partition",
+        "thesis_statement": "Acoustic Wave Equation: The propagation of sound waves in a material medium",
+        "parent_thesis": "Navier-Stokes Equations: Describes the motion of viscous fluid substances via momentum conservation",
+        "formal_proof": "\u2207\u00b2p - (1/c\u00b2) \u2202\u00b2p/\u2202t\u00b2 = 0. Derived from the equations of fluid dynamics and thermodynamics.",
+        "context_description": "Second-order partial differential equation governing the propagation of acoustic waves through a medium."
+    },
+    {
+        "branch": "acoustics",
+        "domain_partition": "physics_partition",
+        "thesis_statement": "Doppler Effect: The frequency of a wave changes for an observer relative to its source",
+        "parent_thesis": "Acoustic Wave Equation: The propagation of sound waves in a material medium",
+        "formal_proof": "f = f_0 * (c \u00b1 v_r) / (c \u2213 v_s). Analyzes shifts in wave fronts relative to moving reference frames.",
+        "context_description": "The change in frequency of a wave in relation to an observer who is moving relative to the wave source."
+    },
+    {
+        "branch": "acoustics",
+        "domain_partition": "physics_partition",
+        "thesis_statement": "Acoustic Resonance: A system oscillates with greater amplitude at specific preferential frequencies",
+        "parent_thesis": "Acoustic Wave Equation: The propagation of sound waves in a material medium",
+        "formal_proof": "Formulated via boundary eigenvalue solutions matching standard resonance conditions.",
+        "context_description": "Physical phenomenon in which an acoustic system amplifies sound waves whose frequency matches one of its own natural frequencies of vibration."
+    },
+    {
+        "branch": "acoustics",
+        "domain_partition": "physics_partition",
+        "thesis_statement": "Speed of Sound in Media (Newton-Laplace Equation): c = sqrt(K_s / \\u03c1) (Speed of sound determined by bulk modulus and density)",
+        "parent_thesis": "Acoustic Wave Equation: The propagation of sound waves in a material medium",
+        "formal_proof": "c = sqrt(K_s / \u03c1). Relates the speed of sound to elastic properties and mass density of the medium.",
+        "context_description": "Formula defining the speed of acoustic propagation through solid, liquid, or gas phases."
+    },
+    {
+        "branch": "acoustics",
+        "domain_partition": "physics_partition",
+        "thesis_statement": "Doppler effect",
+        "parent_thesis": "Doppler Effect: The frequency of a wave changes for an observer relative to its source",
+        "formal_proof": "Bridge alias.",
+        "context_description": "Bridge alias for Doppler Effect."
+    },
+    {
+        "branch": "acoustics",
+        "domain_partition": "physics_partition",
+        "thesis_statement": "Acoustic resonance",
+        "parent_thesis": "Acoustic Resonance: A system oscillates with greater amplitude at specific preferential frequencies",
+        "formal_proof": "Bridge alias.",
+        "context_description": "Bridge alias for Acoustic Resonance."
+    },
+    {
+        "branch": "acoustics",
+        "domain_partition": "physics_partition",
+        "thesis_statement": "Speed of sound in media",
+        "parent_thesis": "Speed of Sound in Media (Newton-Laplace Equation): c = sqrt(K_s / \\u03c1) (Speed of sound determined by bulk modulus and density)",
+        "formal_proof": "Bridge alias.",
+        "context_description": "Bridge alias for Speed of Sound."
+    }
+]

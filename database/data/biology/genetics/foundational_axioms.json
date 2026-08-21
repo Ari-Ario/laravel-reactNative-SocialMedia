@@ -1,0 +1,97 @@
+[
+    {
+        "branch": "genetics",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Hardy-Weinberg genetic equilibrium",
+        "parent_thesis": "Michaelis-Menten Kinetics: Describes the rate of enzymatic reactions by relating reaction rate v to substrate concentration [S]",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "b6fbf1edb94a8c2b2e0d2b36d3b9a67601ba483b42998b10f19907b6549c45fc"
+    },
+    {
+        "branch": "genetics",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Mendelian law of segregation",
+        "parent_thesis": "Michaelis-Menten Kinetics: Describes the rate of enzymatic reactions by relating reaction rate v to substrate concentration [S]",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "3f1fb481f025755c988b27dd5fa6b0645fa41be29a0f8d1c8b5edb6763f1d69b"
+    },
+    {
+        "branch": "genetics",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Mendelian law of independent assortment",
+        "parent_thesis": "Michaelis-Menten Kinetics: Describes the rate of enzymatic reactions by relating reaction rate v to substrate concentration [S]",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "7c4dcb4d551e193dfa24559f2180e4bef3f462ef45a169468db8a80782b425c8"
+    },
+    {
+        "branch": "genetics",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "DNA double helix structure",
+        "parent_thesis": "Michaelis-Menten Kinetics: Describes the rate of enzymatic reactions by relating reaction rate v to substrate concentration [S]",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "ced8444ee325fb41986a33900d3458da132a882cd0779353b189e0d07721524f"
+    },
+    {
+        "branch": "genetics",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Epigenetic methylation",
+        "parent_thesis": "Michaelis-Menten Kinetics: Describes the rate of enzymatic reactions by relating reaction rate v to substrate concentration [S]",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "1f2330feb39c54f3e754c1fae0ad73364a7a6275fed01b7eaa44e78903615c51"
+    },
+    {
+        "branch": "genetics",
+        "domain_partition": "biology_partition",
+        "thesis_statement": "Mendelian Inheritance (Law of Segregation): Allele pairs separate during gamete formation and randomly unite at fertilization",
+        "parent_thesis": "Cell Theory: All living organisms are composed of one or more cells, and the cell is the basic unit of structure and organization",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "c1d1c7a6cc925a06630bb97ccafcc39f8661b64044bd76625e57b3764ed6062c"
+    },
+    {
+        "branch": "genetics",
+        "domain_partition": "biology_partition",
+        "thesis_statement": "Hardy-Weinberg Principle: Allele and genotype frequencies in a population will remain constant from generation to generation in the absence of other evolutionary influences",
+        "parent_thesis": "Mendelian Inheritance (Law of Segregation): Allele pairs separate during gamete formation and randomly unite at fertilization",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "52e714060f3b41cb9daf05539b4cfad79d414f8b075a7589c6960bf9a439c800"
+    },
+    {
+        "branch": "genetics",
+        "domain_partition": "biology_partition",
+        "thesis_statement": "Mendelian Inheritance (Law of Independent Assortment): Genes for different traits segregate independently of one another during the formation of gametes",
+        "parent_thesis": "Mendelian Inheritance (Law of Segregation): Allele pairs separate during gamete formation and randomly unite at fertilization",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "First formulated by Gregor Mendel, describing how non-linked genes segregate independently during meiosis, generating genetic diversity."
+    },
+    {
+        "branch": "genetics",
+        "domain_partition": "biology_partition",
+        "thesis_statement": "DNA Double Helix Structure: Genetic information is encoded in a double-stranded helical molecule of deoxyribonucleic acid",
+        "parent_thesis": "Polymerization Axiom: Monomers covalently bond to form long polymer chains",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Discovered by Watson, Crick, Franklin, and Wilkins, describing how nucleotides form double-stranded helices with complementary hydrogen bonding."
+    },
+    {
+        "branch": "genetics",
+        "domain_partition": "biology_partition",
+        "thesis_statement": "Chromosome Theory of Inheritance: Chromosomes are the carriers of genetic material and linear vectors of Mendelian genes",
+        "parent_thesis": "Mendelian Inheritance (Law of Segregation): Allele pairs separate during gamete formation and randomly unite at fertilization",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Developed by Sutton and Boveri, identifying chromosomes as the physical carriers of genetic information during cell division."
+    },
+    {
+        "branch": "genetics",
+        "domain_partition": "biology_partition",
+        "thesis_statement": "Epigenetic Inheritance: Heritable changes in gene function or expression that do not involve alterations to the underlying DNA sequence",
+        "parent_thesis": "DNA Double Helix Structure: Genetic information is encoded in a double-stranded helical molecule of deoxyribonucleic acid",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Describes mechanisms of chromatin remodeling, DNA methylation, and histone modification that alter gene transcription dynamically without modifying genetic code sequences."
+    }
+]

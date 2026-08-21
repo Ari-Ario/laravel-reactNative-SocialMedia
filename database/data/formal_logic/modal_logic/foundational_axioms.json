@@ -1,0 +1,218 @@
+[
+    {
+        "branch": "modal_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Necessity and possibility",
+        "parent_thesis": "Boolean Axiom: Law of Excluded Middle: (P OR NOT P)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "22430393bcd8302f1a6aaf35f39358c0b2c4e69b51016bf2383841ab8a29b9fc"
+    },
+    {
+        "branch": "modal_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Kripke semantics",
+        "parent_thesis": "Possible World Semantics (Kripke Models)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "7b86c6121151a8996c76e2c867d94476fe28eba24bb08a0939def66cee71b1a7"
+    },
+    {
+        "branch": "modal_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Strict implication",
+        "parent_thesis": "Necessity and possibility",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "4b024db0ad9b9c11bdf47beb265a0d3d2f7322d0ff1293cca59d02e45fef7c19"
+    },
+    {
+        "branch": "modal_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Modal Logic Axiom K \u2014 \u25a1(P\u2192Q)\u2192(\u25a1P\u2192\u25a1Q) (distribution)",
+        "parent_thesis": "Kripke semantics",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "0394ae6aa09bbc32b37241fd8b87455099fa073fdfb758ab6daa2650ab37198c"
+    },
+    {
+        "branch": "modal_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Modal Logic Axiom T \u2014 \u25a1P\u2192P (reflexivity \u2014 what is necessary is true)",
+        "parent_thesis": "Modal Logic Axiom K \u2014 \u25a1(P\u2192Q)\u2192(\u25a1P\u2192\u25a1Q) (distribution)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "0a6f65048eeb3aaf0617a15c50c895f654277ff7d00f18351d80323279995632"
+    },
+    {
+        "branch": "modal_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Modal Logic Axiom B \u2014 P\u2192\u25a1\u25c7P (symmetry)",
+        "parent_thesis": "Modal Logic Axiom T \u2014 \u25a1P\u2192P (reflexivity \u2014 what is necessary is true)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "78b3c664c1551a656f904d884360ae9c19c46864ee6c5e3fd2fb3cb3b5486550"
+    },
+    {
+        "branch": "modal_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Modal Logic Axiom 4 \u2014 \u25a1P\u2192\u25a1\u25a1P (transitivity / positive introspection)",
+        "parent_thesis": "Modal Logic Axiom T \u2014 \u25a1P\u2192P (reflexivity \u2014 what is necessary is true)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "15c837060dbe35f328bb5e262cb2c73905b126a574ada5c813539106290baaa7"
+    },
+    {
+        "branch": "modal_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Modal Logic Axiom 5 \u2014 \u25c7P\u2192\u25a1\u25c7P (Euclidean / negative introspection)",
+        "parent_thesis": "Modal Logic Axiom 4 \u2014 \u25a1P\u2192\u25a1\u25a1P (transitivity / positive introspection)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "78e70fdaa03e5aecff1daecbb3dc48a2e742f7e593dd182c36f073423e8bc2ab"
+    },
+    {
+        "branch": "modal_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Modal Logic Axiom D \u2014 \u25a1P\u2192\u25c7P (seriality \u2014 deontic base)",
+        "parent_thesis": "Modal Logic Axiom T \u2014 \u25a1P\u2192P (reflexivity \u2014 what is necessary is true)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "efdcd2ea48b0acbaf747eeeab2f4ee52b648dda71fbb3b952cb025ac46bcd412"
+    },
+    {
+        "branch": "modal_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "System K \u2014 minimal normal modal logic (Kripke 1963)",
+        "parent_thesis": "Modal Logic Axiom K \u2014 \u25a1(P\u2192Q)\u2192(\u25a1P\u2192\u25a1Q) (distribution)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "5559e4cff236adac9c11765a57d50535d09b7a923cea9157fcdaf9e66b506da0"
+    },
+    {
+        "branch": "modal_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "System T \u2014 reflexive Kripke frames (K + T)",
+        "parent_thesis": "System K \u2014 minimal normal modal logic (Kripke 1963)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "c815b9e03b42f3379a7e411bf4ac6b7c4d171ad76f74cd70134c429ca10c813b"
+    },
+    {
+        "branch": "modal_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "System B \u2014 symmetric Kripke frames (T + B)",
+        "parent_thesis": "System T \u2014 reflexive Kripke frames (K + T)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "dd1c0b808905b749dffd1c99047ff423163e314d00a8199648a3ae0980f5ca51"
+    },
+    {
+        "branch": "modal_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "System S4 \u2014 reflexive transitive frames (T + 4)",
+        "parent_thesis": "System T \u2014 reflexive Kripke frames (K + T)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "288b15e00d1d2fd210574dd19cf80e3b0c38640bfa934c29dc9ee423ff7c2df0"
+    },
+    {
+        "branch": "modal_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "System S5 \u2014 equivalence relation frames (S4 + 5) \u2014 all worlds accessible",
+        "parent_thesis": "System S4 \u2014 reflexive transitive frames (T + 4)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "2f4a6956687ca2ad792982da779931d2ab3a388639dc40f8267fc3d17b1131fa"
+    },
+    {
+        "branch": "modal_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "System S4.2 \u2014 S4 plus convergence axiom \u25c7\u25a1P\u2192\u25a1\u25c7P",
+        "parent_thesis": "System S4 \u2014 reflexive transitive frames (T + 4)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "357fd0442ad9d30dd4da662ffb3f7b74e6bdcd458cc527f56f76cf1ad25e7f78"
+    },
+    {
+        "branch": "modal_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "System S4.3 \u2014 S4 plus linearity (\u25a1(\u25a1P\u2192\u25a1Q)\u2228\u25a1(\u25a1Q\u2192\u25a1P))",
+        "parent_thesis": "System S4 \u2014 reflexive transitive frames (T + 4)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "f889e3b288b6e35c02613c8c5128683ebb72b330da5d8c68fa4a6bb64bbf58db"
+    },
+    {
+        "branch": "modal_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Barcan Formula \u2014 \u2200x\u25a1P(x)\u2192\u25a1\u2200xP(x)",
+        "parent_thesis": "Possible World Semantics (Kripke Models)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "98aac6e961d26dcbf792b958a46f447b9a6a681ef5cf96dd7a0f31ee827bbc58"
+    },
+    {
+        "branch": "modal_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Converse Barcan Formula \u2014 \u25a1\u2200xP(x)\u2192\u2200x\u25a1P(x)",
+        "parent_thesis": "Law of identity",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "d4be930fa683f7c521b2017e050220aba0dd4e3c9d4f70ce357d16f987616878"
+    },
+    {
+        "branch": "modal_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Necessitation Rule \u2014 if \u22a2P then \u22a2\u25a1P",
+        "parent_thesis": "System K \u2014 minimal normal modal logic (Kripke 1963)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "603a6cb68e8383d996153547316f3161af424ce113edc20881e8bfe217b88b92"
+    },
+    {
+        "branch": "modal_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Dual Operators \u2014 \u25a1P \u2261 \u00ac\u25c7\u00acP; \u25c7P \u2261 \u00ac\u25a1\u00acP",
+        "parent_thesis": "Necessity and possibility",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "c862dda951734fa361ac8a659ff3825a3327a91534b1c92ffedeed22f321a1ec"
+    },
+    {
+        "branch": "modal_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Temporal Operators (Past, Future, Always, Until)",
+        "parent_thesis": "Possible World Semantics (Kripke Models)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "4c9c7c02e29800dd7d1848dc3d6b97d92a2f1c9cdde4b64dffb3022b1d4ed573"
+    },
+    {
+        "branch": "modal_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Possible World Semantics (Kripke Models)",
+        "parent_thesis": "Necessity and possibility",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "8bad19389986e6a2275bd9fc11a8fd000630c3f31143c4e88d504e49f36db278"
+    },
+    {
+        "branch": "modal_logic",
+        "domain_partition": "formal_partition",
+        "thesis_statement": "Axiom K (Distribution Axiom): \u25a1(P \u2192 Q) \u2192 (\u25a1P \u2192 \u25a1Q)",
+        "parent_thesis": "Modal Logic Axiom K \u2014 \u25a1(P\u2192Q)\u2192(\u25a1P\u2192\u25a1Q) (distribution)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "96689b5ebc93ad2adeee53a88ec4068aa5437c26eb65b7dd9ceaa6c633e69106"
+    },
+    {
+        "branch": "modal_logic",
+        "domain_partition": "formal_partition",
+        "thesis_statement": "Axiom of Necessity for Rational Choice: If agent prefers A to B necessarily, it must choose A over B when possible",
+        "parent_thesis": "Axiom K (Distribution Axiom): \u25a1(P \u2192 Q) \u2192 (\u25a1P \u2192 \u25a1Q)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "2bb05417193e6db15e54d47780729fb2bd681206d77ee0a11a4b9ffc4fe2d201"
+    }
+]

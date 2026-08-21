@@ -1,0 +1,227 @@
+[
+    {
+        "branch": "Computer Science",
+        "domain_partition": "Cybersecurity & Cryptanalysis",
+        "thesis_statement": "CIA Triad - Information security fundamentally relies on maintaining Confidentiality, Integrity, and Availability",
+        "parent_thesis": "Hobbesian social contract",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Computer Science",
+        "domain_partition": "Cybersecurity & Cryptanalysis",
+        "thesis_statement": "Zero Trust Architecture - No entity (internal or external) is trusted by default; all access requires strict identity verification",
+        "parent_thesis": "Hobbesian social contract",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Computer Science",
+        "domain_partition": "Cybersecurity & Cryptanalysis",
+        "thesis_statement": "Kerckhoffs's Principle - A cryptographic system should be secure even if everything about the system, except the key, is public knowledge",
+        "parent_thesis": "Hobbesian social contract",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Computer Science",
+        "domain_partition": "Cybersecurity & Cryptanalysis",
+        "thesis_statement": "Principle of Least Privilege - Subjects should be granted only the minimum level of access necessary to perform their legitimate functions",
+        "parent_thesis": "Hobbesian social contract",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Computer Science",
+        "domain_partition": "Cybersecurity & Cryptanalysis",
+        "thesis_statement": "Defense in Depth - Security is maximized by layering multiple, independent defensive mechanisms",
+        "parent_thesis": "Hobbesian social contract",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Computer Science",
+        "domain_partition": "Cybersecurity & Cryptanalysis",
+        "thesis_statement": "Security by Obscurity is Flawed - Relying solely on the secrecy of a system's design or implementation is an inadequate security mechanism",
+        "parent_thesis": "Hobbesian social contract",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Computer Science",
+        "domain_partition": "Cybersecurity & Cryptanalysis",
+        "thesis_statement": "Attack Surface Axiom - The risk of a successful exploit is directly proportional to the size of the system's attack surface",
+        "parent_thesis": "Hobbesian social contract",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Computer Science",
+        "domain_partition": "Cybersecurity & Cryptanalysis",
+        "thesis_statement": "Social Engineering Principle - The human element is consistently the weakest link in any information security system",
+        "parent_thesis": "Hobbesian social contract",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Computer Science",
+        "domain_partition": "Cybersecurity & Cryptanalysis",
+        "thesis_statement": "Assume Breach Paradigm - Security operations must operate under the assumption that the network has already been compromised",
+        "parent_thesis": "Hobbesian social contract",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Computer Science",
+        "domain_partition": "Cybersecurity & Cryptanalysis",
+        "thesis_statement": "Threat Modeling - Identifying and prioritizing potential threats is a prerequisite for effective defensive engineering",
+        "parent_thesis": "Hobbesian social contract",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Computer Science",
+        "domain_partition": "Cybersecurity & Cryptanalysis",
+        "thesis_statement": "Cryptography is not Security - Encryption protects data mathematically, but poor implementation or key management renders it useless",
+        "parent_thesis": "Hobbesian social contract",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Computer Science",
+        "domain_partition": "Cybersecurity & Cryptanalysis",
+        "thesis_statement": "Buffer Overflow Axiom - Writing data beyond the boundaries of fixed-length buffers leads to memory corruption and arbitrary code execution",
+        "parent_thesis": "Hobbesian social contract",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Computer Science",
+        "domain_partition": "Cybersecurity & Cryptanalysis",
+        "thesis_statement": "Principle of Fail-Safe Defaults - Systems should default to denying access or denying action upon failure",
+        "parent_thesis": "Hobbesian social contract",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Computer Science",
+        "domain_partition": "Cybersecurity & Cryptanalysis",
+        "thesis_statement": "Separation of Duties - Critical processes must require the involvement of multiple authorized individuals to prevent fraud or error",
+        "parent_thesis": "Hobbesian social contract",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Computer Science",
+        "domain_partition": "Cybersecurity & Cryptanalysis",
+        "thesis_statement": "Symmetric vs Asymmetric Keys - Symmetric encryption is fast but requires secure key exchange; asymmetric solves exchange but is computationally heavy",
+        "parent_thesis": "Hobbesian social contract",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Computer Science",
+        "domain_partition": "Cybersecurity & Cryptanalysis",
+        "thesis_statement": "Salting and Hashing - Passwords must be stored using cryptographically secure hashing functions augmented with unique random salts",
+        "parent_thesis": "Hobbesian social contract",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Computer Science",
+        "domain_partition": "Cybersecurity & Cryptanalysis",
+        "thesis_statement": "Advanced Persistent Threat (APT) - Highly resourced adversaries will maintain long-term, stealthy access to a network to extract data",
+        "parent_thesis": "Hobbesian social contract",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Computer Science",
+        "domain_partition": "Cybersecurity & Cryptanalysis",
+        "thesis_statement": "Man-in-the-Middle (MitM) - Unencrypted or poorly authenticated communications can be intercepted and altered in transit",
+        "parent_thesis": "Hobbesian social contract",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Computer Science",
+        "domain_partition": "Cybersecurity & Cryptanalysis",
+        "thesis_statement": "Principle of Psychological Acceptability - Security mechanisms must be easy to use; if they are cumbersome, users will bypass them",
+        "parent_thesis": "Hobbesian social contract",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Computer Science",
+        "domain_partition": "Cybersecurity & Cryptanalysis",
+        "thesis_statement": "Perfect Forward Secrecy - Compromise of long-term keys must not compromise past session keys",
+        "parent_thesis": "Hobbesian social contract",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Computer Science",
+        "domain_partition": "Cybersecurity & Cryptanalysis",
+        "thesis_statement": "Non-Repudiation - A system must provide cryptographic proof that a sender cannot deny having sent a message",
+        "parent_thesis": "Hobbesian social contract",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Computer Science",
+        "domain_partition": "Cybersecurity & Cryptanalysis",
+        "thesis_statement": "Ransomware Axiom - Extortion software encrypts data and holds it hostage, highlighting the necessity of offline backups",
+        "parent_thesis": "Hobbesian social contract",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Computer Science",
+        "domain_partition": "Cybersecurity & Cryptanalysis",
+        "thesis_statement": "Side-Channel Attacks - Systems can be compromised by analyzing physical implementation characteristics (timing, power consumption, acoustics)",
+        "parent_thesis": "Hobbesian social contract",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Computer Science",
+        "domain_partition": "Cybersecurity & Cryptanalysis",
+        "thesis_statement": "Vulnerability Lifecycle - Software vulnerabilities exist from creation until they are discovered, patched, and the patch is widely deployed",
+        "parent_thesis": "Hobbesian social contract",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Computer Science",
+        "domain_partition": "Cybersecurity & Cryptanalysis",
+        "thesis_statement": "Honeypots and Deception - Decoy systems can safely divert attackers and gather intelligence on their methods",
+        "parent_thesis": "Hobbesian social contract",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    }
+]

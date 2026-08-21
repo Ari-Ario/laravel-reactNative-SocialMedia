@@ -1,0 +1,65 @@
+[
+    {
+        "branch": "paradox_resolution",
+        "domain_partition": "math_partition",
+        "thesis_statement": "If the universe is expanding infinitely, and energy is conserved, then the energy density must eventually reach absolute zero. But quantum fluctuations prevent absolute zero. Therefore, the universe cannot expand infinitely.",
+        "parent_thesis": "1: Being (True)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "55b65889f8f702beaa4341a7e94ae17583405e382468c66a0013f672fd70a49f"
+    },
+    {
+        "branch": "paradox_resolution",
+        "domain_partition": "formal_logic_partition",
+        "thesis_statement": "This statement is false.",
+        "parent_thesis": "Boolean Axiom: Law of Non-Contradiction: NOT(P AND NOT P)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "2b5f08a961d1c78b446e2f1767100236b61a095b49cde0dbeed664a583d7be1c"
+    },
+    {
+        "branch": "paradox_resolution",
+        "domain_partition": "formal_logic_partition",
+        "thesis_statement": "This sentence contains exactly three errors.",
+        "parent_thesis": "This statement is false.",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "dc936ec3e42672d08457f2872aaf92aadd865a6f0714967c351a2a3b2a9e3ee3"
+    },
+    {
+        "branch": "paradox_resolution",
+        "domain_partition": "formal_logic_partition",
+        "thesis_statement": "Is the word 'heterological' heterological?",
+        "parent_thesis": "This statement is false.",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "672f0c492be57ac17addf69aff30aa2cfa85fb14decc61c5d5353b70feb77f42"
+    },
+    {
+        "branch": "paradox_resolution",
+        "domain_partition": "formal_logic_partition",
+        "thesis_statement": "The smallest positive integer not definable in under sixty letters.",
+        "parent_thesis": "This statement is false.",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "5d588b6b33530b9830a32db5c56e506f1ccd7b9f1a76e387f26910a67f34bc61"
+    },
+    {
+        "branch": "paradox_resolution",
+        "domain_partition": "formal_logic_partition",
+        "thesis_statement": "A grain of sand is not a heap. Adding one grain of sand to something that is not a heap does not make it a heap. Therefore, no amount of sand can form a heap.",
+        "parent_thesis": "Law of identity",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "e1b7c749c8fe302e84ec1f0c503f3e31ff3032ff82ce4f02172d4366ea092102"
+    },
+    {
+        "branch": "paradox_resolution",
+        "domain_partition": "formal_logic_partition",
+        "thesis_statement": "Philosophers strongly believe that we live in a simulation.",
+        "parent_thesis": "Cartesian Doubt (Cogito ergo sum)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "2744f2488ecf45f24745422494a9ccf9e1c8d33be0d5c117fdfeceb2e9c5150d"
+    }
+]

@@ -1,0 +1,74 @@
+[
+    {
+        "branch": "political_science",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Hobbesian social contract",
+        "parent_thesis": "Social Contract Theory",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "9107e0774c2567693e49b707e810da9f94d05c7887568833bc8e4339f96e81ba"
+    },
+    {
+        "branch": "political_science",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Separation of powers checks and balances",
+        "parent_thesis": "Rule of Law Axiom: All persons, institutions, and entities are accountable to laws that are publicly promulgated, equally enforced, and independently adjudicated",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "92529e35af67e4efaa1ab4707515df034dc8c5b6744446efd296e2c42e658ab4"
+    },
+    {
+        "branch": "political_science",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Democratic peace theory",
+        "parent_thesis": "Median Voter Theorem",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "4e9d71cf4e8d2f37fd7fc48f903f7f7b7f21257a5528f77e0122e557ccfa8345"
+    },
+    {
+        "branch": "political_science",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Overton window of political acceptability",
+        "parent_thesis": "Individuals learn norms through society",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "10fe0141c5c11080072ae1fe3f2429174124f287975213f71c3c397c87790824"
+    },
+    {
+        "branch": "political_science",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Median voter theorem",
+        "parent_thesis": "Natural selection survival fitness",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "3e8abe5ab8dbaa69fc89270105df922388be6e8d91fd2240083b08b831d8df47"
+    },
+    {
+        "branch": "political_science",
+        "domain_partition": "social_partition",
+        "thesis_statement": "State Monopoly on Violence (Weber): The state is a human community that successfully claims the monopoly of the legitimate use of physical force within a given territory",
+        "parent_thesis": "Social Stratification Axiom: Societies categorize their people into socioeconomic strata based on occupation, income, wealth, and power",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "2968f04681eefd50f98c4e06acb53a60330091ecf6088a37e3047dcbbdafb75f"
+    },
+    {
+        "branch": "political_science",
+        "domain_partition": "social_science",
+        "thesis_statement": "Median Voter Theorem",
+        "parent_thesis": "Nash Equilibrium Existence Theorem (Every finite game has at least one mixed-strategy Nash equilibrium)",
+        "formal_proof": "In a one-dimensional policy space with single-peaked preferences, any candidate positioned at the median strictly dominates all other positions. Moving away from the median is a strictly dominated strategy.",
+        "context_description": "In a majority-rule voting system, politicians will naturally move their platforms toward the exact center of public opinion to maximize their chances of winning.",
+        "ast_signature": "3e8abe5ab8dbaa69fc89270105df922388be6e8d91fd2240083b08b831d8df47"
+    },
+    {
+        "branch": "political_science",
+        "domain_partition": "social_science",
+        "thesis_statement": "Iron Law of Oligarchy",
+        "parent_thesis": "Tragedy of the Commons (Resource Depletion)",
+        "formal_proof": "In any sufficiently complex organization (N > Dunbar's Number), administrative specialization necessitates asymmetric information control, inevitably shifting power to a minority elite regardless of democratic origins.",
+        "context_description": "All complex organizations, no matter how democratic they start, will eventually be ruled by a small elite group because of the practical necessities of leadership and coordination.",
+        "ast_signature": "3abc4619f2484f97d897d605cb55560d2b65bddbb0848a789c28ea9cb2abab8d"
+    }
+]

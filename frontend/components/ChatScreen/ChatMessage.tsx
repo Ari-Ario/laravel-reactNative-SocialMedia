@@ -8,6 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useBookmarkStore } from '@/stores/bookmarkStore';
 import { useToastStore } from '@/stores/toastStore';
 import { router } from 'expo-router';
+import Markdown from 'react-native-markdown-display';
 
 interface ChatMessageProps {
   item: any;
@@ -16,6 +17,39 @@ interface ChatMessageProps {
   onMenuPress?: () => void;
   onCommentPress?: (post: any) => void;
 }
+
+const preprocessMath = (text: string) => {
+  if (!text) return '';
+  let processed = text;
+
+  // Truncate long Zmzir hashes that break React Native text wrapping
+  processed = processed.replace(/Zmzir Engine Autonomous Axiom DB \(([a-f0-9]{32,})\)/gi, (match, hash) => {
+    return `Zmzir Engine Autonomous Axiom DB (${hash.substring(0, 16)}...)`;
+  });
+
+  // Convert $$ ... $$ to a fenced code block
+  processed = processed.replace(/\$\$(.*?)\$\$/gs, (match, math) => {
+    return `\n\n\`\`\`math\n${math.trim()}\n\`\`\`\n\n`;
+  });
+
+  // Convert \[ ... \] to a fenced code block
+  processed = processed.replace(/\\\[(.*?)\\\]/gs, (match, math) => {
+    return `\n\n\`\`\`math\n${math.trim()}\n\`\`\`\n\n`;
+  });
+
+  // Convert \( ... \) to inline code
+  processed = processed.replace(/\\\((.*?)\\\)/gs, (match, math) => {
+    return `\`${math.trim()}\``;
+  });
+
+  // Convert single $ ... $ to inline code
+  processed = processed.replace(/(^|[^\\])\$([^\$]+?)\$/g, (match, prefix, math) => {
+    if (/^\s*\d/.test(math)) return match;
+    return `${prefix}\`${math.trim()}\``;
+  });
+
+  return processed;
+};
 
 const ChatMessage = ({ item, user, service, onMenuPress, onCommentPress }: ChatMessageProps) => {
   const postMedia = useMemo(() => {
@@ -31,7 +65,7 @@ const ChatMessage = ({ item, user, service, onMenuPress, onCommentPress }: ChatM
       const result = await addBookmark(item.id);
       if (result.bookmarked && result.bookmark) {
         showToast('Post bookmarked!', 'success');
-        
+
         // Navigation to bookmarks settings which acts as the popup gallery
         router.push({
           pathname: '/settings/bookmarks',
@@ -54,6 +88,115 @@ const ChatMessage = ({ item, user, service, onMenuPress, onCommentPress }: ChatM
       service.setShowComments(!service.showComments);
     }
   };
+
+  const isOutgoing = item.user.id === user?.id;
+  const textColor = isOutgoing ? '#fff' : '#000';
+
+  const markdownStyles = useMemo(() => ({
+    body: {
+      fontSize: 16,
+      color: textColor,
+    },
+    heading1: {
+      fontSize: 22,
+      fontWeight: 'bold',
+      color: textColor,
+      marginTop: 10,
+      marginBottom: 5,
+    },
+    heading2: {
+      fontSize: 20,
+      fontWeight: 'bold',
+      color: textColor,
+      marginTop: 10,
+      marginBottom: 5,
+    },
+    heading3: {
+      fontSize: 18,
+      fontWeight: 'bold',
+      color: textColor,
+      marginTop: 10,
+      marginBottom: 5,
+    },
+    strong: {
+      fontWeight: 'bold',
+      color: textColor,
+    },
+    em: {
+      fontStyle: 'italic',
+      color: textColor,
+    },
+    link: {
+      color: isOutgoing ? '#e0e0e0' : '#0A84FF',
+      textDecorationLine: 'underline',
+    },
+    blockquote: {
+      backgroundColor: isOutgoing ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)',
+      borderLeftWidth: 4,
+      borderLeftColor: isOutgoing ? '#fff' : '#007AFF',
+      paddingHorizontal: 10,
+      paddingVertical: 5,
+      marginVertical: 5,
+    },
+    table: {
+      borderColor: isOutgoing ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.1)',
+      borderWidth: 1,
+      borderRadius: 4,
+    },
+    tr: {
+      borderBottomWidth: 1,
+      borderColor: isOutgoing ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.1)',
+      flexDirection: 'row',
+    },
+    th: {
+      padding: 5,
+      fontWeight: 'bold',
+      color: textColor,
+    },
+    td: {
+      padding: 5,
+      color: textColor,
+    },
+    hr: {
+      backgroundColor: isOutgoing ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.1)',
+      height: 1,
+      marginVertical: 10,
+    },
+    code_inline: {
+      backgroundColor: isOutgoing ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.05)',
+      paddingHorizontal: 4,
+      borderRadius: 4,
+      fontFamily: 'monospace',
+      color: textColor,
+      flexWrap: 'wrap',
+      lineHeight: 24,
+    },
+    code_block: {
+      backgroundColor: isOutgoing ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.05)',
+      padding: 10,
+      borderRadius: 4,
+      fontFamily: 'monospace',
+      color: textColor,
+      marginVertical: 5,
+      overflow: 'hidden',
+    },
+    fence: {
+      backgroundColor: isOutgoing ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.05)',
+      padding: 10,
+      borderRadius: 4,
+      fontFamily: 'monospace',
+      color: textColor,
+      marginVertical: 5,
+      overflow: 'hidden',
+    },
+    pre: {
+      backgroundColor: isOutgoing ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.05)',
+      padding: 10,
+      borderRadius: 4,
+      marginVertical: 5,
+      overflow: 'hidden',
+    },
+  }), [isOutgoing, textColor]);
 
   return (
     <View style={[
@@ -131,12 +274,9 @@ const ChatMessage = ({ item, user, service, onMenuPress, onCommentPress }: ChatM
         {/* Message header with text and timestamp */}
         <View style={styles.messageHeader}>
           {item.caption && (
-            <Text style={[
-              styles.messageText,
-              item.user.id === user?.id ? styles.outgoingText : styles.incomingText
-            ]}>
-              {item.caption}
-            </Text>
+            <Markdown style={markdownStyles as any}>
+              {preprocessMath(item.caption)}
+            </Markdown>
           )}
 
           <Text style={[

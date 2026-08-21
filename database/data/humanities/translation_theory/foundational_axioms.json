@@ -1,0 +1,233 @@
+[
+    {
+        "thesis_statement": "Vermeer's Translation Skopos Theory - The primary guide for a translation is the function or purpose of the translation in the target culture",
+        "parent_thesis": "1: Being (True)",
+        "branch": "humanities",
+        "domain_partition": "translation_theory",
+        "context_description": "Hans Vermeer's skopos theory, shifting translation evaluation from source-text fidelity to functional adequacy in the target context."
+    },
+    {
+        "thesis_statement": "Aristotelian Rhetorical Proofs - Persuasive argumentation relies on three proofs: speaker credibility, emotional resonance, and logical demonstration",
+        "parent_thesis": "1: Being (True)",
+        "branch": "humanities",
+        "domain_partition": "translation_theory",
+        "context_description": "Aristotle's classical divisions of persuasion: Ethos (authority), Pathos (feelings), and Logos (reasoning)."
+    },
+    {
+        "thesis_statement": "Toulmin Model of Argumentation - Structured argumentation requires a claim supported by grounds, a warrant linking them, backing, qualifiers, and conditions of rebuttal",
+        "parent_thesis": "1: Being (True)",
+        "branch": "humanities",
+        "domain_partition": "translation_theory",
+        "context_description": "Stephen Toulmin's analytical framework mapping the practical structure of informal logic arguments."
+    },
+    {
+        "thesis_statement": "Sapir-Whorf Translation Relativity - Complete translation equivalence is impossible because language structures construct distinct conceptual worlds for their speakers",
+        "parent_thesis": "1: Being (True)",
+        "branch": "humanities",
+        "domain_partition": "translation_theory",
+        "context_description": "Hypothesis that linguistic relativity places limits on total translation fidelity across cultures with divergent structures."
+    },
+    {
+        "thesis_statement": "Jakobson's Semiotic Translation Triad - Translation occurs in three forms: intralingual rewording, interlingual translation, and intersemiotic transposition between sign systems",
+        "parent_thesis": "1: Being (True)",
+        "branch": "humanities",
+        "domain_partition": "translation_theory",
+        "context_description": "Roman Jakobson's model formalizing how meaning shifts within one language, between two languages, or between different media (e.g. text to art)."
+    },
+    {
+        "thesis_statement": "Principle of Translation studies - A fundamental concept in the study of Translation studies",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of L'\u00e2ge de la traduction - A fundamental concept in the study of Translation studies",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Bible version debate - A fundamental concept in the study of Translation studies",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Canadian Association for Translation Studies - A fundamental concept in the study of Translation studies",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Chinese translation theory - A fundamental concept in the study of Translation studies",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of CIUTI - A fundamental concept in the study of Translation studies",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Contrastive linguistics - A fundamental concept in the study of Translation studies",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Cultural translation - A fundamental concept in the study of Translation studies",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Cultureme - A fundamental concept in the study of Translation studies",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Discourse analysis - A fundamental concept in the study of Translation studies",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Domestication and foreignization - A fundamental concept in the study of Translation studies",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Dynamic and formal equivalence - A fundamental concept in the study of Translation studies",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of L'\u00e9preuve de l'\u00e9tranger - A fundamental concept in the study of Translation studies",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of European Society for Translation Studies - A fundamental concept in the study of Translation studies",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Hellenic Translation Society - A fundamental concept in the study of Translation studies",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Interlinguistics - A fundamental concept in the study of Translation studies",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of International Doctorate in Translation Studies - A fundamental concept in the study of Translation studies",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Iranian Center for Translation Studies - A fundamental concept in the study of Translation studies",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Journalistic translation - A fundamental concept in the study of Translation studies",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Language barrier - A fundamental concept in the study of Translation studies",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Language brokering - A fundamental concept in the study of Translation studies",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Leipzig School (translation) - A fundamental concept in the study of Translation studies",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Literal translation - A fundamental concept in the study of Translation studies",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Literary adaptation - A fundamental concept in the study of Translation studies",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Marie Haps Faculty of Translation and Interpreting - A fundamental concept in the study of Translation studies",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Metaphrase - A fundamental concept in the study of Translation studies",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Richa Nagar - A fundamental concept in the study of Translation studies",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Narrative theory - A fundamental concept in the study of Translation studies",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of On Linguistic Aspects of Translation - A fundamental concept in the study of Translation studies",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Paraphrase - A fundamental concept in the study of Translation studies",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Politics of translation - A fundamental concept in the study of Translation studies",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Polysystem theory - A fundamental concept in the study of Translation studies",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Post-translation studies - A fundamental concept in the study of Translation studies",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Pour une critique des traductions: John Donne - A fundamental concept in the study of Translation studies",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Self-translation - A fundamental concept in the study of Translation studies",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Sense-for-sense translation - A fundamental concept in the study of Translation studies",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Skopos theory - A fundamental concept in the study of Translation studies",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Source text - A fundamental concept in the study of Translation studies",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of The Interpretive Theory of Translation - A fundamental concept in the study of Translation studies",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of La traduction et la lettre ou l'auberge du lointain - A fundamental concept in the study of Translation studies",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Transcreation - A fundamental concept in the study of Translation studies",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Translating Beowulf - A fundamental concept in the study of Translation studies",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Translating \"law\" to other European languages - A fundamental concept in the study of Translation studies",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Translation and Literature - A fundamental concept in the study of Translation studies",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Translation criticism - A fundamental concept in the study of Translation studies",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Translation project - A fundamental concept in the study of Translation studies",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Translation Terminology Writing - A fundamental concept in the study of Translation studies",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Translation theory - A fundamental concept in the study of Translation studies",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Translators Association of China - A fundamental concept in the study of Translation studies",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    }
+]

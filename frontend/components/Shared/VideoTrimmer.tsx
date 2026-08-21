@@ -117,8 +117,8 @@ const VideoTrimmer: React.FC<VideoTrimmerProps> = ({
     const safeDuration = useMemo(() => duration > 0 ? duration : 1, [duration]);
     const safeStartPos = useMemo(() => startPos, [startPos]);
     const safeEndPos = useMemo(() => endPos, [endPos]);
-    const trimDuration = useMemo(() => 
-        (safeEndPos - safeStartPos) * safeDuration, 
+    const trimDuration = useMemo(() =>
+        (safeEndPos - safeStartPos) * safeDuration,
         [safeEndPos, safeStartPos, safeDuration]
     );
 
@@ -128,10 +128,10 @@ const VideoTrimmer: React.FC<VideoTrimmerProps> = ({
     // These helpers normalize everything to seconds for our state.
     const playerValueToSeconds = useCallback((playerValue: number): number =>
         Platform.OS === 'web' ? playerValue : playerValue / 1000
-    , []);
+        , []);
     const secondsToPlayerValue = useCallback((secs: number): number =>
         Platform.OS === 'web' ? secs : secs * 1000
-    , []);
+        , []);
 
     const safeSetCurrentTime = useCallback((timeInSeconds: number) => {
         if (!player || !duration || duration === 0) return;
@@ -162,14 +162,14 @@ const VideoTrimmer: React.FC<VideoTrimmerProps> = ({
                 // Convert from player units → seconds (web=s, native=ms)
                 const dur = playerValueToSeconds(player.duration);
                 setDuration(dur);
-                
+
                 // Set exactly maxDuration (10s for stories, 120s for posts)
                 if (dur > maxDuration) {
                     setEndPos(maxDuration / dur);
                 } else {
                     setEndPos(1);
                 }
-                
+
                 setStartPos(0);
                 initialDurationSet.current = true;
                 setIsLoading(false);
@@ -261,25 +261,96 @@ const VideoTrimmer: React.FC<VideoTrimmerProps> = ({
     const endGrantRef = useRef(0);
     const playheadGrantRef = useRef(0);
     const currentTimePosRef = useRef(0);
+    // Window-slide refs: capture BOTH positions at the moment the drag starts
+    const windowGrantStartRef = useRef(0);
+    const windowGrantEndRef = useRef(0);
+    const windowGrantPosRef = useRef(0); // Store initial click pos to prevent snapping
+    const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
+    const isLongPressActiveRef = useRef(false);
+
     const scrubberContainerRef = useCallback((el: any) => setScrubberEl(el), []); // callback ref – triggers state when DOM mounts
     useEffect(() => { startPosRef.current = startPos; }, [startPos]);
     useEffect(() => { endPosRef.current = endPos; }, [endPos]);
     useEffect(() => { currentTimePosRef.current = currentTime / (safeDuration || 1); }, [currentTime, safeDuration]);
+
+    // Helper to clear long press timer
+    const clearLongPress = () => {
+        if (longPressTimerRef.current) {
+            clearTimeout(longPressTimerRef.current);
+            longPressTimerRef.current = null;
+        }
+        isLongPressActiveRef.current = false;
+    };
+
+    // Logic to activate full-window slide mode (the "120s block")
+    const activateFullWindowMode = (pos: number) => {
+        const sd = safeDurationRef.current || 1;
+        const md = maxDurationRef.current;
+        const windowSize = Math.min(1, md / sd);
+
+        let newStart = pos - windowSize / 2;
+        let newEnd = pos + windowSize / 2;
+
+        // Clamp to [0, 1]
+        if (newStart < 0) { newStart = 0; newEnd = windowSize; }
+        if (newEnd > 1) { newEnd = 1; newStart = 1 - windowSize; }
+
+        setStartPos(newStart);
+        setEndPos(newEnd);
+        startPosRef.current = newStart;
+        endPosRef.current = newEnd;
+        windowGrantStartRef.current = newStart;
+        windowGrantEndRef.current = newEnd;
+        windowGrantPosRef.current = pos;
+        isLongPressActiveRef.current = true;
+
+        setShowTimeTooltip(true);
+        triggerHaptic('heavy');
+    };
 
     // PanResponder for Start Handle
     const startPanResponder = useRef(
         PanResponder.create({
             onStartShouldSetPanResponder: () => true,
             onMoveShouldSetPanResponder: () => true,
-            onPanResponderGrant: () => {
+            onPanResponderGrant: (evt) => {
+                const { locationX } = evt.nativeEvent;
+                const pos = locationX / effectiveScrubberWidth;
+
                 // Capture position at the moment the finger lands
                 startGrantRef.current = startPosRef.current;
                 setShowTimeTooltip(true);
                 handlesOpacity.value = withTiming(1.2);
                 scrubberScale.value = withSpring(1.02);
                 triggerHaptic('light');
+
+                // Start long press timer to trigger full window slide
+                clearLongPress();
+                longPressTimerRef.current = setTimeout(() => {
+                    activateFullWindowMode(pos);
+                }, 600);
             },
             onPanResponderMove: (_, gestureState) => {
+                if (Math.abs(gestureState.dx) > 10) clearLongPress();
+
+                if (isLongPressActiveRef.current) {
+                    // Selection window slide (120s block)
+                    const selectionWidth = windowGrantEndRef.current - windowGrantStartRef.current;
+                    const delta = gestureState.dx / effectiveScrubberWidth;
+                    let newStart = windowGrantStartRef.current + delta;
+                    let newEnd = windowGrantEndRef.current + delta;
+                    if (newStart < 0) { newStart = 0; newEnd = selectionWidth; }
+                    if (newEnd > 1) { newEnd = 1; newStart = 1 - selectionWidth; }
+                    setStartPos(newStart);
+                    setEndPos(newEnd);
+                    startPosRef.current = newStart;
+                    endPosRef.current = newEnd;
+                    safeSetCurrentTime(newStart * safeDuration);
+                    setTooltipTime(newStart * safeDuration);
+                    triggerHaptic('light');
+                    return;
+                }
+
                 if (!duration || isNaN(duration) || duration === 0 || effectiveScrubberWidth <= 0) return;
                 // grantPos + totalDx — correct for all dx accumulation modes
                 let newStartPos = Math.max(0, Math.min(
@@ -314,14 +385,42 @@ const VideoTrimmer: React.FC<VideoTrimmerProps> = ({
         PanResponder.create({
             onStartShouldSetPanResponder: () => true,
             onMoveShouldSetPanResponder: () => true,
-            onPanResponderGrant: () => {
+            onPanResponderGrant: (evt) => {
+                const { locationX } = evt.nativeEvent;
+                const pos = locationX / effectiveScrubberWidth;
+
                 endGrantRef.current = endPosRef.current;
                 setShowTimeTooltip(true);
                 handlesOpacity.value = withTiming(1.2);
                 scrubberScale.value = withSpring(1.02);
                 triggerHaptic('light');
+
+                clearLongPress();
+                longPressTimerRef.current = setTimeout(() => {
+                    activateFullWindowMode(pos);
+                }, 600);
             },
             onPanResponderMove: (_, gestureState) => {
+                if (Math.abs(gestureState.dx) > 10) clearLongPress();
+
+                if (isLongPressActiveRef.current) {
+                    // Selection window slide (120s block)
+                    const selectionWidth = windowGrantEndRef.current - windowGrantStartRef.current;
+                    const delta = gestureState.dx / effectiveScrubberWidth;
+                    let newStart = windowGrantStartRef.current + delta;
+                    let newEnd = windowGrantEndRef.current + delta;
+                    if (newStart < 0) { newStart = 0; newEnd = selectionWidth; }
+                    if (newEnd > 1) { newEnd = 1; newStart = 1 - selectionWidth; }
+                    setStartPos(newStart);
+                    setEndPos(newEnd);
+                    startPosRef.current = newStart;
+                    endPosRef.current = newEnd;
+                    safeSetCurrentTime(newStart * safeDuration);
+                    setTooltipTime(newStart * safeDuration);
+                    triggerHaptic('light');
+                    return;
+                }
+
                 if (!duration || isNaN(duration) || duration === 0 || effectiveScrubberWidth <= 0) return;
                 let newEndPos = Math.max(
                     startPosRef.current + (MIN_SELECTION_DURATION / safeDuration),
@@ -354,14 +453,41 @@ const VideoTrimmer: React.FC<VideoTrimmerProps> = ({
         PanResponder.create({
             onStartShouldSetPanResponder: () => true,
             onMoveShouldSetPanResponder: () => true,
-            onPanResponderGrant: () => {
+            onPanResponderGrant: (evt) => {
+                const { locationX } = evt.nativeEvent;
+                const pos = locationX / effectiveScrubberWidth;
+
                 playheadGrantRef.current = currentTimePosRef.current;
                 setShowTimeTooltip(true);
                 player.pause();
                 setIsPlaying(false);
                 triggerHaptic('light');
+
+                clearLongPress();
+                longPressTimerRef.current = setTimeout(() => {
+                    activateFullWindowMode(pos);
+                }, 600);
             },
             onPanResponderMove: (_, gestureState) => {
+                if (Math.abs(gestureState.dx) > 10) clearLongPress();
+                if (isLongPressActiveRef.current) {
+                    // Slide 120s block even if started on playhead
+                    const selectionWidth = windowGrantEndRef.current - windowGrantStartRef.current;
+                    const delta = gestureState.dx / effectiveScrubberWidth;
+                    let newStart = windowGrantStartRef.current + delta;
+                    let newEnd = windowGrantEndRef.current + delta;
+                    if (newStart < 0) { newStart = 0; newEnd = selectionWidth; }
+                    if (newEnd > 1) { newEnd = 1; newStart = 1 - selectionWidth; }
+                    setStartPos(newStart);
+                    setEndPos(newEnd);
+                    startPosRef.current = newStart;
+                    endPosRef.current = newEnd;
+                    safeSetCurrentTime(newStart * safeDuration);
+                    setTooltipTime(newStart * safeDuration);
+                    triggerHaptic('light');
+                    return;
+                }
+
                 if (!duration || isNaN(duration) || duration === 0 || effectiveScrubberWidth <= 0) return;
                 const newPos = Math.max(
                     startPosRef.current,
@@ -374,11 +500,63 @@ const VideoTrimmer: React.FC<VideoTrimmerProps> = ({
                 triggerHaptic('light');
             },
             onPanResponderRelease: (_, gestureState) => {
+                clearLongPress();
                 currentTimePosRef.current = Math.max(
                     startPosRef.current,
                     Math.min(endPosRef.current, playheadGrantRef.current + gestureState.dx / effectiveScrubberWidth)
                 );
                 setShowTimeTooltip(false);
+                triggerHaptic('medium');
+            },
+        })
+    ).current;
+
+    // ── Window-Slide PanResponder (native only) ────────────────────────────────
+    // Attaches to the orange active region. Dragging slides BOTH handles together,
+    // preserving the exact selection duration. A small move threshold (>4px)
+    // ensures taps still pass through to the playhead logic above.
+    const windowPanResponder = useRef(
+        PanResponder.create({
+            onStartShouldSetPanResponder: () => false,
+            onMoveShouldSetPanResponder: (_, gs) => Math.abs(gs.dx) > 4,
+            onPanResponderGrant: (evt) => {
+                const { locationX } = evt.nativeEvent;
+                const pos = locationX / effectiveScrubberWidth;
+
+                windowGrantStartRef.current = startPosRef.current;
+                windowGrantEndRef.current = endPosRef.current;
+                setShowTimeTooltip(true);
+                handlesOpacity.value = withTiming(1.15);
+                scrubberScale.value = withSpring(1.02);
+                triggerHaptic('medium');
+
+                clearLongPress();
+                longPressTimerRef.current = setTimeout(() => {
+                    activateFullWindowMode(pos);
+                }, 600);
+            },
+            onPanResponderMove: (_, gestureState) => {
+                if (!duration || isNaN(duration) || duration === 0 || effectiveScrubberWidth <= 0) return;
+                const selectionWidth = windowGrantEndRef.current - windowGrantStartRef.current;
+                const delta = gestureState.dx / effectiveScrubberWidth;
+                let newStart = windowGrantStartRef.current + delta;
+                let newEnd = windowGrantEndRef.current + delta;
+                if (newStart < 0) { newStart = 0; newEnd = selectionWidth; }
+                if (newEnd > 1) { newEnd = 1; newStart = 1 - selectionWidth; }
+                if (isNaN(newStart) || isNaN(newEnd)) return;
+                setStartPos(newStart);
+                setEndPos(newEnd);
+                startPosRef.current = newStart;
+                endPosRef.current = newEnd;
+                safeSetCurrentTime(newStart * safeDuration);
+                setTooltipTime(newStart * safeDuration);
+                triggerHaptic('light');
+            },
+            onPanResponderRelease: () => {
+                clearLongPress();
+                setShowTimeTooltip(false);
+                handlesOpacity.value = withTiming(1);
+                scrubberScale.value = withSpring(1);
                 triggerHaptic('medium');
             },
         })
@@ -397,7 +575,7 @@ const VideoTrimmer: React.FC<VideoTrimmerProps> = ({
         el.style.userSelect = 'none';    // prevent text selection during drag
         el.style.cursor = 'pointer';
 
-        let activeHandle: 'start' | 'end' | 'playhead' | null = null;
+        let activeHandle: 'start' | 'end' | 'playhead' | 'window' | null = null;
 
         const getPos = (clientX: number): number => {
             const rect = el.getBoundingClientRect();
@@ -411,8 +589,8 @@ const VideoTrimmer: React.FC<VideoTrimmerProps> = ({
 
             // Determine nearest handle (handles have a hit-area of ~5% of track)
             const startDist = Math.abs(pos - startPosRef.current);
-            const endDist   = Math.abs(pos - endPosRef.current);
-            const phDist    = Math.abs(pos - currentTimePosRef.current);
+            const endDist = Math.abs(pos - endPosRef.current);
+            const phDist = Math.abs(pos - currentTimePosRef.current);
             const THRESHOLD = 0.08;
 
             if (startDist < THRESHOLD && startDist <= endDist) {
@@ -425,12 +603,11 @@ const VideoTrimmer: React.FC<VideoTrimmerProps> = ({
                 activeHandle = 'playhead';
                 playheadGrantRef.current = currentTimePosRef.current;
             } else if (pos > startPosRef.current && pos < endPosRef.current) {
-                // Click inside active region → move playhead directly
-                activeHandle = 'playhead';
-                playheadGrantRef.current = currentTimePosRef.current;
-                const newTime = pos * sd;
-                safeSetCurrentTimeRef.current(newTime);
-                setTooltipTime(newTime);
+                // Drag inside selected region → window-slide mode (moves both handles)
+                activeHandle = 'window';
+                windowGrantStartRef.current = startPosRef.current;
+                windowGrantEndRef.current = endPosRef.current;
+                windowGrantPosRef.current = pos;
             } else {
                 return; // click outside active region and not near a handle
             }
@@ -439,13 +616,22 @@ const VideoTrimmer: React.FC<VideoTrimmerProps> = ({
             setShowTimeTooltip(true);
             handlesOpacity.value = withTiming(1.2);
             scrubberScale.value = withSpring(1.02);
+
+            // Start long press timer for web
+            clearLongPress();
+            longPressTimerRef.current = setTimeout(() => {
+                activateFullWindowMode(pos);
+                activeHandle = 'window'; // switch mode mid-drag
+            }, 600);
         };
 
         const onPointerMove = (e: PointerEvent) => {
-            if (!activeHandle) return;
             const pos = getPos(e.clientX);
-            const sd  = safeDurationRef.current || 1;
-            const md  = maxDurationRef.current;
+            if (Math.abs(pos - windowGrantPosRef.current) > 0.05) clearLongPress();
+
+            if (!activeHandle) return;
+            const sd = safeDurationRef.current || 1;
+            const md = maxDurationRef.current;
 
             if (activeHandle === 'start') {
                 let np = Math.max(0, Math.min(pos, endPosRef.current - MIN_SELECTION_DURATION / sd));
@@ -468,10 +654,34 @@ const VideoTrimmer: React.FC<VideoTrimmerProps> = ({
                 currentTimePosRef.current = np;
                 safeSetCurrentTimeRef.current(np * sd);
                 setTooltipTime(np * sd);
+
+            } else if (activeHandle === 'window') {
+                // Slide the entire selection window — both handles move together
+                const selectionWidth = windowGrantEndRef.current - windowGrantStartRef.current;
+                const delta = pos - windowGrantPosRef.current;
+                let newStart = windowGrantStartRef.current + delta;
+                let newEnd = windowGrantEndRef.current + delta;
+
+                // Clamp within [0, 1] bounds
+                if (newStart < 0) {
+                    newStart = 0;
+                    newEnd = selectionWidth;
+                } else if (newEnd > 1) {
+                    newEnd = 1;
+                    newStart = 1 - selectionWidth;
+                }
+
+                setStartPos(newStart);
+                setEndPos(newEnd);
+                startPosRef.current = newStart;
+                endPosRef.current = newEnd;
+                safeSetCurrentTimeRef.current(newStart * sd);
+                setTooltipTime(newStart * sd);
             }
         };
 
         const onPointerUp = () => {
+            clearLongPress();
             activeHandle = null;
             setShowTimeTooltip(false);
             handlesOpacity.value = withTiming(1);
@@ -480,16 +690,16 @@ const VideoTrimmer: React.FC<VideoTrimmerProps> = ({
 
         el.addEventListener('pointerdown', onPointerDown);
         el.addEventListener('pointermove', onPointerMove);
-        el.addEventListener('pointerup',   onPointerUp);
+        el.addEventListener('pointerup', onPointerUp);
         el.addEventListener('pointercancel', onPointerUp);
 
         return () => {
             el.removeEventListener('pointerdown', onPointerDown);
             el.removeEventListener('pointermove', onPointerMove);
-            el.removeEventListener('pointerup',   onPointerUp);
+            el.removeEventListener('pointerup', onPointerUp);
             el.removeEventListener('pointercancel', onPointerUp);
         };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [scrubberEl]); // re-runs when DOM element actually mounts (callback ref sets scrubberEl state)
 
     const handleSave = async () => {
@@ -497,7 +707,7 @@ const VideoTrimmer: React.FC<VideoTrimmerProps> = ({
         saveButtonScale.value = withSequence(withSpring(0.9), withSpring(1));
 
         const startTime = startPos * safeDuration;
-        const endTime   = endPos   * safeDuration;
+        const endTime = endPos * safeDuration;
         const currentDuration = trimDuration;
 
         try {
@@ -723,7 +933,7 @@ const VideoTrimmer: React.FC<VideoTrimmerProps> = ({
                     {/* Premium iPhone-style Precision Scrubber */}
                     {!isLoading && (
                         <Animated.View style={[styles.scrubberWrapper, scrubberAnimatedStyle]}>
-                                <View 
+                            <View
                                 style={styles.scrubberContainer}
                                 ref={scrubberContainerRef}
                                 onLayout={onScrubberLayout}
@@ -755,7 +965,7 @@ const VideoTrimmer: React.FC<VideoTrimmerProps> = ({
                                         width: `${(1 - endPos) * 100}%`
                                     }]} />
 
-                                    {/* Active trim region with premium gradient */}
+                                    {/* Active trim region — drag to slide entire window */}
                                     <LinearGradient
                                         colors={['rgba(255,159,10,0.35)', 'rgba(255,159,10,0.15)']}
                                         start={{ x: 0, y: 0 }}
@@ -767,6 +977,7 @@ const VideoTrimmer: React.FC<VideoTrimmerProps> = ({
                                                 width: `${(endPos - startPos) * 100}%`
                                             }
                                         ]}
+                                        {...(Platform.OS !== 'web' ? windowPanResponder.panHandlers : {})}
                                     />
 
                                     {/* Premium time tooltip */}

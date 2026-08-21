@@ -1,0 +1,18 @@
+[
+    {
+        "branch": "general",
+        "domain_partition": "chemistry_partition",
+        "thesis_statement": "Atomic Theory: Matter is composed of discrete units called atoms",
+        "parent_thesis": "The Standard Model of Particle Physics: Fundamental forces (electromagnetic, weak, strong) are mediated by gauge bosons",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine."
+    },
+    {
+        "branch": "general",
+        "domain_partition": "chemistry_partition",
+        "thesis_statement": "Conservation of Mass: Matter cannot be created or destroyed in an isolated system (Non-relativistic limit)",
+        "parent_thesis": "Mass-Energy Equivalence: E = mc^2",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine."
+    }
+]

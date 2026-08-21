@@ -1,0 +1,182 @@
+[
+    {
+        "branch": "epistemology",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Justified True Belief (JTB / Gettier Definition)",
+        "parent_thesis": "1: Being (True)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "7b6678a20354ec6b62e8fa4a8d4788e144f25d3c91e91682ad0ee459e7420405"
+    },
+    {
+        "branch": "epistemology",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Cartesian Doubt (Cogito ergo sum)",
+        "parent_thesis": "1: Being (True)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "c5097413248fa8e3462ebca36f1abc6d9761a35819d350d463bf00e663b82eff"
+    },
+    {
+        "branch": "epistemology",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Empiricism (Tabula Rasa)",
+        "parent_thesis": "1: Being (True)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "526d8dba038678ba63b1e28d49bbf381095b0f16ff606b6e38c39154d66010a0"
+    },
+    {
+        "branch": "epistemology",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Rationalism (A priori knowledge)",
+        "parent_thesis": "1: Being (True)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "ba9d32895420957fd16e32c98e1f9d4202959350a07ddd812f46b81da4d533ac"
+    },
+    {
+        "branch": "epistemology",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Problem of Induction resolution",
+        "parent_thesis": "1: Being (True)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "d406ca7786599da05d40b9f8ee0d1daad6d16bc8325afa3c571171a6d4dfe555"
+    },
+    {
+        "branch": "epistemology",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Occam Razor (Law of Parsimony)",
+        "parent_thesis": "1: Being (True)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "4bc94e865792ba69f7406c4a3d58b7b5b913e2d1654f87c6b50f568306e65d7a"
+    },
+    {
+        "branch": "epistemology",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Gettier Problems",
+        "parent_thesis": "1: Being (True)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "9f130fc6f69d6fde2804dc47515ce55875ddc8f64bdbfd532d29f92a116bbee1"
+    },
+    {
+        "branch": "epistemology",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Platonic Theory of Forms",
+        "parent_thesis": "1: Being (True)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "b5397aba9b241fb644ad4125b316634362214cba066737341c248c5c99e6946a"
+    },
+    {
+        "branch": "epistemology",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Coherentism (Truth as systematic coherence)",
+        "parent_thesis": "1: Being (True)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "98f4d2a1b188eb47ed270ac9698a5c49e2a8dedacb3535474fe79c87dec97546"
+    },
+    {
+        "branch": "epistemology",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Foundationalism (Basic vs non-basic beliefs)",
+        "parent_thesis": "1: Being (True)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "7ed150160b3341dafd934282d3e233d539bfc0b17dbde4dcaaaf8cfe65f7eb58"
+    },
+    {
+        "branch": "epistemology",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Reliabilism (Epistemic justification)",
+        "parent_thesis": "1: Being (True)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "e3fcaad43ab193b4c44581c21e7571ecc222d3389d1df823f02c5b46e040ca31"
+    },
+    {
+        "branch": "epistemology",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Phenomenalism (Logical constructions out of sense-data)",
+        "parent_thesis": "1: Being (True)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "169ba4ffc452340a238bb8440e3f28c126d19402c1b0ba1c372e78e745c9cafb"
+    },
+    {
+        "branch": "epistemology",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Epistemic Closure Principle",
+        "parent_thesis": "1: Being (True)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "517a44f922c32416de200c5b4dc46733c3dfc2a7d22605066aaa925b152dc0c4"
+    },
+    {
+        "branch": "epistemology",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Bayesian Epistemology (Degrees of belief updating)",
+        "parent_thesis": "1: Being (True)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "4de492565753298dde8acae1e4782eb085ec58b8b72032af709f5413708c7b69"
+    },
+    {
+        "branch": "epistemology",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Agrippa Trilemma (Munchhausen trilemma)",
+        "parent_thesis": "1: Being (True)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "23b61b857deb3402a52e710575bf8351a960915333d1adeadf280dfea1a7d98e"
+    },
+    {
+        "branch": "epistemology",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Grue Paradox (Goodman - New riddle of induction)",
+        "parent_thesis": "1: Being (True)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "7f905a3961033709ac4d4d2c2a9812489ebbe245b0233a3bb36d995372b8e253"
+    },
+    {
+        "branch": "epistemology",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Fallibilism",
+        "parent_thesis": "Justified True Belief (JTB / Gettier Definition)",
+        "formal_proof": "Fallibilism: Beliefs can be justified and count as knowledge even if the justification does not guarantee absolute certainty. Human knowledge is inherently fallible.",
+        "context_description": "Epistemological axiom stating that absolute certainty is not a necessary condition for knowledge.",
+        "ast_signature": "ec4f0031c1cdb7cb5bb5991cbf846cacaf8ab3348f5433094ac281e12b0c4f5d"
+    },
+    {
+        "branch": "epistemology",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Internalism versus Externalism",
+        "parent_thesis": "Justified True Belief (JTB / Gettier Definition)",
+        "formal_proof": "Internalism vs Externalism: Epistemic justification depends entirely on factors internal to the subject's mind (internalism) or includes external/causal relations to reality (externalism).",
+        "context_description": "Foundational dispute in epistemology concerning the nature and source of epistemic justification.",
+        "ast_signature": "fcd9b55b4b12414086431555cfbc3c50359f5a79a5ddacd98d17c403418e1d4f"
+    },
+    {
+        "branch": "epistemology",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Defeasibility Theory of Knowledge",
+        "parent_thesis": "Justified True Belief (JTB / Gettier Definition)",
+        "formal_proof": "Defeasibility Theory: S knows P if and only if S's belief in P is justified, P is true, and there is no true proposition Q such that if S were to believe Q, S's justification for P would be defeated.",
+        "context_description": "Standard epistemological resolution to the Gettier problems by introducing an 'undefeated' constraint.",
+        "ast_signature": "0a5aa0183049ca52047d2a51358bc22a4f0ee11515faf9018faa93c909143561"
+    },
+    {
+        "branch": "epistemology",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Virtue Epistemology",
+        "parent_thesis": "Justified True Belief (JTB / Gettier Definition)",
+        "formal_proof": "Virtue Epistemology: Knowledge is belief that is true because it is the product of intellectual virtues or cognitive abilities, rather than luck or flawed processes.",
+        "context_description": "Epistemological theory evaluating knowledge through the agent's intellectual virtues and cognitive traits.",
+        "ast_signature": "acdf7d3a09bf9244a51b70d9c56826f29eca3127ca979111653f6490d0d904e5"
+    }
+]

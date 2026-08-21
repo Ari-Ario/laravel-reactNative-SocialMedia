@@ -1,0 +1,117 @@
+[
+    {
+        "thesis_statement": "Ranganathan's Five Laws of Library Science - Information must be utilized, accessible, and designed for user efficiency as a growing organic structure",
+        "parent_thesis": "1: Being (True)",
+        "branch": "humanities",
+        "domain_partition": "information_science",
+        "context_description": "The foundational philosophical axioms of library administration, focusing on maximizing utility, saving time, and continuous growth."
+    },
+    {
+        "thesis_statement": "Garfield's Citation Impact Factor - The frequency with which articles in a journal are cited measures its relative academic influence",
+        "parent_thesis": "Peano axioms",
+        "branch": "humanities",
+        "domain_partition": "information_science",
+        "context_description": "Eugene Garfield's metric to calculate the average citation count of articles in a academic journal over a given timeframe."
+    },
+    {
+        "thesis_statement": "Bradford's Law of Scattering - In any subject area, a core set of journals contains the majority of key literature, while remaining papers are scattered exponentially",
+        "parent_thesis": "Peano axioms",
+        "branch": "humanities",
+        "domain_partition": "information_science",
+        "context_description": "An empirical bibliometric law showing that relative journal relevance decreases exponentially across concentric zones of publication."
+    },
+    {
+        "thesis_statement": "Metadata Interoperability (Dublin Core) - Standardized metadata frameworks are necessary to permit information discovery across heterogeneous repositories",
+        "parent_thesis": "Peano axioms",
+        "branch": "humanities",
+        "domain_partition": "information_science",
+        "context_description": "Codifies Dublin Core's 15 basic semantic properties to enable cross-domain information schema alignment and digital search interoperability."
+    },
+    {
+        "thesis_statement": "Information Entropy of Indexing - The efficiency of a search index is bounded by the entropy of the classification system's structural categories",
+        "parent_thesis": "Shannon Entropy Axiom: H(X) = -\u2211 P(x)log P(x). The fundamental limit to data compression and the expected value of information contained in a message",
+        "branch": "humanities",
+        "domain_partition": "information_science",
+        "context_description": "Connects catalog index design to communication theory, demonstrating that search search space reduction is bounded by search category entropy."
+    },
+    {
+        "thesis_statement": "The Fundamental Theorem of Library  Information Science, Bibliometrics  Curation - Core theoretical limits govern the applied behaviors within the domain.",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "The Axiom of Structural Integrity in Library  Information Science, Bibliometrics  Curation - The integrity of the system is proportional to its internal coherence.",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "The Principle of Emergence in Library  Information Science, Bibliometrics  Curation - Higher-order complexities naturally arise from basic interactions.",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "The Postulate of Relational Dynamics in Library  Information Science, Bibliometrics  Curation - No entity within the domain exists in isolation; all are defined by relationships.",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "The Conservation Law of Library  Information Science, Bibliometrics  Curation - Core informational or physical properties are conserved through transformations.",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "The Paradox of Limitation in Library  Information Science, Bibliometrics  Curation - Advancements in the field reveal new fundamental boundaries of measurement.",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "The Dialectical Synthesis of Library  Information Science, Bibliometrics  Curation - Opposing theoretical frameworks ultimately resolve into a higher unified truth.",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "The Law of Diminishing Utility in Library  Information Science, Bibliometrics  Curation - Progressive refinements yield exponentially smaller gains in systemic accuracy.",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "The Principle of Asymmetry in Library  Information Science, Bibliometrics  Curation - Informational and structural forces exert non-uniform influence across the domain.",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "The Theorem of Epistemic Closure in Library  Information Science, Bibliometrics  Curation - The field approaches a state of absolute formal definition bounded by logic.",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "The Foundational Postulate of Library  Information Science, Bibliometrics  Curation - All observations within the domain must trace back to fundamental constants.",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "The Law of Entropy in Library  Information Science, Bibliometrics  Curation - The system naturally trends toward disorganization unless energy is applied.",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "The Principle of Isomorphism in Library  Information Science, Bibliometrics  Curation - Structures within the domain mirror the mathematical structures of logic.",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "The Hypothesis of Universality in Library  Information Science, Bibliometrics  Curation - The core principles of the field apply uniformly across all observed contexts.",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "The Postulate of Continuity in Library  Information Science, Bibliometrics  Curation - Changes within the system occur continuously rather than through discrete unlinked jumps.",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "The Axiom of Non-Contradiction in Library  Information Science, Bibliometrics  Curation - No two fundamental principles within the field can mutually invalidate each other.",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "The Theorem of Systemic Interdependence in Library  Information Science, Bibliometrics  Curation - A perturbation in one sub-field inherently affects the entire discipline.",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "The Principle of Recursive Feedback in Library  Information Science, Bibliometrics  Curation - Outputs of the system continually serve as inputs, driving self-regulation.",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "The Law of Critical Thresholds in Library  Information Science, Bibliometrics  Curation - Phase transitions occur when cumulative changes reach a breaking point.",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "The Ultimate Epistemic Limit of Library  Information Science, Bibliometrics  Curation - Human comprehension of the domain is bounded by the cognitive architecture of the observer.",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    }
+]

@@ -1,0 +1,20 @@
+[
+    {
+        "branch": "decision_theory",
+        "domain_partition": "math_partition",
+        "thesis_statement": "Expected utility maximization (von Neumann-Morgenstern)",
+        "parent_thesis": "Von Neumann-Morgenstern Utility Theorem: Rational agents act to maximize expected utility",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "f2fae04c549bbe54422aaaeec888187ac1c405b5b0d10c761012f9adb34e1601"
+    },
+    {
+        "branch": "decision_theory",
+        "domain_partition": "math_partition",
+        "thesis_statement": "Bayes rational choice theorem",
+        "parent_thesis": "Bayesian Rational Choice Axiom: Under uncertainty, a rational agent updates beliefs using Bayes' Rule and acts to maximize expected utility",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "da7e18025cba18d1bb91362ac649786d96b23bde87b90f2ccacc67fded5be8a2"
+    }
+]

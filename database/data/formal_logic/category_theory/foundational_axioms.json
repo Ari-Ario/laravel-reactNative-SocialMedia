@@ -1,0 +1,92 @@
+[
+    {
+        "branch": "category_theory",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Category Axiom \u2014 identity morphism (id_A: A\u2192A)",
+        "parent_thesis": "1: Being (True)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "e77a769700891a976c7a12871a430214be366798c84206896c694e86f3821d6d"
+    },
+    {
+        "branch": "category_theory",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Category Axiom \u2014 associativity of composition (h\u2218(g\u2218f) = (h\u2218g)\u2218f)",
+        "parent_thesis": "Category Axiom \u2014 identity morphism (id_A: A\u2192A)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "36db842d24bc43a855bf31933a5272b63e7432d54d760f53f7cbecc30cb295f7"
+    },
+    {
+        "branch": "category_theory",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Functor \u2014 structure-preserving map between categories",
+        "parent_thesis": "Category Axiom \u2014 identity morphism (id_A: A\u2192A)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "f505b146a68b2b03a73f4646a9f37108a13c443ff625ae558b0d6e0a625b5e4f"
+    },
+    {
+        "branch": "category_theory",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Natural Transformation \u2014 morphism between functors",
+        "parent_thesis": "Functor \u2014 structure-preserving map between categories",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "e82122b5d2c04d4fd12a24729b9b4f90e120225a580472e58d48f424f8c53925"
+    },
+    {
+        "branch": "category_theory",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Yoneda Lemma \u2014 Nat(Hom(A,\u2212),F) \u2245 F(A)",
+        "parent_thesis": "Natural Transformation \u2014 morphism between functors",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "98abef58238d9230075f683ba631d4a46bbcbe9d30ec38bf19ae2b2b7dafb95d"
+    },
+    {
+        "branch": "category_theory",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Adjoint Functors \u2014 F\u22a3G iff Hom(FA,B) \u2245 Hom(A,GB)",
+        "parent_thesis": "Limits and Colimits \u2014 universal constructions in categories",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "edc09371f58f79f7d24e2ae5ff44a81629d903b8cdbb5215f55c50c278ab4bb8"
+    },
+    {
+        "branch": "category_theory",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Topos Theory \u2014 categorical model of intuitionistic logic",
+        "parent_thesis": "Functor \u2014 structure-preserving map between categories",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "5c591fd8acac6818ecd784fd7ca5dc2698f04e8500f284f3c9bbab5c838881c7"
+    },
+    {
+        "branch": "category_theory",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Curry-Howard-Lambek Correspondence \u2014 logic, types, categories",
+        "parent_thesis": "Curry-Howard Correspondence \u2014 propositions as types, proofs as programs",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "7ac6e0c7e2569ce72797d8943eedeea8f5034978fbb33890394b3a594acccd66"
+    },
+    {
+        "branch": "category_theory",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Monad \u2014 (T, \u03b7, \u03bc) with unit and multiplication natural transformations",
+        "parent_thesis": "Functor \u2014 structure-preserving map between categories",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "86ec03a24f526b3f6a135bfc9aee6dc98074d6a0548a09de7c21ee0761e512c1"
+    },
+    {
+        "branch": "category_theory",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Limits and Colimits \u2014 universal constructions in categories",
+        "parent_thesis": "Yoneda Lemma \u2014 Nat(Hom(A,\u2212),F) \u2245 F(A)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "19316f2d61d58a30537170f8b00b989d2494ead2b34d843992a71b930a62cd8e"
+    }
+]

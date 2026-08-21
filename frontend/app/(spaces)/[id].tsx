@@ -58,9 +58,10 @@ import SpaceSettingsModal from '@/components/ChatScreen/SpaceSettingsModal';
 import { createShadow } from '@/utils/styles';
 import React from 'react';
 import { MagicEventModal } from '@/components/Spaces/MagicEventModal';
+import axios from '@/services/axios';
+import getApiBase from '@/services/getApiBase';
 const WhiteboardCanvas = React.lazy(() => import('@/components/ChatScreen/WhiteboardCanvas'));
 import * as FileSystem from 'expo-file-system/legacy';
-import getApiBase from '@/services/getApiBase';
 import ReportPost from '@/components/ReportPost';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { useTranslation } from '@/constants/i18n';
@@ -89,10 +90,10 @@ const SpaceDetailScreen = () => {
   const [selectedMagicEvent, setSelectedMagicEvent] = useState<any>(null);
   const [showMagicModal, setShowMagicModal] = useState(false);
   const { unreadModerationCount } = useNotificationStore();
-  
+
   const isSystemRoute = ['login', 'loginscreen', 'registerscreen', 'verificationscreen', 'forgotpasswordscreen', 'resetpasswordscreen', 'index', '+not-found']
     .includes((id || '').toLowerCase());
-    
+
   if (isSystemRoute) {
     if (loading) setLoading(false);
     return null;
@@ -115,7 +116,7 @@ const SpaceDetailScreen = () => {
     console.log('[SpaceDetail] handleWhiteboardShare received data, length:', base64Data.length);
     try {
       showToast(t('preparing_snapshot'), 'info');
-      
+
       const fileName = `whiteboard_${Date.now()}.png`;
       const token = await getToken();
       const formData = new FormData();
@@ -135,14 +136,14 @@ const SpaceDetailScreen = () => {
         const path = `${(FileSystem as any).cacheDirectory}${fileName}`;
         const base64Content = base64Data.replace(/^data:image\/png;base64,/, '');
         await FileSystem.writeAsStringAsync(path, base64Content, { encoding: 'base64' });
-        
+
         formData.append('file', {
           uri: path,
           type: 'image/png',
           name: fileName,
         } as any);
       }
-      
+
       formData.append('type', 'image');
 
       console.log('[SpaceDetail] Uploading whiteboard snapshot...');
@@ -161,7 +162,7 @@ const SpaceDetailScreen = () => {
 
       const result = await uploadResponse.json();
       console.log('[SpaceDetail] Upload result:', JSON.stringify(result));
-      
+
       // Preferred: result.media.file_path is the relative path (e.g. spaces/...)
       // Fallback: result.url is usually /storage/spaces/... -> strip /storage/ if it exists to avoid double-prefixing in components
       let imageUrl = result.media?.file_path;
@@ -170,7 +171,7 @@ const SpaceDetailScreen = () => {
       } else if (!imageUrl) {
         imageUrl = result.path || result.media?.url;
       }
-      
+
       console.log('[SpaceDetail] Cleaned image path for message:', imageUrl);
 
       if (imageUrl) {
@@ -180,12 +181,12 @@ const SpaceDetailScreen = () => {
           file_path: imageUrl,
           metadata: { is_whiteboard_snapshot: true }
         });
-        
+
         showToast(t('snapshot_shared_chat'), 'success');
         if (Platform.OS !== 'web') {
           await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         }
-        
+
         setActiveTab('chat');
       } else {
         throw new Error('No image URL returned from server');
@@ -231,8 +232,8 @@ const SpaceDetailScreen = () => {
 
       // If there is no user, this is a guest trying to view a protected/unavailable space. Let GuestJoinView handle the UI state.
       if (!user) {
-         console.log('Skipping security fallback for guest user, allowing GuestJoinView to render');
-         return false; 
+        console.log('Skipping security fallback for guest user, allowing GuestJoinView to render');
+        return false;
       }
 
       // Remove from collaboration store instantly
@@ -298,13 +299,13 @@ const SpaceDetailScreen = () => {
 
   const loadSpaceDetails = async (force: boolean = false) => {
     if (isSystemRoute) {
-        setLoading(false);
-        return;
+      setLoading(false);
+      return;
     }
     // ✅ Restore optimization: Skip refetch if space is already loaded for the same ID
     if (!force && space && space.id === id) {
-        setLoading(false);
-        return;
+      setLoading(false);
+      return;
     }
 
     setLoading(true);
@@ -339,7 +340,24 @@ const SpaceDetailScreen = () => {
 
       setSpace(spaceData);
       setParticipants(spaceData.participants || []);
-      setMagicEvents(spaceData.magic_events || []);
+      let initialMagicEvents = spaceData.magic_events || [];
+      if (spaceData.has_ai_assistant) {
+        try {
+          const API_BASE = getApiBase();
+          // Pass space_id so the backend can persist the event and make it discoverable
+          const magicRes = await axios.get(`${API_BASE}/ai/magic-event?space_id=${id}`);
+          if (magicRes.data?.event) {
+            // Only add if it's not already in the list (e.g. if singleton check on backend returned existing)
+            const exists = initialMagicEvents.some((e: any) => e.id === magicRes.data.event.id);
+            if (!exists) {
+              initialMagicEvents = [magicRes.data.event, ...initialMagicEvents];
+            }
+          }
+        } catch (e) {
+          console.log('Could not fetch inductive magic event', e);
+        }
+      }
+      setMagicEvents(initialMagicEvents);
 
       console.log('📝 [SpaceDetail] Content state messages count:', spaceData.content_state?.messages?.length || 0);
 
@@ -349,7 +367,7 @@ const SpaceDetailScreen = () => {
         setIsMuted(perms.is_muted || false);
         setIsPinned(perms.is_pinned || false);
         setIsArchived(perms.is_archived || false);
-        
+
         // ✅ Restore notification sync: Mark space read and clear notification badges immediately
         try {
           useCollaborationStore.getState().markSpaceAsRead(id as string);
@@ -395,7 +413,7 @@ const SpaceDetailScreen = () => {
       if (handleSpaceSecurityFallback(error, 'loadSpaceDetails')) return;
 
       if (user) {
-         Alert.alert(t('error'), t('failed_load_space_details_msg'));
+        Alert.alert(t('error'), t('failed_load_space_details_msg'));
       }
     } finally {
       setLoading(false);
@@ -407,7 +425,7 @@ const SpaceDetailScreen = () => {
     try {
       const spacePolls = await collaborationService.getPolls(id);
       // ✅ FIX: Replace list instead of merging to handle server-side removals (Phase 72)
-      const sortedPolls = spacePolls.sort((a: any, b: any) => 
+      const sortedPolls = spacePolls.sort((a: any, b: any) =>
         new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       );
       setPolls(sortedPolls);
@@ -498,15 +516,15 @@ const SpaceDetailScreen = () => {
         onMessage: (message) => {
           console.log('💬 New message (onMessage):', message);
           const newMsg = message.message || message;
-          
+
           setSpace((prev: any) => {
             const msgs = prev?.content_state?.messages || [];
-            
+
             // Avoid duplicates
             if (msgs.some((m: any) => m.id === newMsg.id)) {
               return prev;
             }
-            
+
             const updatedContentState = {
               ...prev?.content_state,
               messages: [newMsg, ...msgs]
@@ -517,7 +535,7 @@ const SpaceDetailScreen = () => {
               updated_at: new Date().toISOString(),
               content_state: updatedContentState
             });
-            
+
             return {
               ...prev,
               content_state: updatedContentState
@@ -629,7 +647,7 @@ const SpaceDetailScreen = () => {
         onPollDeleted: (data) => {
           const pollId = data?.poll_id || data;
           console.log('🗑️ Poll deleted:', pollId);
-          
+
           // 1. Remove from polls list
           setPolls(prev => {
             console.log('🗑️ [Pusher] Filtering polls list for deletion:', pollId);
@@ -920,19 +938,19 @@ const SpaceDetailScreen = () => {
       // Start call via API first to get the call ID
       const response = await collaborationService.startCall(id as string, type);
       const call = response.call || response;
-      
+
       startCall({
         spaceId: id as string,
         spaceType: space?.space_type === 'direct' ? 'direct' : (space?.space_type === 'channel' ? 'channel' : 'group'),
         type,
         callId: call.id
       });
-      
+
       // ✅ Update URL with call info so a refresh/navigation doesn't lose the call state
       setShowCallMenu(false);
       setActiveTab('meeting');
-      router.setParams({ 
-        tab: 'meeting', 
+      router.setParams({
+        tab: 'meeting',
         type,
         call: call.id,
       });
@@ -944,17 +962,17 @@ const SpaceDetailScreen = () => {
 
   const handleJoinSession = useCallback(async (activity: CollaborativeActivity) => {
     console.log('🚀 Joining session (Universal):', activity.id, 'type:', activity.activity_type);
-    
+
     // Always switch to meeting tab for any joined activity now
     setActiveTab('meeting');
-    
+
     // Trigger automated video call for ALL activity types
     try {
       await handleStartCall('video');
     } catch (err) {
       console.error('Auto-call failed after join:', err);
     }
-    
+
     // Clear activity query param to prevent modal auto-open
     router.setParams({ activity: undefined });
   }, [id, handleStartCall]);
@@ -1079,7 +1097,7 @@ const SpaceDetailScreen = () => {
         setSelectedMagicEvent(event);
         setShowMagicModal(true);
       }
-      
+
       await collaborationService.discoverMagicEvent(eventId);
       setMagicEvents(prev => prev.map(event =>
         event.id === eventId ? { ...event, has_been_discovered: true } : event
@@ -1111,7 +1129,7 @@ const SpaceDetailScreen = () => {
     const icons: Record<string, string> = {
       chat: 'chatbubble',
       whiteboard: 'easel',
-        voice_channel: 'mic',
+      voice_channel: 'mic',
     };
     return icons[type] || 'cube';
   };
@@ -1282,10 +1300,10 @@ const SpaceDetailScreen = () => {
   useEffect(() => {
     if (params.highlightMagic && magicEvents.length > 0) {
       const targetId = params.highlightMagic;
-      const eventId = targetId === 'true' 
-        ? magicEvents.find(e => !e.has_been_discovered)?.id 
+      const eventId = targetId === 'true'
+        ? magicEvents.find(e => !e.has_been_discovered)?.id
         : targetId;
-        
+
       if (eventId) {
         const event = magicEvents.find(e => e.id === eventId);
         if (event) {
@@ -1332,42 +1350,42 @@ const SpaceDetailScreen = () => {
       case 'whiteboard':
         return (
           <View style={{ flex: 1 }}>
-            <React.Suspense fallback={<View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}><ActivityIndicator size="large" color="#007AFF" /></View>}>
+            <React.Suspense fallback={<View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}><ActivityIndicator size="large" color="#007AFF" /></View>}>
               <WhiteboardCanvas
                 spaceId={id as string}
                 initialElements={space?.content_state?.whiteboard?.elements || []}
                 onShare={handleWhiteboardShare}
                 onElementsChange={(elements) => {
-                // Update local state and remote sync
-                setSpace((prev: any) => {
-                  const newState = {
-                    ...prev,
-                    content_state: {
-                      ...prev.content_state,
-                      whiteboard: {
-                        ...prev.content_state?.whiteboard,
-                        elements,
+                  // Update local state and remote sync
+                  setSpace((prev: any) => {
+                    const newState = {
+                      ...prev,
+                      content_state: {
+                        ...prev.content_state,
+                        whiteboard: {
+                          ...prev.content_state?.whiteboard,
+                          elements,
+                        },
                       },
-                    },
-                  };
+                    };
 
-                  // Debounced remote sync
-                  if ((window as any).whiteboardSyncTimer) {
-                    clearTimeout((window as any).whiteboardSyncTimer);
-                  }
-                  (window as any).whiteboardSyncTimer = setTimeout(() => {
-                    collaborationService.updateContentState(id as string, newState.content_state)
-                      .catch(err => console.error('Whiteboard remote sync failed:', err));
-                  }, 2000);
+                    // Debounced remote sync
+                    if ((window as any).whiteboardSyncTimer) {
+                      clearTimeout((window as any).whiteboardSyncTimer);
+                    }
+                    (window as any).whiteboardSyncTimer = setTimeout(() => {
+                      collaborationService.updateContentState(id as string, newState.content_state)
+                        .catch(err => console.error('Whiteboard remote sync failed:', err));
+                    }, 2000);
 
-                  return newState;
-                });
-              }}
-              onError={(error) => {
-                console.error('Whiteboard error:', error);
-                showToast(t('whiteboard_error'), 'error');
-              }}
-            />
+                    return newState;
+                  });
+                }}
+                onError={(error) => {
+                  console.error('Whiteboard error:', error);
+                  showToast(t('whiteboard_error'), 'error');
+                }}
+              />
             </React.Suspense>
           </View>
         );
@@ -1516,6 +1534,77 @@ const SpaceDetailScreen = () => {
           </View>
         );
 
+      case 'ai':
+        return (
+          <ScrollView style={styles.aiContainer} contentContainerStyle={{ paddingBottom: 100 }}>
+            {/* Conversational AI */}
+            {space?.has_ai_assistant && (
+              <View style={styles.aiSection}>
+                <Text style={styles.aiSectionTitle}>{t('ai_assistant')}</Text>
+                <View style={styles.aiAssistantWrapper}>
+                  <AICollaborationAssistant
+                    spaceId={id as string}
+                    spaceType={space?.space_type}
+                    spaceData={space}
+                    participants={participants}
+                    currentContent={space?.content_state}
+                    visible={true}
+                    onClose={() => setActiveTab('chat')}
+                    embedded={true}
+                  />
+                </View>
+              </View>
+            )}
+
+            {/* Whiteboard AI Tools (if space has whiteboard) */}
+            {space?.space_type === 'whiteboard' && (
+              <View style={styles.aiSection}>
+                <Text style={styles.aiSectionTitle}>{t('whiteboard_ai')}</Text>
+                <View style={styles.aiToolRow}>
+                  <TouchableOpacity
+                    style={styles.aiTool}
+                    onPress={() => {
+                      showToast(t('coming_soon'), 'info'); // Stub
+                    }}>
+                    <Ionicons name="git-network" size={24} color={colors.tint} />
+                    <Text style={styles.aiToolText}>{t('weave_patterns')}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.aiTool}
+                    onPress={() => {
+                      showToast(t('coming_soon'), 'info'); // Stub
+                    }}>
+                    <Ionicons name="color-wand" size={24} color={colors.tint} />
+                    <Text style={styles.aiToolText}>{t('generate_variants')}</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+
+            {/* Magic Events History */}
+            <View style={styles.aiSection}>
+              <Text style={styles.aiSectionTitle}>{t('recent_magic')}</Text>
+              {magicEvents.length === 0 ? (
+                <Text style={styles.magicText}>{t('no_magic_events') || 'No magic events yet'}</Text>
+              ) : (
+                magicEvents.slice(0, 5).map((event: any) => (
+                  <View key={event.id} style={styles.magicItem}>
+                    <Ionicons name="sparkles" size={16} color="#FFD700" />
+                    <Text style={styles.magicText}>{event.event_type}</Text>
+                  </View>
+                ))
+              )}
+            </View>
+
+            {/* AI Learning Stats */}
+            <View style={styles.aiSection}>
+              <Text style={styles.aiSectionTitle}>{t('ai_learning')}</Text>
+              <Text style={styles.aiStatText}>{t('interactions') || 'Interactions'}: {space?.ai_learning_data?.count || 0}</Text>
+              <Text style={styles.aiStatText}>{t('accuracy') || 'Accuracy'}: {space?.ai_learning_data?.accuracy || 0}%</Text>
+            </View>
+          </ScrollView>
+        );
+
       default:
         return (
           <View style={styles.defaultContainer}>
@@ -1551,7 +1640,7 @@ const SpaceDetailScreen = () => {
           <Text style={styles.lockedDescription}>
             {t('private_space_guest_desc')}
           </Text>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.joinSpaceButton}
             onPress={() => router.replace('/LoginScreen')}
           >
@@ -1564,7 +1653,7 @@ const SpaceDetailScreen = () => {
 
   // 🧬 Identification Logic (Refined for guests)
   const isDirectChat = (space?.settings?.is_direct || space?.space_type === 'direct' || space?.space_type === 'chat') && !!space?.other_participant;
-  
+
   // For guests (user === null), we MUST NOT pick a random participant as "other participant"
   const otherParticipant = space?.other_participant || (isDirectChat && user
     ? participants.find(p => String(p.user?.id || p.user_id) !== String(user?.id))?.user
@@ -1668,14 +1757,14 @@ const SpaceDetailScreen = () => {
                   <TouchableOpacity
                     ref={callButtonRef}
                     style={[
-                      styles.headerButton, 
-                      { 
-                        backgroundColor: hasActiveCall ? '#ff4444' + '30' : colors.tint + '15', 
-                        borderRadius: 12, 
-                        paddingHorizontal: 8, 
-                        marginRight: 8, 
-                        borderWidth: 1, 
-                        borderColor: hasActiveCall ? '#ff4444' : colors.tint 
+                      styles.headerButton,
+                      {
+                        backgroundColor: hasActiveCall ? '#ff4444' + '30' : colors.tint + '15',
+                        borderRadius: 12,
+                        paddingHorizontal: 8,
+                        marginRight: 8,
+                        borderWidth: 1,
+                        borderColor: hasActiveCall ? '#ff4444' : colors.tint
                       }
                     ]}
                     onPress={() => {
@@ -1692,15 +1781,15 @@ const SpaceDetailScreen = () => {
                     }}
                   >
                     <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                      <Ionicons 
-                        name={hasActiveCall ? "radio" : "videocam"} 
-                        size={18} 
-                        color={hasActiveCall ? "#ff4444" : colors.tint} 
+                      <Ionicons
+                        name={hasActiveCall ? "radio" : "videocam"}
+                        size={18}
+                        color={hasActiveCall ? "#ff4444" : colors.tint}
                       />
-                      <Text style={{ 
-                        color: hasActiveCall ? '#ff4444' : colors.tint, 
-                        fontSize: 10, 
-                        fontWeight: '900', 
+                      <Text style={{
+                        color: hasActiveCall ? '#ff4444' : colors.tint,
+                        fontSize: 10,
+                        fontWeight: '900',
                         marginLeft: 4,
                         textTransform: 'uppercase'
                       }}>
@@ -1768,7 +1857,7 @@ const SpaceDetailScreen = () => {
 
       {/* Active Tab Return Banner */}
       {activeTab !== 'chat' && (
-        <TouchableOpacity 
+        <TouchableOpacity
           style={{
             flexDirection: 'row',
             alignItems: 'center',
@@ -1951,15 +2040,15 @@ const SpaceDetailScreen = () => {
               };
             });
           }
-          
+
           // ✅ Sync with global store
           useCollaborationStore.getState().updateSpace(id as string, {
             updated_at: new Date().toISOString(),
             ...(message ? {
-                content_state: {
-                    ...(useCollaborationStore.getState().activeSpace?.content_state || {}),
-                    messages: updatedMessages.length > 0 ? updatedMessages : undefined
-                }
+              content_state: {
+                ...(useCollaborationStore.getState().activeSpace?.content_state || {}),
+                messages: updatedMessages.length > 0 ? updatedMessages : undefined
+              }
             } : {})
           });
 
@@ -2407,885 +2496,953 @@ const SpaceDetailScreen = () => {
 
 function getStyles(colors: any, activeScheme: string, isRTL: boolean): any {
   return StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    marginTop: 12,
-    fontSize: 16,
-    color: colors.textSecondary,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  backButton: {
-    padding: 4,
-    marginRight: 8,
-  },
-  headerContent: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  headerAvatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    marginRight: 10,
-  },
-  headerTextContainer: {
-    flex: 1,
-    justifyContent: 'center',
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: colors.text,
-    marginBottom: 2,
-    textAlign: 'left',
-  },
-  subtitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  subtitle: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    marginLeft: 4,
-  },
-  dotSeparator: {
-    width: 3,
-    height: 3,
-    borderRadius: 1.5,
-    backgroundColor: colors.textSecondary,
-    marginHorizontal: 6,
-  },
-  headerActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  headerButton: {
-    padding: 4,
-  },
-  pollsBadge: {
-    position: 'absolute',
-    top: -4,
-    right: -4,
-    backgroundColor: '#FF3B30',
-    borderRadius: 8,
-    minWidth: 16,
-    height: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 3,
-    borderWidth: 1.5,
-    borderColor: colors.surface,
-  },
-  activitiesBadge: {
-    position: 'absolute',
-    top: -4,
-    right: -4,
-    backgroundColor: '#007AFF', // Blue for activities
-    borderRadius: 8,
-    minWidth: 16,
-    height: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 3,
-    borderWidth: 1.5,
-    borderColor: colors.surface,
-  },
-  badgeText: {
-    color: '#fff',
-    fontSize: 9,
-    fontWeight: '700',
-  },
-  pollsBadgeText: {
-    color: '#fff',
-    fontSize: 9,
-    fontWeight: '700',
-  },
-  tabContainer: {
-    backgroundColor: colors.background,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    maxHeight: 60,
-    alignSelf: 'center',
-  },
-  tabContent: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-  },
-  tab: {
-    flexDirection: isRTL ? 'row-reverse' : 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    marginLeft: isRTL ? 8 : 0,
-    marginRight: isRTL ? 0 : 8,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  activeTab: {
-    backgroundColor: colors.tint,
-    borderColor: colors.tint,
-  },
-  tabText: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    marginLeft: isRTL ? 0 : 6,
-    marginRight: isRTL ? 6 : 0,
-    fontWeight: '500',
-  },
-  activeTabText: {
-    color: colors.surface,
-  },
-  contentArea: {
-    flex: 1,
-    position: 'relative',
-  },
-  chatArea: {
-    flex: 1,
-  },
-  chatContainer: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    loadingContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    loadingText: {
+      marginTop: 12,
+      fontSize: 16,
+      color: colors.textSecondary,
+    },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    backButton: {
+      padding: 4,
+      marginRight: 8,
+    },
+    headerContent: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    headerAvatar: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      marginRight: 10,
+    },
+    headerTextContainer: {
+      flex: 1,
+      justifyContent: 'center',
+    },
+    title: {
+      fontSize: 18,
+      fontWeight: '600',
+      color: colors.text,
+      marginBottom: 2,
+      textAlign: 'left',
+    },
+    subtitleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    subtitle: {
+      fontSize: 12,
+      color: colors.textSecondary,
+      marginLeft: 4,
+    },
+    dotSeparator: {
+      width: 3,
+      height: 3,
+      borderRadius: 1.5,
+      backgroundColor: colors.textSecondary,
+      marginHorizontal: 6,
+    },
+    headerActions: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    headerButton: {
+      padding: 4,
+    },
+    pollsBadge: {
+      position: 'absolute',
+      top: -4,
+      right: -4,
+      backgroundColor: '#FF3B30',
+      borderRadius: 8,
+      minWidth: 16,
+      height: 16,
+      justifyContent: 'center',
+      alignItems: 'center',
+      paddingHorizontal: 3,
+      borderWidth: 1.5,
+      borderColor: colors.surface,
+    },
+    activitiesBadge: {
+      position: 'absolute',
+      top: -4,
+      right: -4,
+      backgroundColor: '#007AFF', // Blue for activities
+      borderRadius: 8,
+      minWidth: 16,
+      height: 16,
+      justifyContent: 'center',
+      alignItems: 'center',
+      paddingHorizontal: 3,
+      borderWidth: 1.5,
+      borderColor: colors.surface,
+    },
+    badgeText: {
+      color: '#fff',
+      fontSize: 9,
+      fontWeight: '700',
+    },
+    pollsBadgeText: {
+      color: '#fff',
+      fontSize: 9,
+      fontWeight: '700',
+    },
+    tabContainer: {
+      backgroundColor: colors.background,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+      maxHeight: 60,
+      alignSelf: 'center',
+    },
+    tabContent: {
+      paddingHorizontal: 16,
+      paddingVertical: 8,
+    },
+    tab: {
+      flexDirection: isRTL ? 'row-reverse' : 'row',
+      alignItems: 'center',
+      paddingHorizontal: 16,
+      paddingVertical: 8,
+      marginLeft: isRTL ? 8 : 0,
+      marginRight: isRTL ? 0 : 8,
+      borderRadius: 20,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    activeTab: {
+      backgroundColor: colors.tint,
+      borderColor: colors.tint,
+    },
+    tabText: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      marginLeft: isRTL ? 0 : 6,
+      marginRight: isRTL ? 6 : 0,
+      fontWeight: '500',
+    },
+    activeTabText: {
+      color: colors.surface,
+    },
+    contentArea: {
+      flex: 1,
+      position: 'relative',
+    },
+    chatArea: {
+      flex: 1,
+    },
+    chatContainer: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
 
-  chatInputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.background,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-  },
+    chatInputContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.background,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+    },
 
-  messageInput: {
-    flex: 1,
-    backgroundColor: colors.surface,
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    marginHorizontal: 8,
-    fontSize: 16,
-    maxHeight: 100,
-    color: colors.text,
-  },
+    messageInput: {
+      flex: 1,
+      backgroundColor: colors.surface,
+      borderRadius: 20,
+      paddingHorizontal: 16,
+      paddingVertical: 10,
+      marginHorizontal: 8,
+      fontSize: 16,
+      maxHeight: 100,
+      color: colors.text,
+    },
 
-  sendButton: {
-    backgroundColor: colors.tint,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
+    sendButton: {
+      backgroundColor: colors.tint,
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
 
-  sendButtonDisabled: {
-    backgroundColor: colors.muted,
-  },
+    sendButtonDisabled: {
+      backgroundColor: colors.muted,
+    },
 
-  mediaButton: {
-    padding: 8,
-  },
+    mediaButton: {
+      padding: 8,
+    },
 
 
-  messageBubble: {
-    maxWidth: '80%',
-    padding: 12,
-    borderRadius: 16,
-    marginBottom: 8,
-  },
-  myMessage: {
-    alignSelf: 'flex-end',
-    backgroundColor: colors.tint,
-    borderBottomRightRadius: 4,
-  },
-  theirMessage: {
-    alignSelf: 'flex-start',
-    backgroundColor: colors.surface,
-    borderBottomLeftRadius: 4,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  messageAuthor: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    marginBottom: 2,
-  },
-  messageText: {
-    fontSize: 16,
-    color: colors.text,
-  },
-  myMessageText: {
-    color: colors.surface,
-  },
-  messageTime: {
-    fontSize: 10,
-    color: colors.textSecondary,
-    marginTop: 4,
-    alignSelf: 'flex-end',
-  },
-  emptyChat: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 60,
-  },
-  emptyChatText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: colors.text,
-    marginTop: 16,
-  },
-  emptyChatSubtext: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    marginTop: 4,
-  },
-  whiteboardContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 32,
-  },
-  meetingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 32,
-  },
-  documentContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 32,
-  },
-  brainstormContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 32,
-  },
-  defaultContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 32,
-  },
-  placeholderText: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: colors.text,
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  placeholderSubtext: {
-    fontSize: 16,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    marginBottom: 24,
-  },
-  placeholderButton: {
-    backgroundColor: colors.tint,
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 12,
-  },
-  placeholderButtonText: {
-    color: colors.surface,
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  meetingActions: {
-    flexDirection: 'row',
-    gap: 12,
-    marginTop: 16,
-  },
-  callButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 12,
-    gap: 8,
-  },
-  videoButton: {
-    backgroundColor: colors.tint,
-  },
-  audioButton: {
-    backgroundColor: colors.success,
-  },
-  callButtonText: {
-    color: colors.surface,
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  magicOrb: {
-    position: 'absolute',
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#FF6B6B',
-    justifyContent: 'center',
-    alignItems: 'center',
-    ...createShadow({
-      width: 0,
-      height: 2,
-      opacity: 0.25,
-      radius: 3.84,
-      elevation: 8,
-    }),
-  },
-  aiFloatingButton: {
-    position: 'absolute',
-    bottom: 110,
-    right: 20,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: colors.surface,
-    justifyContent: 'center',
-    alignItems: 'center',
-    ...createShadow({
-      width: 0,
-      height: 4,
-      opacity: 0.3,
-      radius: 4.65,
-      elevation: 8,
-    }),
-    zIndex: 999,
-  },
-  actionBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    backgroundColor: colors.background,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  modalContent: {
-    backgroundColor: colors.background,
-    borderRadius: 16,
-    padding: 24,
-    width: '100%',
-    maxWidth: 400,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: colors.text,
-  },
-  modalDescription: {
-    fontSize: 16,
-    color: colors.textSecondary,
-    marginBottom: 20,
-    lineHeight: 24,
-  },
-  modalInput: {
-    fontSize: 16,
-    padding: 12,
-    backgroundColor: colors.muted,
-    borderRadius: 8,
-    marginBottom: 24,
-    color: colors.text,
-  },
-  modalButtons: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  modalButton: {
-    flex: 1,
-    paddingVertical: 14,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  modalButtonCancel: {
-    backgroundColor: colors.muted,
-  },
-  modalButtonConfirm: {
-    backgroundColor: colors.tint,
-  },
-  modalButtonDisabled: {
-    opacity: 0.5,
-  },
-  modalButtonTextCancel: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.textSecondary,
-  },
-  modalButtonTextConfirm: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.surface,
-  },
-  modalContentLarge: {
-    backgroundColor: colors.surface,
-    borderRadius: 16,
-    padding: 24,
-    width: '90%',
-    maxWidth: 500,
-    maxHeight: '80%',
-  },
-  settingsScrollView: {
-    maxHeight: 400,
-  },
-  settingsSection: {
-    marginBottom: 24,
-  },
-  settingsSectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.text,
-    marginBottom: 12,
-  },
-  settingsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  settingsInput: {
-    flex: 1,
-    fontSize: 16,
-    padding: 12,
-    backgroundColor: colors.muted,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: colors.border,
-    color: colors.text,
-  },
-  textArea: {
-    minHeight: 100,
-    textAlignVertical: 'top',
-  },
-  photoUploadArea: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.muted,
-    borderRadius: 12,
-    padding: 20,
-    borderWidth: 2,
-    borderColor: colors.border,
-    borderStyle: 'dashed',
-  },
-  spacePhoto: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-  },
-  photoPlaceholder: {
-    alignItems: 'center',
-  },
-  photoPlaceholderText: {
-    marginTop: 8,
-    color: '#999',
-    fontSize: 14,
-  },
-  infoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.muted,
-    padding: 12,
-    borderRadius: 8,
-  },
-  infoText: {
-    marginLeft: 8,
-    fontSize: 16,
-    color: colors.text,
-  },
-  infoSubtext: {
-    marginTop: 4,
-    fontSize: 14,
-    color: '#666',
-  },
-  statsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    backgroundColor: colors.muted,
-    padding: 12,
-    borderRadius: 8,
-  },
-  statItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  statText: {
-    marginLeft: 6,
-    fontSize: 14,
-    color: '#666',
-  },
-  participantsList: {
-    maxHeight: 400,
-  },
-  participantItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  participantInfo: {
-    flex: 1,
-    marginLeft: 12,
-  },
-  participantName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.text,
-    marginBottom: 4,
-  },
-  participantMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  roleBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 4,
-    marginRight: 8,
-  },
-  roleText: {
-    fontSize: 12,
-    fontWeight: '500',
-  },
-  onlineDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#4CAF50',
-  },
-  inviteButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 16,
-    padding: 12,
-    backgroundColor: colors.tint + '10',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: colors.tint,
-  },
-  inviteButtonText: {
-    marginLeft: 8,
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.tint,
-  },
-  roleModal: {
-    backgroundColor: colors.background,
-    borderRadius: 16,
-    padding: 24,
-    width: '90%',
-    maxWidth: 400,
-  },
-  roleModalTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: colors.text,
-    marginBottom: 20,
-    textAlign: 'center',
-  },
-  roleOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 16,
-    paddingHorizontal: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  roleOptionSelected: {
-    backgroundColor: colors.tint + '10',
-  },
-  roleOptionLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  roleOptionText: {
-    marginLeft: 12,
-    flex: 1,
-  },
-  roleOptionTitle: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: colors.text,
-    marginBottom: 2,
-  },
-  roleOptionDescription: {
-    fontSize: 12,
-    color: '#999',
-  },
-  removeButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 16,
-    padding: 12,
-    backgroundColor: colors.error + '10',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: colors.error,
-  },
-  removeButtonText: {
-    marginLeft: 8,
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.error,
-  },
-  cancelRoleButton: {
-    marginTop: 12,
-    padding: 12,
-    alignItems: 'center',
-  },
-  cancelRoleText: {
-    fontSize: 16,
-    color: '#666',
-    fontWeight: '500',
-  },
-  // Dropdown menu styles
-  menuOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'transparent',
-    zIndex: 999,
-  },
-  dropdownMenu: {
-    position: 'absolute',
-    backgroundColor: colors.surface,
-    borderRadius: 12,
-    paddingVertical: 8,
-    minWidth: 200,
-    borderWidth: 1,
-    borderColor: colors.border,
-    ...createShadow({
-      width: 0,
-      height: 2,
-      opacity: 0.1,
-      radius: 3.84,
-      elevation: 5,
-    }),
-    zIndex: 1000,
-  },
-  menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    gap: 12,
-  },
-  menuItemDestructive: {
-    // No extra styling needed, just for type
-  },
-  menuItemText: {
-    fontSize: 16,
-    color: colors.text,
-    flex: 1,
-  },
-  menuItemTextDestructive: {
-    color: colors.error,
-  },
-  menuDivider: {
-    height: 1,
-    backgroundColor: colors.border,
-    marginVertical: 4,
-  },
-  pollsContainer: {
-    flex: 1,
-    padding: 16,
-  },
-  createPollButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.tint + '10',
-    padding: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.tint,
-    borderStyle: 'dashed',
-    marginBottom: 16,
-  },
-  createPollText: {
-    marginLeft: 8,
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.tint,
-  },
-  emptyPolls: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 60,
-  },
-  emptyPollsTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: colors.text,
-    marginTop: 16,
-  },
-  emptyPollsSubtext: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    marginTop: 8,
-    paddingHorizontal: 32,
-  },
-  archivedBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.tint + '08',
-    paddingVertical: 10,
-    gap: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.tint + '15',
-  },
-  archivedBannerText: {
-    fontSize: 14,
-    color: colors.tint,
-    fontWeight: '600',
-  },
-  deletingOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 9999,
-  },
-  deletingContent: {
-    alignItems: 'center',
-    padding: 24,
-  },
-  deletingText: {
-    marginTop: 16,
-    fontSize: 18,
-    fontWeight: '600',
-    color: colors.text,
-  },
-  deletingSubtext: {
-    marginTop: 8,
-    fontSize: 14,
-    color: colors.textSecondary,
-    textAlign: 'center',
-  },
-  // Phase 70: Locked UI Styles
-  lockedContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
-  },
-  lockedCard: {
-    backgroundColor: colors.surface,
-    borderRadius: 24,
-    padding: 32,
-    alignItems: 'center',
-    width: '100%',
-    maxWidth: 340,
-    borderWidth: 1,
-    borderColor: colors.border,
-    ...createShadow({
-      width: 0,
-      height: 10,
-      opacity: 0.1,
-      radius: 20,
-      elevation: 10,
-    }),
-  },
-  lockedIconBg: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: colors.tint + '10',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  lockedTitle: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: colors.text,
-    marginBottom: 12,
-  },
-  lockedDescription: {
-    fontSize: 15,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 22,
-    marginBottom: 32,
-  },
-  joinSpaceButton: {
-    backgroundColor: colors.tint,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 32,
-    borderRadius: 28,
-    gap: 10,
-    width: '100%',
-  },
-  joinSpaceButtonText: {
-    color: colors.surface,
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  activeCallPlaceholder: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 32,
-    backgroundColor: colors.muted,
-    borderRadius: 16,
-    width: '100%',
-  },
-  iconGradient: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 20,
-    ...createShadow({
-      width: 0,
-      height: 4,
-      opacity: 0.2,
-      radius: 5,
-      elevation: 6,
-    }),
-  },
-});
+    messageBubble: {
+      maxWidth: '80%',
+      padding: 12,
+      borderRadius: 16,
+      marginBottom: 8,
+    },
+    myMessage: {
+      alignSelf: 'flex-end',
+      backgroundColor: colors.tint,
+      borderBottomRightRadius: 4,
+    },
+    theirMessage: {
+      alignSelf: 'flex-start',
+      backgroundColor: colors.surface,
+      borderBottomLeftRadius: 4,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    messageAuthor: {
+      fontSize: 12,
+      color: colors.textSecondary,
+      marginBottom: 2,
+    },
+    messageText: {
+      fontSize: 16,
+      color: colors.text,
+    },
+    myMessageText: {
+      color: colors.surface,
+    },
+    messageTime: {
+      fontSize: 10,
+      color: colors.textSecondary,
+      marginTop: 4,
+      alignSelf: 'flex-end',
+    },
+    emptyChat: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      paddingVertical: 60,
+    },
+    emptyChatText: {
+      fontSize: 18,
+      fontWeight: '600',
+      color: colors.text,
+      marginTop: 16,
+    },
+    emptyChatSubtext: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      marginTop: 4,
+    },
+    whiteboardContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: 32,
+    },
+    meetingContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: 32,
+    },
+    documentContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: 32,
+    },
+    brainstormContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: 32,
+    },
+    defaultContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: 32,
+    },
+    placeholderText: {
+      fontSize: 24,
+      fontWeight: '700',
+      color: colors.text,
+      marginTop: 16,
+      marginBottom: 8,
+    },
+    placeholderSubtext: {
+      fontSize: 16,
+      color: colors.textSecondary,
+      textAlign: 'center',
+      marginBottom: 24,
+    },
+    placeholderButton: {
+      backgroundColor: colors.tint,
+      paddingHorizontal: 24,
+      paddingVertical: 12,
+      borderRadius: 12,
+    },
+    placeholderButtonText: {
+      color: colors.surface,
+      fontSize: 16,
+      fontWeight: '600',
+    },
+    meetingActions: {
+      flexDirection: 'row',
+      gap: 12,
+      marginTop: 16,
+    },
+    callButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 20,
+      paddingVertical: 12,
+      borderRadius: 12,
+      gap: 8,
+    },
+    videoButton: {
+      backgroundColor: colors.tint,
+    },
+    audioButton: {
+      backgroundColor: colors.success,
+    },
+    callButtonText: {
+      color: colors.surface,
+      fontSize: 16,
+      fontWeight: '600',
+    },
+    magicOrb: {
+      position: 'absolute',
+      width: 48,
+      height: 48,
+      borderRadius: 24,
+      backgroundColor: '#FF6B6B',
+      justifyContent: 'center',
+      alignItems: 'center',
+      ...createShadow({
+        width: 0,
+        height: 2,
+        opacity: 0.25,
+        radius: 3.84,
+        elevation: 8,
+      }),
+    },
+    aiFloatingButton: {
+      position: 'absolute',
+      bottom: 110,
+      right: 20,
+      width: 56,
+      height: 56,
+      borderRadius: 28,
+      backgroundColor: colors.surface,
+      justifyContent: 'center',
+      alignItems: 'center',
+      ...createShadow({
+        width: 0,
+        height: 4,
+        opacity: 0.3,
+        radius: 4.65,
+        elevation: 8,
+      }),
+      zIndex: 999,
+    },
+    actionBar: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+      backgroundColor: colors.background,
+    },
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: 20,
+    },
+    modalContent: {
+      backgroundColor: colors.background,
+      borderRadius: 16,
+      padding: 24,
+      width: '100%',
+      maxWidth: 400,
+    },
+    modalHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 16,
+    },
+    modalTitle: {
+      fontSize: 20,
+      fontWeight: '700',
+      color: colors.text,
+    },
+    modalDescription: {
+      fontSize: 16,
+      color: colors.textSecondary,
+      marginBottom: 20,
+      lineHeight: 24,
+    },
+    modalInput: {
+      fontSize: 16,
+      padding: 12,
+      backgroundColor: colors.muted,
+      borderRadius: 8,
+      marginBottom: 24,
+      color: colors.text,
+    },
+    modalButtons: {
+      flexDirection: 'row',
+      gap: 12,
+    },
+    modalButton: {
+      flex: 1,
+      paddingVertical: 14,
+      borderRadius: 12,
+      alignItems: 'center',
+    },
+    modalButtonCancel: {
+      backgroundColor: colors.muted,
+    },
+    modalButtonConfirm: {
+      backgroundColor: colors.tint,
+    },
+    modalButtonDisabled: {
+      opacity: 0.5,
+    },
+    modalButtonTextCancel: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.textSecondary,
+    },
+    modalButtonTextConfirm: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.surface,
+    },
+    modalContentLarge: {
+      backgroundColor: colors.surface,
+      borderRadius: 16,
+      padding: 24,
+      width: '90%',
+      maxWidth: 500,
+      maxHeight: '80%',
+    },
+    settingsScrollView: {
+      maxHeight: 400,
+    },
+    settingsSection: {
+      marginBottom: 24,
+    },
+    settingsSectionTitle: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.text,
+      marginBottom: 12,
+    },
+    settingsRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    settingsInput: {
+      flex: 1,
+      fontSize: 16,
+      padding: 12,
+      backgroundColor: colors.muted,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: colors.border,
+      color: colors.text,
+    },
+    textArea: {
+      minHeight: 100,
+      textAlignVertical: 'top',
+    },
+    photoUploadArea: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.muted,
+      borderRadius: 12,
+      padding: 20,
+      borderWidth: 2,
+      borderColor: colors.border,
+      borderStyle: 'dashed',
+    },
+    spacePhoto: {
+      width: 100,
+      height: 100,
+      borderRadius: 50,
+    },
+    photoPlaceholder: {
+      alignItems: 'center',
+    },
+    photoPlaceholderText: {
+      marginTop: 8,
+      color: '#999',
+      fontSize: 14,
+    },
+    infoRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.muted,
+      padding: 12,
+      borderRadius: 8,
+    },
+    infoText: {
+      marginLeft: 8,
+      fontSize: 16,
+      color: colors.text,
+    },
+    infoSubtext: {
+      marginTop: 4,
+      fontSize: 14,
+      color: '#666',
+    },
+    statsRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-around',
+      backgroundColor: colors.muted,
+      padding: 12,
+      borderRadius: 8,
+    },
+    statItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    statText: {
+      marginLeft: 6,
+      fontSize: 14,
+      color: '#666',
+    },
+    participantsList: {
+      maxHeight: 400,
+    },
+    participantItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: 12,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    participantInfo: {
+      flex: 1,
+      marginLeft: 12,
+    },
+    participantName: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.text,
+      marginBottom: 4,
+    },
+    participantMeta: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    roleBadge: {
+      paddingHorizontal: 8,
+      paddingVertical: 2,
+      borderRadius: 4,
+      marginRight: 8,
+    },
+    roleText: {
+      fontSize: 12,
+      fontWeight: '500',
+    },
+    onlineDot: {
+      width: 8,
+      height: 8,
+      borderRadius: 4,
+      backgroundColor: '#4CAF50',
+    },
+    inviteButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginTop: 16,
+      padding: 12,
+      backgroundColor: colors.tint + '10',
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: colors.tint,
+    },
+    inviteButtonText: {
+      marginLeft: 8,
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.tint,
+    },
+    roleModal: {
+      backgroundColor: colors.background,
+      borderRadius: 16,
+      padding: 24,
+      width: '90%',
+      maxWidth: 400,
+    },
+    roleModalTitle: {
+      fontSize: 18,
+      fontWeight: '600',
+      color: colors.text,
+      marginBottom: 20,
+      textAlign: 'center',
+    },
+    roleOption: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingVertical: 16,
+      paddingHorizontal: 12,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    roleOptionSelected: {
+      backgroundColor: colors.tint + '10',
+    },
+    roleOptionLeft: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      flex: 1,
+    },
+    roleOptionText: {
+      marginLeft: 12,
+      flex: 1,
+    },
+    roleOptionTitle: {
+      fontSize: 16,
+      fontWeight: '500',
+      color: colors.text,
+      marginBottom: 2,
+    },
+    roleOptionDescription: {
+      fontSize: 12,
+      color: '#999',
+    },
+    removeButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginTop: 16,
+      padding: 12,
+      backgroundColor: colors.error + '10',
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: colors.error,
+    },
+    removeButtonText: {
+      marginLeft: 8,
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.error,
+    },
+    cancelRoleButton: {
+      marginTop: 12,
+      padding: 12,
+      alignItems: 'center',
+    },
+    cancelRoleText: {
+      fontSize: 16,
+      color: '#666',
+      fontWeight: '500',
+    },
+    // Dropdown menu styles
+    menuOverlay: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: 'transparent',
+      zIndex: 999,
+    },
+    dropdownMenu: {
+      position: 'absolute',
+      backgroundColor: colors.surface,
+      borderRadius: 12,
+      paddingVertical: 8,
+      minWidth: 200,
+      borderWidth: 1,
+      borderColor: colors.border,
+      ...createShadow({
+        width: 0,
+        height: 2,
+        opacity: 0.1,
+        radius: 3.84,
+        elevation: 5,
+      }),
+      zIndex: 1000,
+    },
+    menuItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: 12,
+      paddingHorizontal: 16,
+      gap: 12,
+    },
+    menuItemDestructive: {
+      // No extra styling needed, just for type
+    },
+    menuItemText: {
+      fontSize: 16,
+      color: colors.text,
+      flex: 1,
+    },
+    menuItemTextDestructive: {
+      color: colors.error,
+    },
+    menuDivider: {
+      height: 1,
+      backgroundColor: colors.border,
+      marginVertical: 4,
+    },
+    pollsContainer: {
+      flex: 1,
+      padding: 16,
+    },
+    createPollButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.tint + '10',
+      padding: 16,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: colors.tint,
+      borderStyle: 'dashed',
+      marginBottom: 16,
+    },
+    createPollText: {
+      marginLeft: 8,
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.tint,
+    },
+    emptyPolls: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 60,
+    },
+    emptyPollsTitle: {
+      fontSize: 18,
+      fontWeight: '600',
+      color: colors.text,
+      marginTop: 16,
+    },
+    emptyPollsSubtext: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      textAlign: 'center',
+      marginTop: 8,
+      paddingHorizontal: 32,
+    },
+    archivedBanner: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.tint + '08',
+      paddingVertical: 10,
+      gap: 8,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.tint + '15',
+    },
+    archivedBannerText: {
+      fontSize: 14,
+      color: colors.tint,
+      fontWeight: '600',
+    },
+    deletingOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: 'rgba(255, 255, 255, 0.9)',
+      justifyContent: 'center',
+      alignItems: 'center',
+      zIndex: 9999,
+    },
+    deletingContent: {
+      alignItems: 'center',
+      padding: 24,
+    },
+    deletingText: {
+      marginTop: 16,
+      fontSize: 18,
+      fontWeight: '600',
+      color: colors.text,
+    },
+    deletingSubtext: {
+      marginTop: 8,
+      fontSize: 14,
+      color: colors.textSecondary,
+      textAlign: 'center',
+    },
+    // Phase 70: Locked UI Styles
+    lockedContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: 24,
+    },
+    lockedCard: {
+      backgroundColor: colors.surface,
+      borderRadius: 24,
+      padding: 32,
+      alignItems: 'center',
+      width: '100%',
+      maxWidth: 340,
+      borderWidth: 1,
+      borderColor: colors.border,
+      ...createShadow({
+        width: 0,
+        height: 10,
+        opacity: 0.1,
+        radius: 20,
+        elevation: 10,
+      }),
+    },
+    lockedIconBg: {
+      width: 80,
+      height: 80,
+      borderRadius: 40,
+      backgroundColor: colors.tint + '10',
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginBottom: 20,
+    },
+    lockedTitle: {
+      fontSize: 22,
+      fontWeight: '700',
+      color: colors.text,
+      marginBottom: 12,
+    },
+    lockedDescription: {
+      fontSize: 15,
+      color: colors.textSecondary,
+      textAlign: 'center',
+      lineHeight: 22,
+      marginBottom: 32,
+    },
+    joinSpaceButton: {
+      backgroundColor: colors.tint,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 14,
+      paddingHorizontal: 32,
+      borderRadius: 28,
+      gap: 10,
+      width: '100%',
+    },
+    joinSpaceButtonText: {
+      color: colors.surface,
+      fontSize: 16,
+      fontWeight: '700',
+    },
+    activeCallPlaceholder: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: 32,
+      backgroundColor: colors.muted,
+      borderRadius: 16,
+      width: '100%',
+    },
+    iconGradient: {
+      width: 100,
+      height: 100,
+      borderRadius: 50,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginBottom: 20,
+      ...createShadow({
+        width: 0,
+        height: 4,
+        opacity: 0.2,
+        radius: 5,
+        elevation: 6,
+      }),
+    },
+    aiContainer: {
+      flex: 1,
+      padding: 16,
+      backgroundColor: colors.background,
+    },
+    aiSection: {
+      backgroundColor: colors.surface,
+      padding: 16,
+      borderRadius: 16,
+      marginBottom: 16,
+      ...createShadow({
+        width: 0,
+        height: 2,
+        opacity: 0.1,
+        radius: 4,
+        elevation: 2,
+      }),
+    },
+    aiSectionTitle: {
+      fontSize: 18,
+      fontWeight: 'bold',
+      color: colors.text,
+      marginBottom: 12,
+    },
+    aiAssistantWrapper: {
+      height: 400,
+      width: '100%',
+      overflow: 'hidden',
+      borderRadius: 12,
+    },
+    aiToolRow: {
+      flexDirection: 'row',
+      gap: 12,
+    },
+    aiTool: {
+      flex: 1,
+      backgroundColor: colors.background,
+      padding: 16,
+      borderRadius: 12,
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    aiToolText: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.text,
+    },
+    magicItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: 8,
+      gap: 8,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: colors.border,
+    },
+    magicText: {
+      fontSize: 14,
+      color: colors.text,
+      textTransform: 'capitalize',
+    },
+    aiStatText: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      marginBottom: 4,
+    },
+  });
 }
 
 export default SpaceDetailScreen;

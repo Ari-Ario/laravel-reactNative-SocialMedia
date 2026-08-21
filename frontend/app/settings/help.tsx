@@ -190,7 +190,7 @@ export default function HelpCenterScreen() {
                 colors={[colors.surface, colors.background]}
                 style={[styles.header, { paddingTop: insets.top + 10 }]}
             >
-                <BackButton onPress={() => router.back()} />
+                <BackButton onPress={() => { if (router.canGoBack()) router.back(); else router.replace("/(tabs)"); }} />
                 <Text style={styles.headerTitle}>{t('help_center')}</Text>
                 <View style={{ width: 40 }} />
             </LinearGradient>

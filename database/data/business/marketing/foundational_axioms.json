@@ -1,0 +1,14 @@
+[
+    {
+        "thesis_statement": "The Marketing Concept - Organizational goals depend on knowing the needs and wants of target markets and delivering the desired satisfactions",
+        "parent_thesis": "1: Being (True)"
+    },
+    {
+        "thesis_statement": "Law of Demand - Keeping all other factors constant, an increase in price results in a decrease in quantity demanded",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Price Elasticity of Demand - Measures the responsiveness of the quantity demanded to a change in price",
+        "parent_thesis": "Law of Demand - Keeping all other factors constant, an increase in price results in a decrease in quantity demanded"
+    }
+]

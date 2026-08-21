@@ -1,0 +1,62 @@
+[
+    {
+        "branch": "pathology",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Virchow triad of thrombosis",
+        "parent_thesis": "Michaelis-Menten Kinetics: Describes the rate of enzymatic reactions by relating reaction rate v to substrate concentration [S]",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "bac410a0161b8a66ba775541ce87719a6e51e67f0768cd6872848659cc9b9c6c"
+    },
+    {
+        "branch": "pathology",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Inflammatory cascade",
+        "parent_thesis": "Michaelis-Menten Kinetics: Describes the rate of enzymatic reactions by relating reaction rate v to substrate concentration [S]",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "65a7176b1e7190597d3c87fbc8fe8aa93e9215cf97dbd44b4621a33ebfb5d20a"
+    },
+    {
+        "branch": "pathology",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Neoplastic malignant transformation",
+        "parent_thesis": "Michaelis-Menten Kinetics: Describes the rate of enzymatic reactions by relating reaction rate v to substrate concentration [S]",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "a7611734c0fb6ce2721425c4969b98b37f7630aea2365ed474cbcb5b3cb47e17"
+    },
+    {
+        "branch": "pathology",
+        "domain_partition": "biology_partition",
+        "thesis_statement": "Pathological Mechanism Axiom: Disease occurs due to a structural or functional disruption of homeostasis at the cellular or systemic level",
+        "parent_thesis": "Homeostasis Axiom: Biological systems maintain stability while adjusting to conditions that are optimal for survival",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "162f0569847de3fa695855f144b45bb5f0ff025b02840ad401cc29e7d7e35e52"
+    },
+    {
+        "branch": "pathology",
+        "domain_partition": "biology_partition",
+        "thesis_statement": "Virchow's Triad (Thrombosis): Thrombogenesis is driven by the interaction of endothelial injury, abnormal blood flow, and hypercoagulability",
+        "parent_thesis": "Pathological Mechanism Axiom: Disease occurs due to a structural or functional disruption of homeostasis at the cellular or systemic level",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "First proposed by Rudolf Virchow, describing the three independent factors leading to intravascular clot formation."
+    },
+    {
+        "branch": "pathology",
+        "domain_partition": "biology_partition",
+        "thesis_statement": "Inflammatory Cascade Axiom: Tissue injury triggers a sequence of cellular and vascular events mediated by chemical signals to eliminate pathogens and initiate repair",
+        "parent_thesis": "Pathological Mechanism Axiom: Disease occurs due to a structural or functional disruption of homeostasis at the cellular or systemic level",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Describes vascular dilation, hyperpermeability, and leucocyte recruitment (chemotaxis, phagocytosis) triggered by pro-inflammatory cytokine networks."
+    },
+    {
+        "branch": "pathology",
+        "domain_partition": "biology_partition",
+        "thesis_statement": "Neoplastic Malignant Transformation: Cancer arises from genetic and epigenetic alterations leading to uncontrolled cellular proliferation and tissue invasion",
+        "parent_thesis": "Pathological Mechanism Axiom: Disease occurs due to a structural or functional disruption of homeostasis at the cellular or systemic level",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Traces oncogenesis through tumor-suppressor inactivation, oncogenic pathway activation, evasion of cell death, and angiogenesis."
+    }
+]

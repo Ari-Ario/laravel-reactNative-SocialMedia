@@ -1,0 +1,20 @@
+[
+    {
+        "branch": "preference_logic",
+        "domain_partition": "formal_partition",
+        "thesis_statement": "Transitivity of Strict Preference: (A > B) \u2227 (B > C) \u2192 (A > C)",
+        "parent_thesis": "Law of identity",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "ccc073c2f3951ea70a7e8a978d4973b9489a1db27a22150338c96a009fa612e0"
+    },
+    {
+        "branch": "preference_logic",
+        "domain_partition": "formal_partition",
+        "thesis_statement": "Completeness of Preference: For any A and B, either (A > B) \u2228 (B > A) \u2228 (A ~ B)",
+        "parent_thesis": "Law of identity",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "7e55d9c08b9337def22bd1bee5d61e12c83f1de3bd9ebbfb73eb40dd70e6d8c7"
+    }
+]

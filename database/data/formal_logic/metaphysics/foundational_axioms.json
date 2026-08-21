@@ -1,0 +1,281 @@
+[
+    {
+        "branch": "metaphysics",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Principle of Sufficient Reason (Ontological/Metaphysical)",
+        "parent_thesis": "1: Being (True)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "1d3635c2a0c192451284ad7d28be694c7ac9dfb23a442acf11882fac778353ba"
+    },
+    {
+        "branch": "metaphysics",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Identity of Indiscernibles (Leibniz Law)",
+        "parent_thesis": "1: Being (True)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "d57f60c8e71b7b7128b1bdc46523c62cdb7125f0b299ab38bf1dd53e063ec543"
+    },
+    {
+        "branch": "metaphysics",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Compatibilism (Free Will and Determinism)",
+        "parent_thesis": "1: Being (True)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "72d5e40d4cd7deeb39b5348c7be37d1587161a45dbda8db2742c287dada94621"
+    },
+    {
+        "branch": "metaphysics",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Problem of Universals",
+        "parent_thesis": "1: Being (True)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "b51fa92e6d81817ef3176e1c84e7220e55472af3236cd4d308436a386d55bb18"
+    },
+    {
+        "branch": "metaphysics",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Ship of Theseus",
+        "parent_thesis": "1: Being (True)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "52efe94246da943338d36857cc6da759c141da7989bade40f2fc14532f0b1d04"
+    },
+    {
+        "branch": "metaphysics",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Principle of Plenitude",
+        "parent_thesis": "1: Being (True)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "1c9d0d0d1199f71c9e5b9b6ca1f6e733e9626ae6a37a76f52fb7a3fdce869ed6"
+    },
+    {
+        "branch": "metaphysics",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Principle of Individuation",
+        "parent_thesis": "1: Being (True)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "579cb4252860f0bd4f44218255a613e5174aa015b50e6c4b8a455d14ae56e88e"
+    },
+    {
+        "branch": "metaphysics",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Mereological Nihilism",
+        "parent_thesis": "1: Being (True)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "16df82b33866a7881c6af311e2a595f0cb7802b137a7bfa6031bd54d32d4ad46"
+    },
+    {
+        "branch": "metaphysics",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Principle of Causality",
+        "parent_thesis": "1: Being (True)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "5d6845a2c834ef8ca34d4c52493be8bce2a9aab2b3917d3903ddca5c2133996b"
+    },
+    {
+        "branch": "metaphysics",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Determinism (Laplace Demon)",
+        "parent_thesis": "1: Being (True)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "619de4d2f57b28243a7632005d79995fab90d22670f45cc2efa2a9166cbb2df9"
+    },
+    {
+        "branch": "metaphysics",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Counterfactual Theory of Causation (Lewis)",
+        "parent_thesis": "1: Being (True)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "64216efbc5f3363766ca5eeb359a42c6725636eca73ed1f767df4fcf01f162a7"
+    },
+    {
+        "branch": "metaphysics",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Emergentism (Strong vs Weak)",
+        "parent_thesis": "1: Being (True)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "d6060498c5ed0c0600cbf516517915186ab13bc99de68909d2154ba1e6b93b87"
+    },
+    {
+        "branch": "metaphysics",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Truthmaker Theory",
+        "parent_thesis": "1: Being (True)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "3364a737f01e1255d0803bcd3eb6c3c0c12e9ad2504d5c8bc41f8d1b9edbc9c6"
+    },
+    {
+        "branch": "metaphysics",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Occam's Razor: Entia non sunt multiplicanda praeter necessitatem (Entities should not be multiplied without necessity)",
+        "parent_thesis": "Law of non-contradiction",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "The principle of ontological parsimony, guiding scientific and metaphysical theory construction to minimize unnecessary entities.",
+        "ast_signature": "16a91bc15759fa890218eab4f84f9603f875f119aea720ee639ac2731953242f"
+    },
+    {
+        "branch": "metaphysics",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Endurantism vs Perdurantism: Temporal persistence is defined by objects being wholly present at every moment (Endurantism) or having temporal parts extended through time (Perdurantism)",
+        "parent_thesis": "Substantivalism vs Relationalism (Space and Time)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Metaphysical frameworks explaining how objects survive and persist across temporal shifts.",
+        "ast_signature": "52a68498de2f8114b9d09eb903995b7e4575a3aaa7f52a8207162c2db398a5f9"
+    },
+    {
+        "branch": "metaphysics",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Mind-Body Dualism: Mental phenomena and physical phenomena are ontologically distinct substances",
+        "parent_thesis": "Ontological Dependence (Foundation)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Cartesian Metaphysics: The division of reality into thinking substances (res cogitans) and extended substances (res extensa).",
+        "ast_signature": "0834b2bc483a99ed54cda1da52923d50e1c834498c62dea5a3b94999c99d8383"
+    },
+    {
+        "branch": "metaphysics",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Physicalist Monism: Everything that exists is ultimately physical, and mental states are ontological developments of physical substrates",
+        "parent_thesis": "Ontological Dependence (Foundation)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "The metaphysical thesis of physicalism, grounding consciousness and mental states in biological and chemical operations.",
+        "ast_signature": "82742c2fe5a20e6194783ee41fcf5798802ea919998a4c199767ae4d6e178997"
+    },
+    {
+        "branch": "metaphysics",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Haecceity: The non-qualitative property of being a unique individual (\"thisness\") that makes an object uniquely itself",
+        "parent_thesis": "Principle of Individuation",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Duns Scotus Metaphysics: Bounding identity by a discrete 'thisness' that is independent of qualitative descriptors.",
+        "ast_signature": "87d0b601a25083dad47ad5fc65e817a8a08c9207e6f08a84150863af1b55e782"
+    },
+    {
+        "branch": "metaphysics",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Brentano's Thesis: Intentionality is the defining characteristic of all mental phenomena, which are directed toward an object",
+        "parent_thesis": "Emergentism (Strong vs Weak)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Metaphysical thesis stating that consciousness is characterized by its referential directionality toward objects.",
+        "ast_signature": "8f7ee62dead35beb20f58a479700e117c40461e4e574b95fd89af27c7c4e2197"
+    },
+    {
+        "branch": "metaphysics",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Irreflexivity of Grounding",
+        "parent_thesis": "1: Being (True)",
+        "formal_proof": "Metaphysical Grounding (SEP): No entity can metaphysically ground itself (\u00ac(x \u227a x)). Proved via strict non-circular dependency rules.",
+        "context_description": "Axiom stating that grounding relation is irreflexive; nothing is the source of its own existence.",
+        "ast_signature": "4af6169d75d70a9d21272007d2e647bd6de7aba5e339d3924c7966a26e39bbbc"
+    },
+    {
+        "branch": "metaphysics",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Asymmetry of Grounding",
+        "parent_thesis": "Ontological Dependence (Foundation)",
+        "formal_proof": "Metaphysical Grounding (SEP): If x grounds y, then y does not ground x (x \u227a y \u2192 \u00ac(y \u227a x)). Proved via strict hierarchical dependency priority.",
+        "context_description": "Axiom stating that grounding is asymmetric; dependence is unidirectional.",
+        "ast_signature": "3d37fe753435402adde1bffd9323b9869655f303b0c03673e64e842c0f160dd2"
+    },
+    {
+        "branch": "metaphysics",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Transitivity of Grounding",
+        "parent_thesis": "Ontological Dependence (Foundation)",
+        "formal_proof": "Metaphysical Grounding (SEP): If x grounds y and y grounds z, then x grounds z (x \u227a y \u2227 y \u227a z \u2192 x \u227a z). Proved via deductive inheritance of dependency.",
+        "context_description": "Axiom stating that grounding is transitive; intermediate dependencies preserve ultimate grounding.",
+        "ast_signature": "3b89e9a8b251c9e25197d071d13e8de3ca42e80f69f25d85bb7cb0f3e6a848db"
+    },
+    {
+        "branch": "metaphysics",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Presentism",
+        "parent_thesis": "Axiom of Being (Parmenides)",
+        "formal_proof": "Philosophy of Time (SEP): Only presently existing entities exist. Past entities did exist, and future entities will exist, but do not exist now.",
+        "context_description": "Temporal metaphysics theory restricting ontology strictly to the present.",
+        "ast_signature": "42005b68eb8e8649d9beace1bb453d020a9ef90d1ce17d10da072949e4979fbe"
+    },
+    {
+        "branch": "metaphysics",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Eternalism",
+        "parent_thesis": "Axiom of Being (Parmenides)",
+        "formal_proof": "Philosophy of Time (SEP): Past, present, and future entities all exist equally. Time is a four-dimensional block where temporal location does not affect ontological status.",
+        "context_description": "Temporal metaphysics theory treating past, present, and future as equally real.",
+        "ast_signature": "10cf65280c66da0246d8d7ccead2e51f04a35174e2169e454aac1d06cba5d057"
+    },
+    {
+        "branch": "metaphysics",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Growing Block Universe",
+        "parent_thesis": "Axiom of Being (Parmenides)",
+        "formal_proof": "Philosophy of Time (SEP): The past and the present exist, but the future does not exist yet. The block of reality grows continuously as new moments become present.",
+        "context_description": "Temporal metaphysics theory stating the past and present are real, but the future is non-existent.",
+        "ast_signature": "97bbec362c3add62096f2c080cd2bc1997dbf19c179f2046ae5b0effab01bb88"
+    },
+    {
+        "branch": "metaphysics",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Property Dualism",
+        "parent_thesis": "Ontological Dependence (Foundation)",
+        "formal_proof": "Mind-Body Metaphysics (SEP): There is only one material substance (physical matter), but it possesses two distinct and irreducible classes of properties: physical and mental.",
+        "context_description": "Non-reductive mind-body theory asserting mental properties are fundamental and irreducible.",
+        "ast_signature": "1abb0726e3f769cef287b6605d1ba809b3e4a6b5340456bbe5b04a5d69fc3f2e"
+    },
+    {
+        "branch": "metaphysics",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Epiphenomenalism",
+        "parent_thesis": "Emergentism (Strong vs Weak)",
+        "formal_proof": "Mind-Body Metaphysics (SEP): Physical events in the brain cause mental events (consciousness), but mental events have no physical causal influence on the brain or behavior.",
+        "context_description": "Theory stating that mind is a causally impotent byproduct of physical brain processes.",
+        "ast_signature": "c9ceeb29b3658e0053f9a42490a8d8b70250ebe356f6331ac30d7512aabd9601"
+    },
+    {
+        "branch": "metaphysics",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Neutral Monism",
+        "parent_thesis": "1: Being (True)",
+        "formal_proof": "Mind-Body Metaphysics (SEP): The ultimate reality is neither mental nor physical, but consists of a neutral substance whose manifestations appear as mental or physical.",
+        "context_description": "Theory asserting reality is composed of a single, neutral kind of substance.",
+        "ast_signature": "c17e3ba33315f0e68dde1a7dde32f672d81db7d39101ec982224b3e87f3bcc7b"
+    },
+    {
+        "branch": "metaphysics",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Idealism",
+        "parent_thesis": "1: Being (True)",
+        "formal_proof": "Mind-Body Metaphysics (SEP): Reality is fundamentally mental or immaterial. The physical world is either a projection of individual minds or a manifestation of a universal mind.",
+        "context_description": "Theory asserting that existence is fundamentally spiritual or mental.",
+        "ast_signature": "c4a60ba31dcd506fa366b3ea60a00da7b5e32ee4e340408bad58d08979318f32"
+    },
+    {
+        "branch": "metaphysics",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Causal Preemption",
+        "parent_thesis": "Principle of Causality",
+        "formal_proof": "Metaphysics of Causation (SEP): An event C causes event E by directly initiating the causal chain, preempting an alternative event A which would have caused E otherwise.",
+        "context_description": "Axiom distinguishing direct causation from backup potential causes.",
+        "ast_signature": "fd72af06430a4ea3bc655f9c413466fac304f9194b10baf14a7be2fc787fc67d"
+    },
+    {
+        "branch": "metaphysics",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Causal Overdetermination",
+        "parent_thesis": "Principle of Causality",
+        "formal_proof": "Metaphysics of Causation (SEP): An event E is caused by multiple independent, sufficient causes C1 and C2 simultaneously, where each alone would have been sufficient for E.",
+        "context_description": "Axiom defining scenarios with redundant sufficient causes.",
+        "ast_signature": "c12f9580a212a65c26fe335385f8bd7bdfc598eb655649c3bb29275eeeaec068"
+    }
+]

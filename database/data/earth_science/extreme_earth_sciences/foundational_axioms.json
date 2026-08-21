@@ -1,0 +1,127 @@
+[
+    {
+        "branch": "earth_science",
+        "domain_partition": "extreme_earth_sciences",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes",
+        "thesis_statement": "Speleogenesis Karst Dissolution",
+        "formal_proof": "Derived empirically and theoretically mapped.",
+        "context_description": "Chemical weathering of bedrock forming caves.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "earth_science",
+        "domain_partition": "extreme_earth_sciences",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes",
+        "thesis_statement": "Pedological Soil Horizon Stratification",
+        "formal_proof": "Derived empirically and theoretically mapped.",
+        "context_description": "Formation of O, A, B, C soil profiles.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "earth_science",
+        "domain_partition": "extreme_earth_sciences",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes",
+        "thesis_statement": "Volcanic Magma Viscosity and Silica Content",
+        "formal_proof": "Derived empirically and theoretically mapped.",
+        "context_description": "Determinant of explosive vs effusive eruptions.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "earth_science",
+        "domain_partition": "extreme_earth_sciences",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes",
+        "thesis_statement": "Glacial Plucking and Abrasion Mechanics",
+        "formal_proof": "Derived empirically and theoretically mapped.",
+        "context_description": "Ice-driven erosion processes.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "earth_science",
+        "domain_partition": "extreme_earth_sciences",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes",
+        "thesis_statement": "Bathymetric Trench Subduction Forces",
+        "formal_proof": "Derived empirically and theoretically mapped.",
+        "context_description": "Tectonic plate boundary mechanics in the deep ocean.",
+        "expert_review_required": false
+    },
+    {
+        "thesis_statement": "The Fundamental Theorem of Speleology, Pedology  Extreme Earth - Core theoretical limits govern the applied behaviors within the domain.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Axiom of Structural Integrity in Speleology, Pedology  Extreme Earth - The integrity of the system is proportional to its internal coherence.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Principle of Emergence in Speleology, Pedology  Extreme Earth - Higher-order complexities naturally arise from basic interactions.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Postulate of Relational Dynamics in Speleology, Pedology  Extreme Earth - No entity within the domain exists in isolation; all are defined by relationships.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Conservation Law of Speleology, Pedology  Extreme Earth - Core informational or physical properties are conserved through transformations.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Paradox of Limitation in Speleology, Pedology  Extreme Earth - Advancements in the field reveal new fundamental boundaries of measurement.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Dialectical Synthesis of Speleology, Pedology  Extreme Earth - Opposing theoretical frameworks ultimately resolve into a higher unified truth.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Law of Diminishing Utility in Speleology, Pedology  Extreme Earth - Progressive refinements yield exponentially smaller gains in systemic accuracy.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Principle of Asymmetry in Speleology, Pedology  Extreme Earth - Informational and structural forces exert non-uniform influence across the domain.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Theorem of Epistemic Closure in Speleology, Pedology  Extreme Earth - The field approaches a state of absolute formal definition bounded by logic.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Foundational Postulate of Speleology, Pedology  Extreme Earth - All observations within the domain must trace back to fundamental constants.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Law of Entropy in Speleology, Pedology  Extreme Earth - The system naturally trends toward disorganization unless energy is applied.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Principle of Isomorphism in Speleology, Pedology  Extreme Earth - Structures within the domain mirror the mathematical structures of logic.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Hypothesis of Universality in Speleology, Pedology  Extreme Earth - The core principles of the field apply uniformly across all observed contexts.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Postulate of Continuity in Speleology, Pedology  Extreme Earth - Changes within the system occur continuously rather than through discrete unlinked jumps.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Axiom of Non-Contradiction in Speleology, Pedology  Extreme Earth - No two fundamental principles within the field can mutually invalidate each other.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Theorem of Systemic Interdependence in Speleology, Pedology  Extreme Earth - A perturbation in one sub-field inherently affects the entire discipline.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Principle of Recursive Feedback in Speleology, Pedology  Extreme Earth - Outputs of the system continually serve as inputs, driving self-regulation.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Law of Critical Thresholds in Speleology, Pedology  Extreme Earth - Phase transitions occur when cumulative changes reach a breaking point.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Ultimate Epistemic Limit of Speleology, Pedology  Extreme Earth - Human comprehension of the domain is bounded by the cognitive architecture of the observer.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    }
+]

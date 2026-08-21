@@ -1,0 +1,74 @@
+[
+    {
+        "branch": "algebra",
+        "domain_partition": "math_partition",
+        "thesis_statement": "First Isomorphism Theorem for Groups",
+        "parent_thesis": "Definition of a Group: A monoid where every element has an inverse",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "abc7569fbb284a4716dfc7fd7feb4a277e3c122b916f545fc17f57bed2b88888"
+    },
+    {
+        "branch": "algebra",
+        "domain_partition": "math_partition",
+        "thesis_statement": "Lagrange's Theorem in Group Theory",
+        "parent_thesis": "Definition of a Group: A monoid where every element has an inverse",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "1312cf61a1b882ba6b411faf712db7776148935968261aec84e6c295e8d12db4"
+    },
+    {
+        "branch": "algebra",
+        "domain_partition": "math_partition",
+        "thesis_statement": "First Sylow Theorem",
+        "parent_thesis": "Lagrange's Theorem in Group Theory",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "5251fd6f4d66fe075150dc678846c8cc82d8d2c75e06408de346f6d184c22edd"
+    },
+    {
+        "branch": "algebra",
+        "domain_partition": "math_partition",
+        "thesis_statement": "Fundamental Theorem of Galois Theory",
+        "parent_thesis": "Definition of a Field: A commutative ring where every non-zero element has a multiplicative inverse",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "551972f3fa0ea489f4d5b0de17eb4a1e82111d41495dd65a7de89b3d43687e97"
+    },
+    {
+        "branch": "algebra",
+        "domain_partition": "math_partition",
+        "thesis_statement": "Hilbert's Nullstellensatz",
+        "parent_thesis": "Definition of a Field: A commutative ring where every non-zero element has a multiplicative inverse",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "f583e32fd493e4b7aea247a202788ebf62de3967b91407084e2aed1dc23d997e"
+    },
+    {
+        "branch": "algebra",
+        "domain_partition": "math_partition",
+        "thesis_statement": "Cayley's Theorem in Group Theory",
+        "parent_thesis": "Definition of a Group: A monoid where every element has an inverse",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Every group is isomorphic to a subgroup of some symmetric group.",
+        "ast_signature": "f45e4251e6ecbd23494de5fc115ce9206ad8d7df7c854bbc2f9c945be1b58f72"
+    },
+    {
+        "branch": "algebra",
+        "domain_partition": "math_partition",
+        "thesis_statement": "Hilbert's Basis Theorem (Every ideal of the polynomial ring over a Noetherian ring is finitely generated)",
+        "parent_thesis": "Definition of a Ring: An Abelian group under addition and a monoid under multiplication, with multiplication distributing over addition",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Every ideal of the polynomial ring over a Noetherian ring is finitely generated.",
+        "ast_signature": "fd10b7e96b460d76360cf545a72a09e0c859e183604e28e1b439a10202725c3b"
+    },
+    {
+        "branch": "algebra",
+        "domain_partition": "math_partition",
+        "thesis_statement": "First Isomorphism Theorem for Rings",
+        "parent_thesis": "First Isomorphism Theorem for Groups",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "The quotient ring of a ring modulo the kernel of a homomorphism is isomorphic to the image of the homomorphism.",
+        "ast_signature": "2befdb6c9cda373e5137707bf6a4452fd5aa27c5c0f5c429734fbd367d7cab60"
+    }
+]

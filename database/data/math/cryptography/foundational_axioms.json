@@ -1,0 +1,20 @@
+[
+    {
+        "branch": "cryptography",
+        "domain_partition": "math_partition",
+        "thesis_statement": "RSA public-key cryptosystem prime factorization dependency",
+        "parent_thesis": "Fermat's Little Theorem (a^(p-1) \u2261 1 mod p)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "fd694d24f7437fe9288ded817209b6534cb8b56f4522cd24c93a0705f37448bf"
+    },
+    {
+        "branch": "cryptography",
+        "domain_partition": "math_partition",
+        "thesis_statement": "One-time pad perfect secrecy (Shannon)",
+        "parent_thesis": "Definition of Perfect Secrecy (Shannon): Ciphertext provides no information about the plaintext without the key",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "2348109cd8df753037d20df5b272bc02d4720a4bda73b7cc3e7c9562c4f5c549"
+    }
+]

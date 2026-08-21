@@ -1,0 +1,74 @@
+[
+    {
+        "branch": "particle_physics",
+        "domain_partition": "physics_partition",
+        "thesis_statement": "The Standard Model of Particle Physics: Fundamental forces (electromagnetic, weak, strong) are mediated by gauge bosons",
+        "parent_thesis": "Schr\u00f6dinger Equation: i\u210f \u2202\u03a8/\u2202t = \u0124\u03a8 (Time evolution of quantum state)",
+        "formal_proof": "SU(3) \u00d7 SU(2) \u00d7 U(1) gauge symmetry group representing color charge, weak isospin, and hypercharge.",
+        "context_description": "The theory describing three of the four known fundamental forces in the universe, as well as classifying all known elementary particles."
+    },
+    {
+        "branch": "particle_physics",
+        "domain_partition": "physics_partition",
+        "thesis_statement": "Pauli Exclusion Principle: Two identical fermions cannot occupy the same quantum state simultaneously",
+        "parent_thesis": "The Standard Model of Particle Physics: Fundamental forces (electromagnetic, weak, strong) are mediated by gauge bosons",
+        "formal_proof": "\u03a8(1,2) = -\u03a8(2,1). The wave function of identical fermions is anti-symmetric under particle exchange.",
+        "context_description": "Quantum mechanical principle stating that no two identical fermions can occupy the same quantum state."
+    },
+    {
+        "branch": "particle_physics",
+        "domain_partition": "physics_partition",
+        "thesis_statement": "Higgs Mechanism: Gauge bosons and fermions acquire mass through spontaneous symmetry breaking",
+        "parent_thesis": "The Standard Model of Particle Physics: Fundamental forces (electromagnetic, weak, strong) are mediated by gauge bosons",
+        "formal_proof": "V(\u03c6) = \u03bc\u00b2 \u03c6*\u03c6 + \u03bb (\u03c6*\u03c6)\u00b2. The non-zero vacuum expectation value of the Higgs field gives mass to gauge bosons.",
+        "context_description": "The process by which gauge bosons and fermions acquire mass."
+    },
+    {
+        "branch": "particle_physics",
+        "domain_partition": "physics_partition",
+        "thesis_statement": "Baryon Number Conservation: The total baryon number is a conserved global quantity in all standard interactions",
+        "parent_thesis": "Noether's Theorem: Every differentiable symmetry of the action of a physical system has a corresponding conservation law",
+        "formal_proof": "\u0394B = 0. Conserves total baryon number in all standard model decay paths and high-energy collisions.",
+        "context_description": "Global conservation law stating that the difference between the number of quarks and antiquarks is invariant."
+    },
+    {
+        "branch": "particle_physics",
+        "domain_partition": "physics_partition",
+        "thesis_statement": "Color Confinement (QCD Confinement): Quarks and gluons cannot be isolated and are confined within color-neutral hadrons",
+        "parent_thesis": "The Standard Model of Particle Physics: Fundamental forces (electromagnetic, weak, strong) are mediated by gauge bosons",
+        "formal_proof": "V_s(r) \u2248 -\u03b1_s/r + k*r. Force between color charges does not decrease with distance, requiring hadronization.",
+        "context_description": "The physical phenomenon that color-charged particles (like quarks) cannot be isolated singularly."
+    },
+    {
+        "branch": "particle_physics",
+        "domain_partition": "physics_partition",
+        "thesis_statement": "Standard model of particle physics",
+        "parent_thesis": "The Standard Model of Particle Physics: Fundamental forces (electromagnetic, weak, strong) are mediated by gauge bosons",
+        "formal_proof": "Bridge alias.",
+        "context_description": "Bridge alias for Standard Model."
+    },
+    {
+        "branch": "particle_physics",
+        "domain_partition": "physics_partition",
+        "thesis_statement": "Higgs boson mass generation",
+        "parent_thesis": "Higgs Mechanism: Gauge bosons and fermions acquire mass through spontaneous symmetry breaking",
+        "formal_proof": "Bridge alias.",
+        "context_description": "Bridge alias for Higgs mechanism."
+    },
+    {
+        "branch": "particle_physics",
+        "domain_partition": "physics_partition",
+        "thesis_statement": "Conservation of baryon number",
+        "parent_thesis": "Baryon Number Conservation: The total baryon number is a conserved global quantity in all standard interactions",
+        "formal_proof": "Bridge alias.",
+        "context_description": "Bridge alias for Baryon conservation."
+    },
+    {
+        "branch": "particle_physics",
+        "domain_partition": "physics_partition",
+        "thesis_statement": "Strong nuclear force confinement",
+        "parent_thesis": "Color Confinement (QCD Confinement): Quarks and gluons cannot be isolated and are confined within color-neutral hadrons",
+        "formal_proof": "Bridge alias.",
+        "context_description": "Bridge alias for QCD confinement."
+    }
+]

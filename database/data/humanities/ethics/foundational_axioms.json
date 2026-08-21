@@ -1,0 +1,134 @@
+[
+    {
+        "thesis_statement": "Categorical Imperative (Kant) - Act only according to that maxim whereby you can at the same time will that it should become a universal law",
+        "parent_thesis": "1: Being (True)"
+    },
+    {
+        "thesis_statement": "Principle of Utility (Bentham/Mill) - Actions are right in proportion as they tend to promote happiness, wrong as they tend to produce the reverse of happiness",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Virtue Ethics (Aristotle) - Morality consists in cultivating virtuous character traits to achieve human flourishing (Eudaimonia)",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Rawlsian Veil of Ignorance - Just principles of society are those chosen by rational agents who do not know their own social position",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Social Contract Theory (Hobbes/Locke) - Individuals consent to surrender some freedoms to an authority in exchange for protection of their remaining rights",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Existentialism (Sartre) - Existence precedes essence, humans are condemned to be free and must define their own meaning",
+        "parent_thesis": "1: Being (True)"
+    },
+    {
+        "thesis_statement": "Epistemological Justified True Belief - Knowledge is defined as a belief that is both true and justified",
+        "parent_thesis": "1: Being (True)"
+    },
+    {
+        "thesis_statement": "Linguistic Relativity (Sapir-Whorf) - The structure of a language affects its speakers' world view or cognition",
+        "parent_thesis": "1: Being (True)"
+    },
+    {
+        "thesis_statement": "Deontology - The morality of an action should be based on whether that action itself is right or wrong under a series of rules, rather than based on the consequences",
+        "parent_thesis": "1: Being (True)"
+    },
+    {
+        "thesis_statement": "Categorical Imperative (Kant) - Act only according to that maxim whereby you can, at the same time, will that it should become a universal law",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Veil of Ignorance (Rawls) - Justice is achieved when societal rules are chosen without knowledge of one's own position in society",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Virtue Ethics (Aristotle) - Morality is determined by the cultivation of virtuous character traits rather than specific rules or consequences",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Ethical Egoism - Moral agents ought to act in their own self-interest",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Moral Relativism - Moral judgments are true or false only relative to some particular standpoint and no standpoint is uniquely privileged",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Divine Command Theory - An action's status as morally good is equivalent to whether it is commanded by God",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "The Golden Mean (Aristotle) - Desirable middle between two extremes, one of excess and the other of deficiency",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Trolley Problem Doctrine - Explores the ethics of allowing harm to occur versus actively causing harm to achieve a better outcome",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principle of Double Effect - Sometimes it is permissible to cause a harm as a side effect of bringing about a good result",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Cultural Relativism - A person's beliefs, values, and practices should be understood based on that person's own culture",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Care Ethics - Emphasizes the importance of relationships, dependency, and the context of moral decisions",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Determinism - All events, including moral choices, are completely determined by previously existing causes",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Compatibilism - Free will and determinism are mutually compatible",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Nihilism - Life is without objective meaning, purpose, or intrinsic value",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Pragmatism - The meaning of a proposition is to be found in the practical consequences of accepting it",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Phenomenology (Husserl) - The study of structures of consciousness as experienced from the first-person point of view",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Structuralism - Elements of human culture must be understood by way of their relationship to a broader, overarching system",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Panopticism (Foucault) - A social theory of power and surveillance where subjects internalize the observer",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "The Absurd (Camus) - The fundamental conflict between the human tendency to seek inherent value and meaning in life and the silent, meaningless universe",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Master-Slave Dialectic (Hegel) - Self-consciousness is only achieved through recognition from another, leading to a struggle for dominance",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Overmensch (Nietzsche) - The concept of an individual who has overcome themselves and created their own values",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Dasein (Heidegger) - 'Being-there', the experience of being that is peculiar to human beings",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "The Dialectic of Enlightenment (Adorno/Horkheimer) - The process by which rationality and technological mastery lead to new forms of domination",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Communicative Action (Habermas) - Social action based on mutual understanding and rational discourse",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    }
+]

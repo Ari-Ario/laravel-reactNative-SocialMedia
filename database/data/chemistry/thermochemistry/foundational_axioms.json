@@ -1,0 +1,50 @@
+[
+    {
+        "branch": "thermochemistry",
+        "domain_partition": "chemistry_partition",
+        "thesis_statement": "Gibbs Free Energy: \u0394G = \u0394H - T\u0394S (Criterion for spontaneity)",
+        "parent_thesis": "Second Law of Thermodynamics: Total entropy of an isolated system can never decrease over time (\u0394S \u2265 0)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine."
+    },
+    {
+        "branch": "thermochemistry",
+        "domain_partition": "chemistry_partition",
+        "thesis_statement": "Hess's Law: The total enthalpy change during the complete course of a chemical reaction is the same whether the reaction is made in one step or in several steps",
+        "parent_thesis": "First Law of Thermodynamics (Conservation of Energy): \u0394U = Q - W",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine."
+    },
+    {
+        "branch": "thermochemistry",
+        "domain_partition": "chemistry_partition",
+        "thesis_statement": "Gibbs-Duhem Equation: \u2211 N_i d\u03bc_i = -S dT + V dP (Describes thermodynamic potential changes)",
+        "parent_thesis": "Gibbs Free Energy: \u0394G = \u0394H - T\u0394S (Criterion for spontaneity)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine."
+    },
+    {
+        "branch": "thermochemistry",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Hess law of constant heat summation",
+        "parent_thesis": "First law of thermodynamics energy conservation",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine."
+    },
+    {
+        "branch": "thermochemistry",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Enthalpy of formation",
+        "parent_thesis": "First law of thermodynamics energy conservation",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine."
+    },
+    {
+        "branch": "thermochemistry",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Specific heat capacity",
+        "parent_thesis": "First law of thermodynamics energy conservation",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine."
+    }
+]

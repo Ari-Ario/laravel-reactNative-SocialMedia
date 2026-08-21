@@ -218,4 +218,12 @@ class User extends Authenticatable
     {
         return $this->belongsToMany(Conversation::class, 'conversation_user');
     }
+
+    /**
+     * Expert domain registrations for per-branch routing.
+     */
+    public function expertDomains()
+    {
+        return $this->hasMany(ExpertDomain::class);
+    }
 }

@@ -1,0 +1,83 @@
+[
+    {
+        "branch": "paraconsistent_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Paraconsistent Logic rejects Explosion (P\u2227\u00acP \u22ac Q)",
+        "parent_thesis": "Principle of Explosion",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "e99d86fbcd5d6db20b14881103d201e139865833307fe6d079975b6875376ac1"
+    },
+    {
+        "branch": "paraconsistent_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Logic LP (Priest) \u2014 three-valued: true, false, both",
+        "parent_thesis": "Paraconsistent Logic rejects Explosion (P\u2227\u00acP \u22ac Q)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "ade26ed1967972dbd3f10994bb19b7b1aad47fde14206e61d34968dd9ced4b7b"
+    },
+    {
+        "branch": "paraconsistent_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "System C1 (da Costa) \u2014 weakest paraconsistent system",
+        "parent_thesis": "Paraconsistent Logic rejects Explosion (P\u2227\u00acP \u22ac Q)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "4319ffe7195c220e352abbcaec25eedf2d36cd359c54c33ad33e1444c9e66ba4"
+    },
+    {
+        "branch": "paraconsistent_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Logic of Formal Inconsistency LFI1 \u2014 consistency operator \u2218P",
+        "parent_thesis": "System C1 (da Costa) \u2014 weakest paraconsistent system",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "d7c9d7a0752d42ebf94be2d756f61ed1904f2fbb44089fe912a1a6f3d83a8f38"
+    },
+    {
+        "branch": "paraconsistent_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Dialethism \u2014 some propositions are both true and false (Priest)",
+        "parent_thesis": "Logic LP (Priest) \u2014 three-valued: true, false, both",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "abaa28cb9abd6353cf0ad4c4594cda28c493b0c04347a4c789f22caf46b11eff"
+    },
+    {
+        "branch": "paraconsistent_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Paraconsistent Negation \u2014 \u00acP does not eliminate P in contradiction",
+        "parent_thesis": "Paraconsistent Logic rejects Explosion (P\u2227\u00acP \u22ac Q)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "59bb48525b99b99e44e4ed0cff5df1340d529ef2efc403689244840635d31b05"
+    },
+    {
+        "branch": "paraconsistent_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Relevance Logic R \u2014 entailment requires relevance between premises and conclusion",
+        "parent_thesis": "Paraconsistent Logic rejects Explosion (P\u2227\u00acP \u22ac Q)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "b0fcc64e242063773683da61ac731845dd43caf3547bc74be9882166d6263023"
+    },
+    {
+        "branch": "paraconsistent_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Anderson-Belnap Logic E \u2014 entailment system requiring intensional modality",
+        "parent_thesis": "Relevance Logic R \u2014 entailment requires relevance between premises and conclusion",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "2282f7b9f7c85fc54c75cc4b83f94821dfa041fd03668945535842def94a4d1e"
+    },
+    {
+        "branch": "paraconsistent_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Four-valued Semantics (Belnap) \u2014 true, false, both, neither",
+        "parent_thesis": "Logic LP (Priest) \u2014 three-valued: true, false, both",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "09a5bd02ea31a738ff1172037e3129af6034a3b08140ed12db331430d449e282"
+    }
+]

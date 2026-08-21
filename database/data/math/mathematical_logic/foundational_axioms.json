@@ -1,0 +1,29 @@
+[
+    {
+        "branch": "mathematical_logic",
+        "domain_partition": "math_partition",
+        "thesis_statement": "Lowenheim-Skolem Theorem",
+        "parent_thesis": "First-order logic validities",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "64ec3aa19a1453f46c560b28779b45db06a0e27f60320e0e547972212823848c"
+    },
+    {
+        "branch": "mathematical_logic",
+        "domain_partition": "math_partition",
+        "thesis_statement": "Compactness Theorem",
+        "parent_thesis": "First-order logic validities",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "1facfd5e5adc791bdd236ddd67157a5648670d95efaf77db20cae4ed3d8ecc09"
+    },
+    {
+        "branch": "mathematical_logic",
+        "domain_partition": "math_partition",
+        "thesis_statement": "Halting Problem (Turing Undecidability)",
+        "parent_thesis": "G\u00f6del First Incompleteness Theorem \u2014 consistent PA contains unprovable truths",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "87e1102c65aa6bdf9aa84b213c89b4bbe5b9b69c3d035903db396ea541fb51e8"
+    }
+]

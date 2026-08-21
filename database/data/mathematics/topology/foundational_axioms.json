@@ -1,0 +1,83 @@
+[
+    {
+        "branch": "topology",
+        "domain_partition": "math_partition",
+        "thesis_statement": "Tychonoff's Theorem",
+        "parent_thesis": "Compactness",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Tychonoff's Theorem: The product of any collection of compact topological spaces is compact under the product topology.",
+        "ast_signature": "c0b4feddf2d2402382afb8c8a3914ccc3450d690d1b9c4262127a42322d5e5f9"
+    },
+    {
+        "branch": "topology",
+        "domain_partition": "math_partition",
+        "thesis_statement": "Urysohn's Lemma",
+        "parent_thesis": "Definition of Continuous Function in Topology: Preimage of every open set is open",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Urysohn's Lemma: Disjoint closed sets in a normal topological space can be separated by a continuous function mapping to [0,1].",
+        "ast_signature": "1f6984816b547785fef6c365496a95bb79f7bd9d72b541d9e081d260ea87e0f1"
+    },
+    {
+        "branch": "topology",
+        "domain_partition": "math_partition",
+        "thesis_statement": "Brouwer Fixed-Point Theorem",
+        "parent_thesis": "Sperner's Lemma (Triangulations and colored vertices containing a complete simplex)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Brouwer Fixed-Point Theorem: Any continuous mapping from a compact convex subset of Euclidean space to itself has a fixed point.",
+        "ast_signature": "67a363d7413cf03d17d35615e97f9b523e395ac2793de36121062fdbb6959328"
+    },
+    {
+        "branch": "topology",
+        "domain_partition": "math_partition",
+        "thesis_statement": "Euler-Poincare formula",
+        "parent_thesis": "Euler characteristic",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Euler-Poincar\u00e9 Formula: Relates the Euler characteristic of a space to its Betti numbers, generalising polyhedral geometry to algebraic homology.",
+        "ast_signature": "f4db44b2f37727b9778110718fe45698823411ade804a1009e3060c1a30f9c98"
+    },
+    {
+        "branch": "topology",
+        "domain_partition": "math_partition",
+        "thesis_statement": "Fundamental Group of a circle is isomorphic to Z",
+        "parent_thesis": "Definition of a Group: A monoid where every element has an inverse",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Fundamental Group: The first homotopy group representing loops modulo equivalence, which for a circle is isomorphic to the group of integers.",
+        "ast_signature": "c4c43cca46b980ae0cb5bd723d7abe9f4ec18f789dbba2aa7e41dc054d01e7df"
+    },
+    {
+        "branch": "topology",
+        "domain_partition": "math_partition",
+        "thesis_statement": "Borsuk-Ulam Theorem",
+        "parent_thesis": "Brouwer Fixed-Point Theorem",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Borsuk-Ulam Theorem: States that every continuous function from an n-sphere into Euclidean n-space maps some pair of antipodal points to the same point.",
+        "ast_signature": "d34bac812e01117b45f7e9e0b586972cd93b1e4a990701bd8287e951e78ca9ac"
+    },
+    {
+        "branch": "topology",
+        "domain_partition": "math_partition",
+        "thesis_statement": "Tietze Extension Theorem",
+        "parent_thesis": "Urysohn's Lemma",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "States that continuous real-valued functions on closed subsets of normal spaces can be extended continuously to the entire space.",
+        "ast_signature": "2af959890f45ec9527b7186f3020f34efdb67e3c4f0162d7394f33854c595af7"
+    },
+    {
+        "branch": "topology",
+        "domain_partition": "math_partition",
+        "thesis_statement": "Urysohn's Metrization Theorem",
+        "parent_thesis": "Urysohn's Lemma",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Provides topological conditions under which a topological space is homeomorphic to a metric space.",
+        "ast_signature": "a2e12566b8ccdf81c07caf94875983bbacfd6e8ac46c914eb5c83ffa807d5e6a"
+    },
+    {
+        "branch": "topology",
+        "domain_partition": "math_partition",
+        "thesis_statement": "Whitney Embedding Theorem",
+        "parent_thesis": "Definition of Continuous Function in Topology: Preimage of every open set is open",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Any smooth manifold of dimension n can be smoothly embedded in R^(2n).",
+        "ast_signature": "746f83764369b091e01e59abda4cafb0c292eefb64d4959bf6ee5bb9e9e20fba"
+    }
+]

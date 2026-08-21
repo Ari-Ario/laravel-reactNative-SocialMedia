@@ -5,7 +5,7 @@ Chatbot-training must be done by employees, although it learnes from media gradu
 ## Go to frontend to setup React-Native
 
 ## Go to backend to setup laravel
-
+composer require php-ai/php-ml
 
 ## important commands:
 php artisan optimize:clear  #most important
@@ -61,3 +61,8 @@ Why Option 2 (AppArmor) is likely needed
 If you are on Ubuntu 24.04 or newer, the Invalid argument (22) part of the error is a known conflict with new security restrictions on "unprivileged user namespaces". If the above doesn't work, run this command to relax that restriction for your session: 
 
 sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+
+
+nedded:
+php artisan migrate --path=database/migrations/2026_05_16_102358_create_knowledge_axioms_table.php
+php artisan migrate --path=database/migrations/0001_01_01_000000_create_users_table.php

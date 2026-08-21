@@ -1,0 +1,47 @@
+[
+    {
+        "branch": "human_geography",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Demographic transition model",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "c7a14858290645471e104c7479dc3dfed812f6f89b6def2c224f16a22dd2889c"
+    },
+    {
+        "branch": "human_geography",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Central place theory",
+        "parent_thesis": "Central Place Theory (Christaller)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "c2005ba9582c18d11ff7d591ccb669c4fb7ddf1b8c9ffe45ee363b745eb41e19"
+    },
+    {
+        "branch": "human_geography",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Gravity model of spatial interaction",
+        "parent_thesis": "Spatial Interaction Model: The flow of people, material, or information between locations depends on their size, importance, and distance",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "cae92cd2cc71edbfed9961266d82b7c3b39c827a9f72d4237f7d6d85690f625e"
+    },
+    {
+        "branch": "human_geography",
+        "domain_partition": "social_partition",
+        "thesis_statement": "Spatial Interaction Model: The flow of people, material, or information between locations depends on their size, importance, and distance",
+        "parent_thesis": "Ecosystem Energy Flow Axiom: Energy enters ecosystems via primary producers and is dissipated as heat at each successive trophic level",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "3870c33646c7f1a7285771e410f5c12dc4b9e4ae9c54a0251f54db580b7f2356"
+    },
+    {
+        "branch": "human_geography",
+        "domain_partition": "social_science",
+        "thesis_statement": "Central Place Theory (Christaller)",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints",
+        "formal_proof": "Given isotropic planes and rational utility maximization (minimizing transport costs), settlement patterns naturally form hexagonal lattices to eliminate unserved areas while maximizing market capture.",
+        "context_description": "A geographic theory explaining the spatial arrangement, size, and number of human settlements, showing that cities and towns naturally form geometric patterns based on economic efficiency.",
+        "ast_signature": "6984751e86bdf8625027c5dc6749898a97910f96616bf2d346c2bf71c28f49b0"
+    }
+]

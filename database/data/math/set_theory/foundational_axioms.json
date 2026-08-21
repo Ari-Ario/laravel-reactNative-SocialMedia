@@ -1,0 +1,47 @@
+[
+    {
+        "branch": "set_theory",
+        "domain_partition": "math_partition",
+        "thesis_statement": "Cantor Theorem (Power set cardinality)",
+        "parent_thesis": "Axiom of Power Set \u2014 \u2200x \u2203y \u2200z (z\u2286x \u2192 z\u2208y)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "7c283942df7166296ffe32c5945a1fc8aa03a03c2a12acde562d0c480bd4ef87"
+    },
+    {
+        "branch": "set_theory",
+        "domain_partition": "math_partition",
+        "thesis_statement": "Schroder-Bernstein Theorem",
+        "parent_thesis": "Cantor Theorem (Power set cardinality)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "15b0d3a142ea9842d99a45a345c0bb3f9094e9316324edfad9b9514ed6917abe"
+    },
+    {
+        "branch": "set_theory",
+        "domain_partition": "math_partition",
+        "thesis_statement": "Russell Paradox Resolution (ZFC Type Theory)",
+        "parent_thesis": "Axiom Schema of Separation (Aussonderung)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "9f4b11601bad5b910425d372c2292122ec710ab2e73b8af82d03b94149a07e91"
+    },
+    {
+        "branch": "set_theory",
+        "domain_partition": "math_partition",
+        "thesis_statement": "Axiom of Constructibility (V=L)",
+        "parent_thesis": "Von Neumann Universe V \u2014 cumulative hierarchy of sets",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "09a8720265759d39e94e7a58655af7587c12037a47bd158410c9ff2d250a9a8a"
+    },
+    {
+        "branch": "set_theory",
+        "domain_partition": "math_partition",
+        "thesis_statement": "A solid 3D ball can be divided into a finite number of pieces, and those pieces can be reassembled to create two identical solid balls of the same size as the original.",
+        "parent_thesis": "Axiom of Choice \u2014 equivalent to Well-Ordering Theorem",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "b03c8a6ee07e4dda6a15c4e957a94011582c4705cc6d736bacc4fa4c16566463"
+    }
+]

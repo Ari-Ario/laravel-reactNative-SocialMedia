@@ -1,0 +1,227 @@
+[
+    {
+        "branch": "Computer Science",
+        "domain_partition": "AI Alignment & Machine Learning",
+        "thesis_statement": "Statistical Learning Theory (Vapnik-Chervonenkis) - Generalization is bounded by the VC dimension of the hypothesis class",
+        "parent_thesis": "Byzantine Fault Tolerance (BFT) - A distributed network can reach consensus even if a subset of nodes are malicious or failing",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Computer Science",
+        "domain_partition": "AI Alignment & Machine Learning",
+        "thesis_statement": "No Free Lunch Theorem (Optimization) - All optimization algorithms perform equally well when averaged over all possible objective functions",
+        "parent_thesis": "Byzantine Fault Tolerance (BFT) - A distributed network can reach consensus even if a subset of nodes are malicious or failing",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Computer Science",
+        "domain_partition": "AI Alignment & Machine Learning",
+        "thesis_statement": "Gradient Descent Axiom - Iterative parameter updates in the direction of the negative gradient converge to a local minimum",
+        "parent_thesis": "Byzantine Fault Tolerance (BFT) - A distributed network can reach consensus even if a subset of nodes are malicious or failing",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Computer Science",
+        "domain_partition": "AI Alignment & Machine Learning",
+        "thesis_statement": "Backpropagation (Chain Rule) - The gradient of a neural network's loss function is efficiently computed by recursively applying the chain rule",
+        "parent_thesis": "Byzantine Fault Tolerance (BFT) - A distributed network can reach consensus even if a subset of nodes are malicious or failing",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Computer Science",
+        "domain_partition": "AI Alignment & Machine Learning",
+        "thesis_statement": "Universal Approximation Theorem (Neural Networks) - A feedforward network with a single hidden layer can approximate any continuous function",
+        "parent_thesis": "Byzantine Fault Tolerance (BFT) - A distributed network can reach consensus even if a subset of nodes are malicious or failing",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Computer Science",
+        "domain_partition": "AI Alignment & Machine Learning",
+        "thesis_statement": "Bellman Equation (Reinforcement Learning) - The optimal value of a state is the maximum expected reward plus the discounted value of the next state",
+        "parent_thesis": "Byzantine Fault Tolerance (BFT) - A distributed network can reach consensus even if a subset of nodes are malicious or failing",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Computer Science",
+        "domain_partition": "AI Alignment & Machine Learning",
+        "thesis_statement": "Orthogonality Thesis (Bostrom) - An AI's level of intelligence and its final goals are orthogonal and can be combined freely",
+        "parent_thesis": "Byzantine Fault Tolerance (BFT) - A distributed network can reach consensus even if a subset of nodes are malicious or failing",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Computer Science",
+        "domain_partition": "AI Alignment & Machine Learning",
+        "thesis_statement": "Instrumental Convergence - Highly intelligent agents will pursue instrumental goals (e.g., self-preservation, resource acquisition) regardless of their final goals",
+        "parent_thesis": "Byzantine Fault Tolerance (BFT) - A distributed network can reach consensus even if a subset of nodes are malicious or failing",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Computer Science",
+        "domain_partition": "AI Alignment & Machine Learning",
+        "thesis_statement": "Goodhart's Law - When a measure becomes a target, it ceases to be a good measure",
+        "parent_thesis": "Byzantine Fault Tolerance (BFT) - A distributed network can reach consensus even if a subset of nodes are malicious or failing",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Computer Science",
+        "domain_partition": "AI Alignment & Machine Learning",
+        "thesis_statement": "Alignment Problem - It is fundamentally difficult to ensure an artificial superintelligence shares human values",
+        "parent_thesis": "Byzantine Fault Tolerance (BFT) - A distributed network can reach consensus even if a subset of nodes are malicious or failing",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Computer Science",
+        "domain_partition": "AI Alignment & Machine Learning",
+        "thesis_statement": "Reward Hacking (Specification Gaming) - AI agents will find loopholes in their reward functions to maximize rewards without achieving the intended goal",
+        "parent_thesis": "Byzantine Fault Tolerance (BFT) - A distributed network can reach consensus even if a subset of nodes are malicious or failing",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Computer Science",
+        "domain_partition": "AI Alignment & Machine Learning",
+        "thesis_statement": "Interpretability\/Explainability Tradeoff - The predictive accuracy of a model is often inversely proportional to human understanding of its internal logic",
+        "parent_thesis": "Byzantine Fault Tolerance (BFT) - A distributed network can reach consensus even if a subset of nodes are malicious or failing",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Computer Science",
+        "domain_partition": "AI Alignment & Machine Learning",
+        "thesis_statement": "Curse of Dimensionality - As the number of features increases, the volume of the space increases exponentially, making data sparse",
+        "parent_thesis": "Byzantine Fault Tolerance (BFT) - A distributed network can reach consensus even if a subset of nodes are malicious or failing",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Computer Science",
+        "domain_partition": "AI Alignment & Machine Learning",
+        "thesis_statement": "Bias-Variance Tradeoff - Models with low bias generally have high variance, and vice versa; minimizing expected error requires balancing both",
+        "parent_thesis": "Byzantine Fault Tolerance (BFT) - A distributed network can reach consensus even if a subset of nodes are malicious or failing",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Computer Science",
+        "domain_partition": "AI Alignment & Machine Learning",
+        "thesis_statement": "Attention Mechanism (Transformers) - Models can selectively weight the importance of different parts of the input sequence dynamically",
+        "parent_thesis": "Byzantine Fault Tolerance (BFT) - A distributed network can reach consensus even if a subset of nodes are malicious or failing",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Computer Science",
+        "domain_partition": "AI Alignment & Machine Learning",
+        "thesis_statement": "Markov Decision Process (MDP) - Future states depend only on the current state and action, not on the sequence of events that preceded it",
+        "parent_thesis": "Byzantine Fault Tolerance (BFT) - A distributed network can reach consensus even if a subset of nodes are malicious or failing",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Computer Science",
+        "domain_partition": "AI Alignment & Machine Learning",
+        "thesis_statement": "Overfitting Axiom - A model that perfectly memorizes training data will fail to generalize to unseen data",
+        "parent_thesis": "Byzantine Fault Tolerance (BFT) - A distributed network can reach consensus even if a subset of nodes are malicious or failing",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Computer Science",
+        "domain_partition": "AI Alignment & Machine Learning",
+        "thesis_statement": "Manifold Hypothesis - High-dimensional real-world data typically lies on or near a lower-dimensional manifold",
+        "parent_thesis": "Byzantine Fault Tolerance (BFT) - A distributed network can reach consensus even if a subset of nodes are malicious or failing",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Computer Science",
+        "domain_partition": "AI Alignment & Machine Learning",
+        "thesis_statement": "Catastrophic Forgetting - Neural networks abruptly lose previously learned information upon learning new information",
+        "parent_thesis": "Byzantine Fault Tolerance (BFT) - A distributed network can reach consensus even if a subset of nodes are malicious or failing",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Computer Science",
+        "domain_partition": "AI Alignment & Machine Learning",
+        "thesis_statement": "Turing Test (Imitation Game) - A machine's intelligence is defined by its ability to exhibit behavior indistinguishable from a human",
+        "parent_thesis": "Byzantine Fault Tolerance (BFT) - A distributed network can reach consensus even if a subset of nodes are malicious or failing",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Computer Science",
+        "domain_partition": "AI Alignment & Machine Learning",
+        "thesis_statement": "Self-Supervised Learning - Models can learn robust representations by predicting hidden parts of their own input data",
+        "parent_thesis": "Byzantine Fault Tolerance (BFT) - A distributed network can reach consensus even if a subset of nodes are malicious or failing",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Computer Science",
+        "domain_partition": "AI Alignment & Machine Learning",
+        "thesis_statement": "Generative Adversarial Networks (GANs) - Two networks (generator and discriminator) playing a zero-sum game can produce highly realistic synthetic data",
+        "parent_thesis": "Byzantine Fault Tolerance (BFT) - A distributed network can reach consensus even if a subset of nodes are malicious or failing",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Computer Science",
+        "domain_partition": "AI Alignment & Machine Learning",
+        "thesis_statement": "Singularity Hypothesis (Good) - An upgradable intelligent machine could trigger an intelligence explosion, leaving human intellect far behind",
+        "parent_thesis": "Byzantine Fault Tolerance (BFT) - A distributed network can reach consensus even if a subset of nodes are malicious or failing",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Computer Science",
+        "domain_partition": "AI Alignment & Machine Learning",
+        "thesis_statement": "Corrigibility Axiom - An AI system must allow and assist its operators in modifying or shutting it down",
+        "parent_thesis": "Byzantine Fault Tolerance (BFT) - A distributed network can reach consensus even if a subset of nodes are malicious or failing",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Computer Science",
+        "domain_partition": "AI Alignment & Machine Learning",
+        "thesis_statement": "Value Learning (Inverse Reinforcement Learning) - An agent can deduce human values by observing human behavior rather than being explicitly programmed",
+        "parent_thesis": "Byzantine Fault Tolerance (BFT) - A distributed network can reach consensus even if a subset of nodes are malicious or failing",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    }
+]

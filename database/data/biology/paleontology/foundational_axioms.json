@@ -1,0 +1,55 @@
+[
+    {
+        "branch": "paleontology",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Fossil succession principle",
+        "parent_thesis": "Newton first law of motion",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "0aa5d46d8109824fb881105222b5c9bffdc99f4ed196bb32a332c7cdbdc559ce"
+    },
+    {
+        "branch": "paleontology",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Radiometric dating half-life",
+        "parent_thesis": "Newton first law of motion",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "f8310f89fc2a700dda13cd6bf45044a972a43e971fef9cb6fc93cc9fe46476e3"
+    },
+    {
+        "branch": "paleontology",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Mass extinction punctuated equilibrium",
+        "parent_thesis": "Newton first law of motion",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "d42bdd2b0f2b29f71e431e189e3b8aa8cf812fb7d8124d67cfc2a11e1da8da87"
+    },
+    {
+        "branch": "paleontology",
+        "domain_partition": "biology_partition",
+        "thesis_statement": "Law of Superposition (Stratigraphy): In undeformed stratigraphic sequences, the oldest layers are at the bottom and the youngest at the top",
+        "parent_thesis": "Newton's Law of Universal Gravitation: F = G*(m1*m2)/r^2",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "ad99d6e2d0670076a91e84610cff5dd0762266b171f1de5d8dd86655b025c453"
+    },
+    {
+        "branch": "paleontology",
+        "domain_partition": "biology_partition",
+        "thesis_statement": "Fossil Succession Axiom: Fossil organisms succeed one another in a definite and determinable order",
+        "parent_thesis": "Common Descent: All life on Earth is related and has descended from a common ancestor",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "8103f80dc916fc40dba5636540bd6aea3d879f5c9c8edddcf33f4a683358c380"
+    },
+    {
+        "branch": "paleontology",
+        "domain_partition": "biology_partition",
+        "thesis_statement": "Principle of Cross-Cutting Relationships: Any geological feature that cuts across another body of rock must be younger than the rock it cuts across",
+        "parent_thesis": "Law of Superposition (Stratigraphy): In undeformed stratigraphic sequences, the oldest layers are at the bottom and the youngest at the top",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Formulated by Nicolaus Steno and expanded by James Hutton, describing stratigraphic intersections (faults, igneous intrusions) that define relative chronological ordering."
+    }
+]

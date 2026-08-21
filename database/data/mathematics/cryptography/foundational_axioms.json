@@ -1,0 +1,62 @@
+[
+    {
+        "branch": "cryptography",
+        "domain_partition": "math_partition",
+        "thesis_statement": "Kerckhoffs's Principle: A cryptosystem should be secure even if everything about the system, except the key, is public knowledge",
+        "parent_thesis": "Law of identity",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "4c58378108cd94fb129628a39c4021d4622f16cec816cc3d421a8bbd8d5e6198"
+    },
+    {
+        "branch": "cryptography",
+        "domain_partition": "math_partition",
+        "thesis_statement": "Definition of Perfect Secrecy (Shannon): Ciphertext provides no information about the plaintext without the key",
+        "parent_thesis": "Kolmogorov Axiom 3: Probability of countable disjoint events is the sum of their probabilities",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "22692787843b97ef56a399a8862b4cdcdf85e0292e1d48ec9c4424d47a1abf83"
+    },
+    {
+        "branch": "cryptography",
+        "domain_partition": "math_partition",
+        "thesis_statement": "One-Time Pad achieves Perfect Secrecy",
+        "parent_thesis": "Definition of Perfect Secrecy (Shannon): Ciphertext provides no information about the plaintext without the key",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "3a2888008ab4e96472a38ff02ad76da08fc154144f0434953f9023c7ea9e3563"
+    },
+    {
+        "branch": "cryptography",
+        "domain_partition": "math_partition",
+        "thesis_statement": "Definition of Public-Key Cryptography (Asymmetric)",
+        "parent_thesis": "Definition of a Field: A commutative ring where every non-zero element has a multiplicative inverse",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "c534fc80b6b563a0b3dfb6ba0f51d2e2815a7ddf16bb9028ed6b6ce6c0e916a2"
+    },
+    {
+        "branch": "cryptography",
+        "domain_partition": "math_partition",
+        "thesis_statement": "Diffie-Hellman Key Exchange Axiom: Secure key exchange over an insecure channel is possible via the hardness of the Discrete Logarithm Problem in a cyclic group",
+        "parent_thesis": "Definition of a Group: A monoid where every element has an inverse",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "First published asymmetric key agreement scheme, relying on modular exponentiation and the difficulty of computing discrete logarithms."
+    },
+    {
+        "branch": "cryptography",
+        "domain_partition": "math_partition",
+        "thesis_statement": "Shannon's Source Coding Theorem: N i.i.d. random variables with entropy H(X) can be compressed into more than N*H(X) bits with negligible risk of information loss as N approaches infinity",
+        "parent_thesis": "Shannon Entropy Axiom: H(X) = -\u2211 P(x)log P(x). The fundamental limit to data compression and the expected value of information contained in a message",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Establishes entropy as the absolute mathematical limit on data compression for any message source."
+    },
+    {
+        "branch": "cryptography",
+        "domain_partition": "math_partition",
+        "thesis_statement": "Shannon's Channel Capacity Theorem: For any channel with capacity C and transmission rate R < C, there exists a coding scheme that makes the probability of error at the receiver arbitrarily small",
+        "parent_thesis": "Shannon Entropy Axiom: H(X) = -\u2211 P(x)log P(x). The fundamental limit to data compression and the expected value of information contained in a message",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Also known as the Noisy-Channel Coding Theorem, defining the maximum rate of error-free transmission in the presence of noise."
+    }
+]

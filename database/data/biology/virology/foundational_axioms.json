@@ -1,0 +1,11 @@
+[
+    {
+        "branch": "virology",
+        "domain_partition": "biology_partition",
+        "thesis_statement": "Viral Entry Mechanism Axiom: Viral surface glycoproteins must structurally bind to specific host cell receptors to mediate membrane fusion",
+        "parent_thesis": "Thermodynamic Protein Folding Axiom: Amino acid sequences autonomously fold into the lowest-energy 3D conformations (Anfinsen's dogma)",
+        "formal_proof": "Viral entry requires a high-affinity protein-protein interaction. A viral ligand (L) binds to a cellular receptor (R) forming complex (LR) if the dissociation constant Kd = [L][R]/[LR] is sufficiently low, which is determined strictly by the complementary folded structures of both proteins.",
+        "context_description": "Viruses can only infect a cell if their outer proteins act as a perfect physical 'key' to the cell's 'lock'. This relies entirely on how those proteins folded into their 3D shapes.",
+        "ast_signature": "8aebec60f4bc34d0677987015b3635af8d215ca6283bd931aa93dd5c5eb4f72b"
+    }
+]

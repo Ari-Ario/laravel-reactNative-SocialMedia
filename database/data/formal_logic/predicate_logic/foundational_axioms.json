@@ -1,0 +1,173 @@
+[
+    {
+        "branch": "predicate_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Universal quantification",
+        "parent_thesis": "Law of identity",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "224744d5cf839d1de1bbede219a960734fe400f433c663a786a97f4121f90409"
+    },
+    {
+        "branch": "predicate_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Existential quantification",
+        "parent_thesis": "Law of identity",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "017ef576ffd2e08e93bb159585abca7caa217c31e7400fc6f67f7f1dc4c9d27d"
+    },
+    {
+        "branch": "predicate_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "First-order logic validities",
+        "parent_thesis": "Law of identity",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "6aa5a8fcb30b5c123e00933c5ae2364311638dd064cc305451b8dc109e023c35"
+    },
+    {
+        "branch": "predicate_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "G\u00f6del completeness",
+        "parent_thesis": "Law of identity",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "e462098b308f2dd188a4c161475c5085a53b76c945955289960754ed75b8a500"
+    },
+    {
+        "branch": "predicate_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Universal Instantiation (\u2200x P(x) \u22a2 P(a))",
+        "parent_thesis": "Law of identity",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "1e0190d5a44ff2ddf3a8d4cbb846bf35dfa103b1f274fdc9a57f0cdf3f5a4644"
+    },
+    {
+        "branch": "predicate_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Universal Generalisation (P(a) for arbitrary a \u22a2 \u2200x P(x))",
+        "parent_thesis": "Law of identity",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "7d3604fafc0fd91a468b348bb61cf0e7100aff5d6b98660cb4cc817b9d7926ed"
+    },
+    {
+        "branch": "predicate_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Existential Instantiation (\u2203x P(x) \u22a2 P(c) for fresh constant c)",
+        "parent_thesis": "Law of identity",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "98d8443fe55267d19c2ea2c2ed3c4033e132aafcade33c85c62608eb4ac8e1c9"
+    },
+    {
+        "branch": "predicate_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Existential Generalisation (P(a) \u22a2 \u2203x P(x))",
+        "parent_thesis": "Law of identity",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "05eaa9eafed670d8aed515ae144d057b758ee6c5fd58c05fca40f1fe95ee4571"
+    },
+    {
+        "branch": "predicate_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Vacuous Universal Quantification (\u2200x (P(x)\u2192Q) \u2261 \u2203x P(x)\u2192Q)",
+        "parent_thesis": "Law of identity",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "d45456f9459ec33e0dd904ebe04aa2b1cd63e4393d89b2aebc52109322e7da1d"
+    },
+    {
+        "branch": "predicate_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Distribution of Universal Quantifier (\u2200x(P\u2192Q) \u2192 (\u2200xP \u2192 \u2200xQ))",
+        "parent_thesis": "Law of identity",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "2b789193343334d5dec12c3c6e0da47a130027850041b6d5b6ed0e54638eaf33"
+    },
+    {
+        "branch": "predicate_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Prenex Normal Form \u2014 every formula equivalent to one with quantifiers at front",
+        "parent_thesis": "Law of identity",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "bf5aeffdac2a1571e54131e32b7b243cfdf6022380074ab03149fe9666519d6c"
+    },
+    {
+        "branch": "predicate_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Skolemisation \u2014 eliminate existential quantifiers via Skolem functions",
+        "parent_thesis": "Law of identity",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "5de2161499c81d658bd7dbb2dd0e78b3c687891d0bd45bec2422c4bfc9a0fb2f"
+    },
+    {
+        "branch": "predicate_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Herbrand Theorem \u2014 satisfiability reducible to ground instances",
+        "parent_thesis": "Law of identity",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "ff706bab96dc4b1e7c04767c39d1e5d95a0c2d210aceaeaec51a441517328cbf"
+    },
+    {
+        "branch": "predicate_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Completeness of First-Order Logic (G\u00f6del 1930)",
+        "parent_thesis": "Law of identity",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "78c1075fd26446923d10b7b821fd5791e72cd957c643c3c9f993006186311d94"
+    },
+    {
+        "branch": "predicate_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Compactness of First-Order Logic",
+        "parent_thesis": "Law of identity",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "eacdcd850773345cca79b6b75a9138c9adc54c4e88765474a7c95d8666227906"
+    },
+    {
+        "branch": "predicate_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "L\u00f6wenheim-Skolem Theorem",
+        "parent_thesis": "Law of identity",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "398d90984597ec448879334726c2d41055816abda710a9f903af099c6085eb40"
+    },
+    {
+        "branch": "predicate_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Undecidability of First-Order Logic (Church-Turing)",
+        "parent_thesis": "Law of identity",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "c22a60a1ddb136c4703f49e5abcfc647ea84c42d8412c22b65a720384a4201de"
+    },
+    {
+        "branch": "predicate_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Soundness Theorem of First-Order Logic (If \u22a2 \u03c6, then \u22a8 \u03c6)",
+        "parent_thesis": "First-order logic validities",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Proves that the deductive system of first-order logic only derives logically valid formulas.",
+        "ast_signature": "0e93a1f0bef82e84e3185c49b071696202d63a7ce386419ee9d23f6d1a4a32ff"
+    },
+    {
+        "branch": "predicate_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Herbrand's Theorem (Reduction of first-order satisfiability to propositional satisfiability)",
+        "parent_thesis": "First-order logic validities",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Connects first-order logic to propositional logic by showing a formula is unsatisfiable if and only if a finite set of its ground instances is propositionally unsatisfiable.",
+        "ast_signature": "41efe153dc358c9b9482190810528e9958d0e40ca75f754c52deef26491b9b24"
+    }
+]

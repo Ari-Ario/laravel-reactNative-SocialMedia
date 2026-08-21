@@ -1,0 +1,182 @@
+[
+    {
+        "branch": "arithmetic",
+        "domain_partition": "math_partition",
+        "thesis_statement": "Peano axioms",
+        "parent_thesis": "Law of identity",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "53009b334ee036ba3b59868d27dae4aa8085749f1270ae7f6fd8000cf183ded7"
+    },
+    {
+        "branch": "arithmetic",
+        "domain_partition": "math_partition",
+        "thesis_statement": "Peano Axiom 1: Zero is a natural number (0 \u2208 N)",
+        "parent_thesis": "Peano axioms",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "053ae092492ff22940320a75300c6328853de81cb6e70206c5d92aa0859042f7"
+    },
+    {
+        "branch": "arithmetic",
+        "domain_partition": "math_partition",
+        "thesis_statement": "Peano Axiom 2: Every natural number has a successor (n \u2208 N \u2192 S(n) \u2208 N)",
+        "parent_thesis": "Peano axioms",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "0d290e20a95cb94d1e7954bbea2b46f1425464a698841b5715794821da746f2a"
+    },
+    {
+        "branch": "arithmetic",
+        "domain_partition": "math_partition",
+        "thesis_statement": "Peano Axiom 3: Zero is not the successor of any natural number (\u2200n \u2208 N, S(n) \u2260 0)",
+        "parent_thesis": "Peano axioms",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "b87860c99de465983720802831a8eb637515ae347115fec08c5fcffbc7413f9f"
+    },
+    {
+        "branch": "arithmetic",
+        "domain_partition": "math_partition",
+        "thesis_statement": "Peano Axiom 4: Injectivity of successor (S(m) = S(n) \u2192 m = n)",
+        "parent_thesis": "Peano axioms",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "51884687c9038dfca49cf839e3c9e425e9f11c897b03bdfcbfc372706ee74279"
+    },
+    {
+        "branch": "arithmetic",
+        "domain_partition": "math_partition",
+        "thesis_statement": "Peano Axiom 5: Mathematical Induction (P(0) \u2227 (\u2200k: P(k) \u2192 P(S(k)))) \u2192 \u2200n P(n)",
+        "parent_thesis": "Peano axioms",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "b201b8e6067dac7f54a5052e48071a608498cf5b6ded2df3ad5f61146f6cf34c"
+    },
+    {
+        "branch": "arithmetic",
+        "domain_partition": "math_partition",
+        "thesis_statement": "Definition of Addition Base: a + 0 = a",
+        "parent_thesis": "Peano Axiom 5: Mathematical Induction (P(0) \u2227 (\u2200k: P(k) \u2192 P(S(k)))) \u2192 \u2200n P(n)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "553af3c639a9fb065dc4f8edb93c0d2ee9438f5d0893ed694173a03b811a0f74"
+    },
+    {
+        "branch": "arithmetic",
+        "domain_partition": "math_partition",
+        "thesis_statement": "Definition of Addition Successor: a + S(b) = S(a + b)",
+        "parent_thesis": "Definition of Addition Base: a + 0 = a",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "a13ae0884c7cbd64d7af19e997a775fdf938a695ac26f0617da5dd2013a1bba9"
+    },
+    {
+        "branch": "arithmetic",
+        "domain_partition": "math_partition",
+        "thesis_statement": "Associativity of Addition ((a + b) + c = a + (b + c))",
+        "parent_thesis": "Definition of Addition Successor: a + S(b) = S(a + b)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "ee948613ab330983f2398d944579bd63cc4a72ed3568cf5b4b94907a99929786"
+    },
+    {
+        "branch": "arithmetic",
+        "domain_partition": "math_partition",
+        "thesis_statement": "Commutativity of Addition (a + b = b + a)",
+        "parent_thesis": "Associativity of Addition ((a + b) + c = a + (b + c))",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "5e2d2b2cab48607f669307700dcca8e074efa9354646d1a5d51826653c507594"
+    },
+    {
+        "branch": "arithmetic",
+        "domain_partition": "math_partition",
+        "thesis_statement": "Definition of Multiplication Base: a * 0 = 0",
+        "parent_thesis": "Definition of Addition Successor: a + S(b) = S(a + b)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "c9bacb5dbd3e9b15f84797d72b1a78beacff730240625c451784fe75f6c2aa85"
+    },
+    {
+        "branch": "arithmetic",
+        "domain_partition": "math_partition",
+        "thesis_statement": "Definition of Multiplication Successor: a * S(b) = (a * b) + a",
+        "parent_thesis": "Definition of Multiplication Base: a * 0 = 0",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "e7026c22875946bef4320f1e0b13f741b36858f56b122e4ac495bde19d7a02b8"
+    },
+    {
+        "branch": "arithmetic",
+        "domain_partition": "math_partition",
+        "thesis_statement": "Distributive property of multiplication over addition (a * (b + c) = (a * b) + (a * c))",
+        "parent_thesis": "Definition of Multiplication Successor: a * S(b) = (a * b) + a",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "abbcdef971a2cbeb9de9d89eeaeb641a700ba3df4cac28f05a5f44e5322b1652"
+    },
+    {
+        "branch": "arithmetic",
+        "domain_partition": "math_partition",
+        "thesis_statement": "Associativity of Multiplication ((a * b) * c = a * (b * c))",
+        "parent_thesis": "Distributive property of multiplication over addition (a * (b + c) = (a * b) + (a * c))",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "a59a2ac87c5f998b68a829956255d4e42227ae407d789ce28698a2694a5a3063"
+    },
+    {
+        "branch": "arithmetic",
+        "domain_partition": "math_partition",
+        "thesis_statement": "Commutativity of Multiplication (a * b = b * a)",
+        "parent_thesis": "Associativity of Multiplication ((a * b) * c = a * (b * c))",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "6861aef631e5ea20521c14b60754891419393eb430968daa58c56172cd5574ba"
+    },
+    {
+        "branch": "arithmetic",
+        "domain_partition": "math_partition",
+        "thesis_statement": "Definition of Exponentiation Base: a^0 = S(0)",
+        "parent_thesis": "Definition of Multiplication Successor: a * S(b) = (a * b) + a",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "4be9673e2ef7cee9e5aa2e6a1d0e2e129fd2e79e0c02b84e93f60642c12ec97d"
+    },
+    {
+        "branch": "arithmetic",
+        "domain_partition": "math_partition",
+        "thesis_statement": "Definition of Exponentiation Successor: a^S(b) = (a^b) * a",
+        "parent_thesis": "Definition of Exponentiation Base: a^0 = S(0)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "52a06ef235dc5a9cc1087016d127101216d11d431a986b623c1873a78958b19c"
+    },
+    {
+        "branch": "arithmetic",
+        "domain_partition": "math_partition",
+        "thesis_statement": "Construction of Integers (Z): Equivalence classes of pairs of natural numbers (a,b) representing a-b",
+        "parent_thesis": "Commutativity of Addition (a + b = b + a)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "94a2f5aad3c5a3155c2f76be2fdad11f4263afdea1c3fcd24ea0c3cd94fc06cf"
+    },
+    {
+        "branch": "arithmetic",
+        "domain_partition": "math_partition",
+        "thesis_statement": "Construction of Rational Numbers (Q): Equivalence classes of pairs of integers (a,b) representing a/b where b \u2260 0",
+        "parent_thesis": "Construction of Integers (Z): Equivalence classes of pairs of natural numbers (a,b) representing a-b",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "12acc84f9b15a602d11896bb38c6ddd32c13daf60277f79d00bb26894b2a7529"
+    },
+    {
+        "branch": "arithmetic",
+        "domain_partition": "math_partition",
+        "thesis_statement": "Construction of Real Numbers (R) via Dedekind Cuts",
+        "parent_thesis": "Construction of Rational Numbers (Q): Equivalence classes of pairs of integers (a,b) representing a/b where b \u2260 0",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "3b31b34636ed5c1394c435683ced1947bf5dbea41c429b8625b63035cd077655"
+    }
+]

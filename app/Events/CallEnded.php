@@ -22,7 +22,7 @@ class CallEnded implements ShouldBroadcastNow
     public $user;
     public $toUserId;
 
-    public function __construct(CollaborationSpace $space, Call $call, User $user = null, $toUserId = null)
+    public function __construct(CollaborationSpace $space, Call $call, ?User $user = null, $toUserId = null)
     {
         $this->space = $space;
         $this->call = $call;

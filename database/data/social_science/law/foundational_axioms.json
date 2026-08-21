@@ -1,0 +1,56 @@
+[
+    {
+        "branch": "law",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Stare decisis precedent",
+        "parent_thesis": "Rule of Law Axiom: All persons, institutions, and entities are accountable to laws that are publicly promulgated, equally enforced, and independently adjudicated",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "f5945b4c38686ecc338b0e1b1e5de8e7df42379fac34643f815fc256e6145710"
+    },
+    {
+        "branch": "law",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Habeas corpus due process",
+        "parent_thesis": "State Monopoly on Violence (Weber): The state is a human community that successfully claims the monopoly of the legitimate use of physical force within a given territory",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "68ed72dbcc1b887681b281ecc10472eac90c40c15990090fab629501858df562"
+    },
+    {
+        "branch": "law",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Mens rea intent",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "43f8432cac827e5d29e2dc333c428ca0c7f55881d941a54fed7db4e87e92d2dd"
+    },
+    {
+        "branch": "law",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Presumption of innocence",
+        "parent_thesis": "Rule of Law Axiom: All persons, institutions, and entities are accountable to laws that are publicly promulgated, equally enforced, and independently adjudicated",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "2818e95bbd65e6d11400b63762c9929cc29a6000f61e37a300dec5634135ad5f"
+    },
+    {
+        "branch": "law",
+        "domain_partition": "social_partition",
+        "thesis_statement": "Rule of Law Axiom: All persons, institutions, and entities are accountable to laws that are publicly promulgated, equally enforced, and independently adjudicated",
+        "parent_thesis": "State Monopoly on Violence (Weber): The state is a human community that successfully claims the monopoly of the legitimate use of physical force within a given territory",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "56e880cc198c95d893560b1efe2edc570fef14a96f200a658a0f45fe8be8abc1"
+    },
+    {
+        "branch": "law",
+        "domain_partition": "social_science",
+        "thesis_statement": "Social Contract Theory",
+        "parent_thesis": "Iron Law of Oligarchy",
+        "formal_proof": "To prevent the state of nature (Tragedy of the Commons) and legitimize the Oligarchy, rational actors mutually cede individual sovereignty to a central authority in exchange for enforced Pareto-efficient property rights.",
+        "context_description": "People agree to give up some of their absolute freedom to a government in exchange for the government protecting their remaining rights and maintaining social order.",
+        "ast_signature": "890ef2b3d2d1a8efa4dbc7cc284e72afa7ebb47409cf4a4c7ef021898312e053"
+    }
+]

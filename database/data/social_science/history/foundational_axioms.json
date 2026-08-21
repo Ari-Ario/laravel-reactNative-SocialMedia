@@ -1,0 +1,38 @@
+[
+    {
+        "branch": "history",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Historiographical dialectic",
+        "parent_thesis": "Hegelian Dialectic (Thesis-Antithesis-Synthesis / Aufheben)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "5ff90bf2cc212517bcc5c0b198bb880fdc9cab4d54f713026b3e320946009b94"
+    },
+    {
+        "branch": "history",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Longue dur\u00e9e Braudelian cycles",
+        "parent_thesis": "Environmental Determinism and Cultural Adaptation",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "3cbcaf19e6d2c96cfc8901c5b04060ed2627146cfc0bb3ad5192bd4a257c9231"
+    },
+    {
+        "branch": "history",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Historical materialism",
+        "parent_thesis": "Historical Materialism Axiom: Material and economic conditions fundamentally determine the organization of society and its historical development",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "da0ee3b37d740345cde33db1fab62c2ef95cac2c0becdeb78d8517f98d12aa95"
+    },
+    {
+        "branch": "history",
+        "domain_partition": "social_partition",
+        "thesis_statement": "Historical Materialism Axiom: Material and economic conditions fundamentally determine the organization of society and its historical development",
+        "parent_thesis": "Law of Supply and Demand: In a competitive market, the unit price for a particular good will vary until it settles at a point where the quantity demanded equals the quantity supplied",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "433811f76ed8e5951095f6ca78f9443f875616553cf8a456ba755befb80e0e47"
+    }
+]

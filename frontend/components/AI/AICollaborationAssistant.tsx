@@ -1,11 +1,32 @@
 // components/AI/AICollaborationAssistant.tsx
 import { useState, useEffect, useRef } from 'react';
-import { View, Text, TextInput, Pressable, Animated, StyleSheet, Platform } from 'react-native';
+import {
+  View,
+  Text,
+  TextInput,
+  Pressable,
+  Animated,
+  TouchableOpacity,
+  StyleSheet,
+  Platform,
+  ScrollView,
+  KeyboardAvoidingView,
+  ActivityIndicator,
+  Dimensions,
+  Modal
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import axios from 'axios';
+import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
+import axios from '@/services/axios';
 import * as Haptics from 'expo-haptics';
 import getApiBase from '@/services/getApiBase';
 import { useTranslation } from '@/constants/i18n';
+import { useAppTheme } from '@/hooks/useAppTheme';
+import { createShadow } from '@/utils/styles';
+
+const { width, height } = Dimensions.get('window');
+const isWeb = Platform.OS === 'web';
 
 interface AIAssistantProps {
   spaceId: string;
@@ -18,6 +39,23 @@ interface AIAssistantProps {
   embedded?: boolean;
 }
 
+interface Message {
+  type: 'user' | 'ai';
+  text: string;
+  timestamp: Date;
+  metadata?: {
+    confidence?: number;
+    source?: string;
+    suggested_actions?: string[];
+    meta?: {
+      sentiment: number;
+      synergy: {
+        score: number;
+      };
+    };
+  };
+}
+
 export const AICollaborationAssistant: React.FC<AIAssistantProps> = ({
   spaceId,
   spaceType,
@@ -27,622 +65,957 @@ export const AICollaborationAssistant: React.FC<AIAssistantProps> = ({
   visible,
   onClose
 }) => {
+  const scrollRef = useRef<ScrollView>(null);
+  const inputRef = useRef<TextInput>(null);
   const { t, isRTL } = useTranslation();
-  const styles = getStyles(isRTL);
+  const { colors, activeScheme } = useAppTheme();
+  const styles = getStyles(colors, isRTL);
+
   const [aiThinking, setAiThinking] = useState(false);
-  const [aiSuggestions, setAiSuggestions] = useState<any[]>([]);
-  const [chatHistory, setChatHistory] = useState<any[]>([]);
+  const [streamingMessageId, setStreamingMessageId] = useState<number | null>(null);
+  const [chatHistory, setChatHistory] = useState<Message[]>([]);
   const [userInput, setUserInput] = useState('');
+  const [expandedSections, setExpandedSections] = useState({
+    suggestions: true,
+    quickActions: true,
+    chat: true
+  });
   const API_BASE = getApiBase();
-  const slideAnim = useRef(new Animated.Value(1000)).current;
+  const slideAnim = useRef(new Animated.Value(height)).current;
+  const fadeAnim = useRef(new Animated.Value(0)).current;
 
   // Load AI capabilities from space settings
   const aiCapabilities = spaceData?.ai_capabilities || ['summarize', 'suggest'];
   const aiPersonality = spaceData?.ai_personality || 'helpful';
 
-  // Proactive help triggers disabled as per user request ("only when icon clicked")
+  // Auto-scroll to bottom when new messages arrive
+  useEffect(() => {
+    if (chatHistory.length > 0 || aiThinking) {
+      setTimeout(() => {
+        scrollRef.current?.scrollToEnd({ animated: true });
+      }, 100);
+    }
+  }, [chatHistory, aiThinking]);
 
+  // Animate panel when visibility changes
   useEffect(() => {
     if (visible) {
       showAssistant();
+      if (Platform.OS !== 'web') {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
     } else {
       hideAssistant();
     }
   }, [visible]);
 
-  const detectCollaborationPatterns = () => {
-    const patterns = {
-      needsHelp: false,
-      stuck: false,
-      needsInspiration: false,
-      needsSummary: false,
-    };
-
-    // Check for collaboration stagnation
-    const lastActivity = new Date(spaceData?.last_interaction_at);
-    const minutesSinceActivity = (Date.now() - lastActivity.getTime()) / (1000 * 60);
-
-    if (minutesSinceActivity > 5 && participants.length > 1) {
-      patterns.needsHelp = true;
-      patterns.stuck = true;
-    }
-
-    // Check for repetitive patterns
-    if (spaceData?.activity_metrics?.similar_edits > 3) {
-      patterns.needsHelp = true;
-      patterns.needsInspiration = true;
-    }
-
-    // Check for information density
-    if (spaceData?.content_state?.message_count > 50) {
-      patterns.needsSummary = true;
-    }
-
-    return patterns;
+  const showAssistant = () => {
+    Animated.parallel([
+      Animated.spring(slideAnim, {
+        toValue: 0,
+        useNativeDriver: true,
+        tension: 65,
+        friction: 11
+      }),
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: true
+      })
+    ]).start();
   };
 
+  const hideAssistant = () => {
+    Animated.parallel([
+      Animated.spring(slideAnim, {
+        toValue: height,
+        useNativeDriver: true,
+        tension: 65,
+        friction: 11
+      }),
+      Animated.timing(fadeAnim, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true
+      })
+    ]).start();
+  };
 
+  const streamResponse = async (text: string, messageIndex: number) => {
+    const words = text.split(' ');
+    let currentText = '';
+    
+    for (let i = 0; i < words.length; i++) {
+      currentText += (i === 0 ? '' : ' ') + words[i];
+      setChatHistory(prev => {
+        const newHistory = [...prev];
+        if (newHistory[messageIndex]) {
+          newHistory[messageIndex] = { ...newHistory[messageIndex], text: currentText };
+        }
+        return newHistory;
+      });
+      
+      // Variable speed for a more natural feel
+      const delay = Math.random() * 30 + 20; 
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+    setStreamingMessageId(null);
+  };
 
-  // Main AI query function
   const queryAI = async (query: string, context: any = {}) => {
     setAiThinking(true);
 
     try {
-      // First, check your existing chatbot_training for direct matches
       const trainingResponse = await axios.post(`${API_BASE}/ai/query-training`, {
         query,
         context: {
+          space_id: spaceId,
           space_type: spaceType,
-          space_data: spaceData,
-          participants_count: participants.length,
+          space_data: {
+            ...spaceData,
+            participants_count: participants.length,
+            current_idea: spaceData?.content_state?.current_idea,
+            last_activity: spaceData?.updated_at
+          },
+          participants: participants.map(p => ({ id: p.id, role: p.role, name: p.name })),
+          current_content: currentContent,
           ...context
         }
       });
 
-      // If no good match, use more advanced AI (you can integrate GPT later)
-      let aiResponse;
-      if (trainingResponse.data.confidence > 0.7) {
-        // Use your trained response
-        aiResponse = {
-          text: trainingResponse.data.response,
-          source: 'trained',
-          confidence: trainingResponse.data.confidence,
-          suggested_actions: trainingResponse.data.suggested_actions
-        };
-      } else {
-        // Fallback to rule-based or external AI
-        aiResponse = { text: "I'm still learning!", source: 'fallback' };
-      }
+      let aiResponse = {
+        text: trainingResponse.data.response || "I'm still learning!",
+        source: trainingResponse.data.source || (trainingResponse.data.confidence > 0.5 ? 'pure_logic' : 'inductive_fallback'),
+        confidence: trainingResponse.data.confidence,
+        suggested_actions: trainingResponse.data.suggested_actions || []
+      };
 
-      // Log the interaction for learning
-      console.log('Interaction logged', query, aiResponse);
+      console.log('AI Response:', { query, response: aiResponse });
 
-      // Add to chat history
+      const newMessageIndex = chatHistory.length + 1; // +1 because user message was already added
+      setStreamingMessageId(newMessageIndex);
+
       setChatHistory(prev => [...prev, {
         type: 'ai',
-        text: aiResponse.text,
+        text: '', // Start empty for streaming
         timestamp: new Date(),
         metadata: aiResponse
       }]);
+
+      // Start the streaming effect
+      streamResponse(aiResponse.text, newMessageIndex);
 
       return aiResponse;
 
     } catch (error) {
       console.error('AI query failed:', error);
-      return {
-        text: "I'm having trouble thinking right now. Try again in a moment!",
-        source: 'error'
-      };
+      const errorText = "I encountered a logical disruption while analyzing your request. Please try rephrasing or provide more context.";
+      
+      setChatHistory(prev => [...prev, {
+        type: 'ai',
+        text: errorText,
+        timestamp: new Date(),
+        metadata: { confidence: 0, source: 'error' }
+      }]);
+      return null;
     } finally {
       setAiThinking(false);
     }
   };
 
-  // Specific AI functions for collaboration
   const generateSummary = async () => {
-    const summary = await queryAI("Summarize the current discussion", {
+    if (Platform.OS !== 'web') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }
+
+    await queryAI("Summarize the current discussion", {
       action: 'summarize',
       content: currentContent
-    });
-
-    // Also add to space as a summary card
-    await axios.post(`${API_BASE}/spaces/${spaceId}/add-summary`, {
-      summary: summary.text,
-      generated_by: 'ai'
     });
   };
 
   const suggestAlternatives = async () => {
-    const alternatives = await queryAI("Suggest alternative approaches", {
+    if (Platform.OS !== 'web') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }
+
+    await queryAI("Suggest alternative approaches", {
       action: 'brainstorm',
       current_approach: spaceData?.content_state?.current_idea
     });
-
-    // Add as brainstorm cards (stub)
-    console.log('Brainstorm alternatives generated:', alternatives);
   };
 
   const generateIcebreaker = async () => {
-    const icebreaker = await queryAI("Generate a creative icebreaker question", {
+    if (Platform.OS !== 'web') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }
+
+    await queryAI("Generate a creative icebreaker question", {
       action: 'icebreaker',
       participant_count: participants.length,
       space_type: spaceType
     });
-
-    // Add to chat (stub)
-    console.log('Generated icebreaker:', icebreaker.text);
   };
 
-  // UI Components
-  const showAssistant = () => {
-    Animated.spring(slideAnim, {
-      toValue: 0,
-      useNativeDriver: true,
-      tension: 50,
-      friction: 10
-    }).start();
+  const checkConsensus = async () => {
     if (Platform.OS !== 'web') {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     }
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+    await queryAI("Check for consensus among participants", {
+      action: 'consensus',
+      participants: participants.map(p => ({ id: p.id, role: p.role }))
+    });
   };
 
-  const hideAssistant = () => {
-    Animated.spring(slideAnim, {
-      toValue: 800, // Slide further down
-      useNativeDriver: true,
-      tension: 50,
-      friction: 10
-    }).start();
+  const handleSendMessage = async () => {
+    if (!userInput.trim() || aiThinking) return;
+
+    const userMessage = userInput.trim();
+    setUserInput('');
+
+    setChatHistory(prev => [...prev, {
+      type: 'user',
+      text: userMessage,
+      timestamp: new Date()
+    }]);
+
+    await queryAI(userMessage);
+
+    // Auto-focus on web
+    if (isWeb && inputRef.current) {
+      inputRef.current.focus();
+    }
+  };
+
+  const toggleSection = (section: keyof typeof expandedSections) => {
+    setExpandedSections(prev => ({
+      ...prev,
+      [section]: !prev[section]
+    }));
+  };
+
+  const formatTimestamp = (date: Date) => {
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
+  const getPersonalityIcon = () => {
+    switch (aiPersonality) {
+      case 'creative': return 'color-wand';
+      case 'analytical': return 'stats-chart';
+      case 'brainstormer': return 'bulb';
+      default: return 'happy';
+    }
+  };
+
+  const getPersonalityColor = () => {
+    switch (aiPersonality) {
+      case 'creative': return '#9C27B0';
+      case 'analytical': return '#2196F3';
+      case 'brainstormer': return '#FF9800';
+      default: return '#4CAF50';
+    }
   };
 
   return (
-    <>
+    <Modal
+      visible={visible}
+      transparent
+      animationType="none"
+      onRequestClose={onClose}
+    >
       <Animated.View
         style={[
-          styles.aiPanel,
-          { transform: [{ translateY: slideAnim }] },
-          { pointerEvents: visible ? 'auto' : 'none' }
+          styles.overlay,
+          { opacity: fadeAnim }
         ]}
       >
-        {/* Header */}
-        <View style={styles.aiHeader}>
-          <View style={styles.aiTitle}>
-            <Ionicons name="sparkles" size={20} color="#667EEA" />
-            <Text style={styles.aiTitleText}>{t('collaboration_assistant')}</Text>
-            <View style={[styles.personalityBadge, (styles as any)[aiPersonality]]}>
-              <Text style={styles.personalityText}>{t(`personality_${aiPersonality}`)}</Text>
-            </View>
-          </View>
-          <Pressable onPress={() => { hideAssistant(); onClose(); }}>
-            <Ionicons name="close" size={24} color="#666" />
-          </Pressable>
-        </View>
+        <TouchableOpacity
+          style={styles.backdrop}
+          activeOpacity={1}
+          onPress={onClose}
+        />
 
-        {/* Proactive Suggestions */}
-        {aiSuggestions.length > 0 && (
-          <View style={styles.suggestionsSection}>
-            <Text style={styles.sectionTitle}>{t('suggestions')}</Text>
-            {aiSuggestions.map((suggestion, index) => (
-              <Pressable
-                key={index}
-                style={styles.suggestionCard}
-                onPress={suggestion.action}
-              >
-                <Text style={styles.suggestionText}>{suggestion.text}</Text>
-                <Ionicons name="arrow-forward" size={16} color="#667EEA" />
-              </Pressable>
-            ))}
-          </View>
-        )}
-
-        {/* Quick Actions based on space type */}
-        <View style={styles.quickActions}>
-          <Text style={styles.sectionTitle}>{t('quick_help')}</Text>
-          <View style={styles.actionGrid}>
-            {aiCapabilities.includes('summarize') && (
-              <Pressable style={styles.actionButton} onPress={generateSummary}>
-                <Ionicons name="document-text" size={20} color="#fff" />
-                <Text style={styles.actionButtonText}>{t('summarize')}</Text>
-              </Pressable>
-            )}
-            {aiCapabilities.includes('suggest') && (
-              <Pressable style={styles.actionButton} onPress={suggestAlternatives}>
-                <Ionicons name="bulb" size={20} color="#fff" />
-                <Text style={styles.actionButtonText}>{t('suggest_ideas')}</Text>
-              </Pressable>
-            )}
-            {aiCapabilities.includes('moderate') && (
-              <Pressable style={styles.actionButton} onPress={() => queryAI("Check for consensus")}>
-                <Ionicons name="people" size={20} color="#fff" />
-                <Text style={styles.actionButtonText}>{t('check_consensus')}</Text>
-              </Pressable>
-            )}
-            {aiCapabilities.includes('inspire') && (
-              <Pressable style={styles.actionButton} onPress={generateIcebreaker}>
-                <Ionicons name="color-wand" size={20} color="#fff" />
-                <Text style={styles.actionButtonText}>{t('inspire')}</Text>
-              </Pressable>
-            )}
-          </View>
-        </View>
-
-        {/* Chat with AI */}
-        <View style={styles.chatSection}>
-          <Text style={styles.sectionTitle}>{t('ask_assistant')}</Text>
-          <View style={styles.chatContainer}>
-            {chatHistory.map((msg, index) => (
-              <View
-                key={index}
-                style={[
-                  styles.chatBubble,
-                  msg.type === 'ai' ? styles.aiBubble : styles.userBubble
-                ]}
-              >
-                <Text style={styles.chatText}>{msg.text}</Text>
-                {msg.metadata?.confidence && (
-                  <Text style={styles.confidenceText}>
-                    {t('confidence_label', { value: Math.round(msg.metadata.confidence * 100) })}
-                  </Text>
-                )}
-              </View>
-            ))}
-
-            {aiThinking && (
-              <View style={styles.thinkingBubble}>
-                <Text style={styles.thinkingText}>{t('thinking')}</Text>
-                <View style={styles.thinkingDots}>
-                  <View style={styles.dot} />
-                  <View style={styles.dot} />
-                  <View style={styles.dot} />
+        <Animated.View
+          style={[
+            styles.aiPanel,
+            { transform: [{ translateY: slideAnim }] }
+          ]}
+        >
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={styles.keyboardView}
+          >
+            {/* Header */}
+            <LinearGradient
+              colors={[colors.primary + '15', colors.background]}
+              style={styles.header}
+            >
+              <View style={styles.headerLeft}>
+                <View style={[styles.aiIcon, { backgroundColor: getPersonalityColor() + '20' }]}>
+                  <Ionicons name="sparkles" size={22} color={getPersonalityColor()} />
+                </View>
+                <View>
+                  <Text style={styles.headerTitle}>{t('ai_collaboration_assistant')}</Text>
+                  <View style={styles.headerBadges}>
+                    <View style={[styles.personalityBadge, { backgroundColor: getPersonalityColor() + '15' }]}>
+                      <Ionicons name={getPersonalityIcon()} size={12} color={getPersonalityColor()} />
+                      <Text style={[styles.personalityText, { color: getPersonalityColor() }]}>
+                        {t(`personality_${aiPersonality}`) || aiPersonality}
+                      </Text>
+                    </View>
+                    <View style={styles.capabilityBadge}>
+                      <Text style={styles.capabilityBadgeText}>
+                        {t('capabilities_count', { count: aiCapabilities.length })}
+                      </Text>
+                    </View>
+                  </View>
                 </View>
               </View>
-            )}
-          </View>
+              <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+                <Ionicons name="close" size={24} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </LinearGradient>
 
-          <View style={styles.inputContainer}>
-            <TextInput
-              style={styles.input}
-              placeholder={t('ask_assistant_placeholder')}
-              value={userInput}
-              onChangeText={setUserInput}
-              onSubmitEditing={async () => {
-                if (userInput.trim()) {
-                  const userMessage = userInput;
-                  setUserInput('');
+            {/* Quick Actions Section */}
+            <View style={styles.quickActionsSection}>
+              <TouchableOpacity
+                style={styles.sectionHeader}
+                onPress={() => toggleSection('quickActions')}
+              >
+                <View style={styles.sectionHeaderLeft}>
+                  <Ionicons name="flash" size={18} color={colors.primary} />
+                  <Text style={styles.sectionTitle}>{t('quick_actions')}</Text>
+                </View>
+                <Ionicons
+                  name={expandedSections.quickActions ? "chevron-up" : "chevron-down"}
+                  size={18}
+                  color={colors.textSecondary}
+                />
+              </TouchableOpacity>
 
-                  // Add user message to history
-                  setChatHistory(prev => [...prev, {
-                    type: 'user',
-                    text: userMessage,
-                    timestamp: new Date()
-                  }]);
+              {expandedSections.quickActions && (
+                <View style={styles.actionGrid}>
+                  {aiCapabilities.includes('summarize') && (
+                    <TouchableOpacity style={styles.actionCard} onPress={generateSummary}>
+                      <LinearGradient
+                        colors={['#667EEA', '#764BA2']}
+                        style={styles.actionCardGradient}
+                      >
+                        <Ionicons name="document-text" size={20} color="#fff" />
+                        <Text style={styles.actionCardText}>{t('summarize')}</Text>
+                      </LinearGradient>
+                    </TouchableOpacity>
+                  )}
+                  {aiCapabilities.includes('suggest') && (
+                    <TouchableOpacity style={styles.actionCard} onPress={suggestAlternatives}>
+                      <LinearGradient
+                        colors={['#F093FB', '#F5576C']}
+                        style={styles.actionCardGradient}
+                      >
+                        <Ionicons name="bulb" size={20} color="#fff" />
+                        <Text style={styles.actionCardText}>{t('brainstorm')}</Text>
+                      </LinearGradient>
+                    </TouchableOpacity>
+                  )}
+                  {aiCapabilities.includes('moderate') && (
+                    <TouchableOpacity style={styles.actionCard} onPress={checkConsensus}>
+                      <LinearGradient
+                        colors={['#4FACFE', '#00F2FE']}
+                        style={styles.actionCardGradient}
+                      >
+                        <Ionicons name="people" size={20} color="#fff" />
+                        <Text style={styles.actionCardText}>{t('consensus')}</Text>
+                      </LinearGradient>
+                    </TouchableOpacity>
+                  )}
+                  {aiCapabilities.includes('inspire') && (
+                    <TouchableOpacity style={styles.actionCard} onPress={generateIcebreaker}>
+                      <LinearGradient
+                        colors={['#FA709A', '#FEE140']}
+                        style={styles.actionCardGradient}
+                      >
+                        <Ionicons name="color-wand" size={20} color="#fff" />
+                        <Text style={styles.actionCardText}>{t('icebreaker')}</Text>
+                      </LinearGradient>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              )}
+            </View>
 
-                  // Get AI response
-                  await queryAI(userMessage);
-                }
-              }}
-            />
-            <Pressable
-              style={styles.sendButton}
-              onPress={async () => {
-                if (userInput.trim()) {
-                  const userMessage = userInput;
-                  setUserInput('');
-                  setChatHistory(prev => [...prev, {
-                    type: 'user',
-                    text: userMessage,
-                    timestamp: new Date()
-                  }]);
-                  await queryAI(userMessage);
-                }
-              }}
-            >
-              <Ionicons name="send" size={20} color="#fff" style={styles.sendIcon} />
-            </Pressable>
-          </View>
-        </View>
+            {/* Chat Section */}
+            <View style={styles.chatSection}>
+              <TouchableOpacity
+                style={styles.sectionHeader}
+                onPress={() => toggleSection('chat')}
+              >
+                <View style={styles.sectionHeaderLeft}>
+                  <Ionicons name="chatbubbles" size={18} color={colors.primary} />
+                  <Text style={styles.sectionTitle}>{t('conversation')}</Text>
+                </View>
+                <Text style={styles.messageCount}>{t('messages_count', { count: chatHistory.length })}</Text>
+              </TouchableOpacity>
+
+              {expandedSections.chat && (
+                <>
+                  <ScrollView
+                    ref={scrollRef}
+                    style={styles.chatContainer}
+                    contentContainerStyle={styles.chatContentContainer}
+                    showsVerticalScrollIndicator={false}
+                  >
+                    {chatHistory.length === 0 && (
+                      <View style={styles.emptyChat}>
+                        <View style={styles.emptyChatIcon}>
+                          <Ionicons name="chatbubble-ellipses" size={48} color={colors.textSecondary + '40'} />
+                        </View>
+                        <Text style={styles.emptyChatTitle}>{t('start_conversation')}</Text>
+                        <Text style={styles.emptyChatText}>
+                          {t('ask_space_hint')}
+                        </Text>
+                      </View>
+                    )}
+
+                    {chatHistory.map((msg, index) => (
+                      <View
+                        key={`chat-${index}`}
+                        style={[
+                          styles.messageRow,
+                          msg.type === 'user' ? styles.userRow : styles.aiRow
+                        ]}
+                      >
+                        <View style={[
+                          styles.messageAvatar,
+                          msg.type === 'ai' && styles.aiAvatar
+                        ]}>
+                          {msg.type === 'ai' ? (
+                            <Ionicons name="sparkles" size={16} color="#fff" />
+                          ) : (
+                            <Ionicons name="person" size={14} color="#fff" />
+                          )}
+                        </View>
+                        <View style={[
+                          styles.messageBubble,
+                          msg.type === 'user' ? styles.userBubble : styles.aiBubble
+                        ]}>
+                          <Text style={[
+                            styles.messageText,
+                            msg.type === 'user' && styles.userMessageText
+                          ]}>
+                            {msg.text}
+                            {streamingMessageId === index && (
+                              <View style={styles.cursor} />
+                            )}
+                          </Text>
+
+                          {msg.metadata?.confidence !== undefined && (
+                            <View style={styles.metadataRow}>
+                              <View style={styles.confidenceBar}>
+                                <View
+                                  style={[
+                                    styles.confidenceFill,
+                                    { width: `${(msg.metadata.confidence || 0) * 100}%` }
+                                  ]}
+                                />
+                              </View>
+                              <Text style={styles.confidenceText}>
+                                {Math.round((msg.metadata.confidence || 0) * 100)}% {t('logic_confidence')}
+                              </Text>
+                            </View>
+                          )}
+
+                          {msg.metadata?.meta && (
+                            <View style={styles.aiAnalytics}>
+                              <View style={styles.analyticBadge}>
+                                <Ionicons 
+                                  name={msg.metadata.meta.sentiment >= 0 ? "happy" : "sad"} 
+                                  size={10} 
+                                  color={msg.metadata.meta.sentiment >= 0 ? "#4CAF50" : "#F44336"} 
+                                />
+                                <Text style={styles.analyticText}>
+                                  {t('sentiment')}: {msg.metadata.meta.sentiment > 0 ? '+' : ''}{msg.metadata.meta.sentiment}
+                                </Text>
+                              </View>
+                              <View style={styles.analyticBadge}>
+                                <Ionicons name="people" size={10} color={colors.primary} />
+                                <Text style={styles.analyticText}>
+                                  {t('synergy')}: {Math.round(msg.metadata.meta.synergy.score * 100)}%
+                                </Text>
+                              </View>
+                            </View>
+                          )}
+
+                          {msg.metadata?.suggested_actions && msg.metadata.suggested_actions.length > 0 && (
+                            <View style={styles.suggestedActions}>
+                              {msg.metadata.suggested_actions.map((action: string, idx: number) => (
+                                <TouchableOpacity
+                                  key={`action-${index}-${idx}`}
+                                  style={styles.suggestedActionChip}
+                                  onPress={() => {
+                                    setUserInput(action);
+                                    inputRef.current?.focus();
+                                  }}
+                                >
+                                  <Text style={styles.suggestedActionText}>{action}</Text>
+                                  <Ionicons name="arrow-forward" size={12} color={colors.primary} />
+                                </TouchableOpacity>
+                              ))}
+                            </View>
+                          )}
+
+                          <Text style={styles.messageTime}>
+                            {formatTimestamp(msg.timestamp)}
+                          </Text>
+                        </View>
+                      </View>
+                    ))}
+
+                    {aiThinking && (
+                      <View style={[styles.messageRow, styles.aiRow]}>
+                        <View style={[styles.messageAvatar, styles.aiAvatar]}>
+                          <Ionicons name="sparkles" size={16} color="#fff" />
+                        </View>
+                        <View style={[styles.messageBubble, styles.aiBubble, styles.thinkingBubble]}>
+                          <View style={styles.thinkingContainer}>
+                            <Text style={styles.thinkingText}>{t('ai_thinking')}</Text>
+                            <View style={styles.thinkingDots}>
+                              <View style={styles.thinkingDot} />
+                              <View style={[styles.thinkingDot, { animationDelay: '0.2s' }]} />
+                              <View style={[styles.thinkingDot, { animationDelay: '0.4s' }]} />
+                            </View>
+                          </View>
+                        </View>
+                      </View>
+                    )}
+                  </ScrollView>
+
+                  {/* Input Area */}
+                  <View style={styles.inputWrapper}>
+                    <View style={styles.inputContainer}>
+                      <TextInput
+                        ref={inputRef}
+                        style={styles.input}
+                        placeholder={t('ask_assistant_placeholder') || "Ask me anything..."}
+                        placeholderTextColor={colors.textSecondary + '60'}
+                        value={userInput}
+                        onChangeText={setUserInput}
+                        onSubmitEditing={handleSendMessage}
+                        editable={!aiThinking}
+                        multiline
+                        maxLength={500}
+                      />
+                      <TouchableOpacity
+                        style={[
+                          styles.sendButton,
+                          (!userInput.trim() || aiThinking) && styles.sendButtonDisabled
+                        ]}
+                        onPress={handleSendMessage}
+                        disabled={!userInput.trim() || aiThinking}
+                      >
+                        <LinearGradient
+                          colors={['#667EEA', '#764BA2']}
+                          style={styles.sendButtonGradient}
+                        >
+                          <Ionicons
+                            name="send"
+                            size={18}
+                            color="#fff"
+                            style={isRTL ? styles.sendIconRTL : styles.sendIconLTR}
+                          />
+                        </LinearGradient>
+                      </TouchableOpacity>
+                    </View>
+                    <Text style={styles.inputHint}>
+                      {t('characters_limit_hint', { count: userInput.length })}
+                    </Text>
+                  </View>
+                </>
+              )}
+            </View>
+          </KeyboardAvoidingView>
+        </Animated.View>
       </Animated.View>
-    </>
+    </Modal>
   );
 };
 
-// ─── Styles ───────────────────────────────────────────────────────────────────
-
-const getStyles = (isRTL: boolean) => StyleSheet.create({
-  floatingAIButton: {
+const getStyles = (colors: any, isRTL: boolean) => StyleSheet.create({
+  overlay: {
     position: 'absolute',
-    bottom: 180,
-    right: 10,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#667EEA',
-    justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 5,
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 1000,
   },
-
+  backdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
   aiPanel: {
     position: 'absolute',
     bottom: 0,
-    left: 0,
-    right: 0,
-    height: '80%',
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-    padding: 16,
+    left: isWeb ? '50%' : 0,
+    right: isWeb ? 'auto' : 0,
+    width: isWeb ? Math.min(width, 1440) : width,
+    marginLeft: isWeb ? Math.min(width, 1440) / -2 : 0,
+    height: height * 0.85,
+    backgroundColor: colors.background,
+    borderTopRightRadius: 24,
+    overflow: 'hidden',
+    ...createShadow({ opacity: 0.2, radius: 20, offset: { width: 0, height: -5 } }),
   },
-
-  aiHeader: {
+  keyboardView: {
+    flex: 1,
+  },
+  header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
   },
-
-  aiTitle: {
+  headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 12,
   },
-
-  aiTitleText: {
-    marginLeft: 8,
-    fontWeight: '600',
-    fontSize: 16,
-  },
-
-  chatContainer: {
-    flex: 1,
-    marginTop: 16,
-  },
-
-  chatMessage: {
-    marginBottom: 12,
-    padding: 12,
-    borderRadius: 12,
-    maxWidth: '85%',
-  },
-
-  chatMessageUser: {
-    backgroundColor: '#667EEA',
-    alignSelf: 'flex-end',
-  },
-
-  chatMessageAI: {
-    backgroundColor: '#f0f0f0',
-    alignSelf: 'flex-start',
-  },
-
-  chatMessageText: {
-    fontSize: 14,
-    color: '#333',
-  },
-
-  chatMessageUserText: {
-    color: '#fff',
-  },
-
-  chatMessageTimestamp: {
-    fontSize: 10,
-    color: '#888',
-    marginTop: 4,
-    textAlign: 'right',
-  },
-
-  chatMessageUserTimestamp: {
-    color: '#ddd',
-  },
-
-  inputContainer: {
-    flexDirection: isRTL ? 'row-reverse' : 'row',
-    marginTop: 16,
-  },
-
-  input: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    [isRTL ? 'marginLeft' : 'marginRight']: 8,
-    textAlign: isRTL ? 'right' : 'left',
-  },
-
-  sendButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#667EEA',
+  aiIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     justifyContent: 'center',
     alignItems: 'center',
-    [isRTL ? 'paddingRight' : 'paddingLeft']: 2,
   },
-  sendIcon: {
-    transform: [{ rotate: isRTL ? '165deg' : '-15deg' }],
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.text,
   },
-
-  suggestionCard: {
-    backgroundColor: '#f8f9ff',
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 12,
-    borderLeftWidth: 3,
-    borderLeftColor: '#667EEA',
-  },
-
-  suggestionText: {
-    fontSize: 14,
-    color: '#333',
-    marginBottom: 8,
-  },
-
-  suggestionActions: {
+  headerBadges: {
     flexDirection: 'row',
     gap: 8,
-  },
-
-  suggestionButton: {
-    flex: 1,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    backgroundColor: '#667EEA',
-    alignItems: 'center',
-  },
-
-  suggestionButtonText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-
-  aiThinking: {
-    padding: 12,
-    fontStyle: 'italic',
-    color: '#888',
-  },
-
-  aiCapabilities: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginTop: 12,
-  },
-
-  capabilityButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    backgroundColor: '#f0f0f0',
-  },
-
-  capabilityButtonText: {
-    fontSize: 12,
-    color: '#333',
-  },
-
-  aiPersonality: {
-    marginTop: 12,
-    fontSize: 12,
-    color: '#666',
-    fontStyle: 'italic',
-  },
-
-  aiPersonalityLabel: {
-    marginTop: 12,
-    fontSize: 12,
-    color: '#666',
-    fontStyle: 'italic',
-  },
-
-  aiPersonalityValue: {
-    marginTop: 12,
-    fontSize: 12,
-    color: '#666',
-    fontStyle: 'italic',
+    marginTop: 4,
   },
   personalityBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 8,
-    paddingVertical: 2,
+    paddingVertical: 3,
     borderRadius: 12,
-    marginLeft: 8,
-    backgroundColor: '#eee',
+    gap: 4,
   },
   personalityText: {
     fontSize: 10,
-    fontWeight: 'bold',
-    color: '#666',
+    fontWeight: '600',
   },
-  suggestionsSection: {
-    marginTop: 16,
+  capabilityBadge: {
+    backgroundColor: colors.muted,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+  },
+  capabilityBadgeText: {
+    fontSize: 10,
+    color: colors.textSecondary,
+  },
+  closeButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.muted,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  quickActionsSection: {
+    paddingHorizontal: 20,
+    paddingTop: 16,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  sectionHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   sectionTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginBottom: 8,
-    color: '#333',
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.text,
   },
-  quickActions: {
-    marginTop: 16,
+  messageCount: {
+    fontSize: 12,
+    color: colors.textSecondary,
   },
   actionGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: 12,
+    marginBottom: 8,
   },
-  actionButton: {
+  actionCard: {
+    flex: 1,
+    minWidth: (width - 64) / 2 - 12,
+    borderRadius: 14,
+    overflow: 'hidden',
+    ...createShadow({ opacity: 0.1, radius: 4 }),
+  },
+  actionCardGradient: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#667EEA',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
-    gap: 4,
+    justifyContent: 'center',
+    paddingVertical: 12,
+    gap: 8,
   },
-  actionButtonText: {
+  actionCardText: {
     color: '#fff',
-    fontSize: 12,
-    fontWeight: '500',
+    fontSize: 13,
+    fontWeight: '600',
   },
   chatSection: {
     flex: 1,
-    marginTop: 16,
+    paddingHorizontal: 20,
+    paddingTop: 16,
   },
-  chatBubble: {
-    padding: 12,
-    borderRadius: 8,
+  chatContainer: {
+    flex: 1,
+  },
+  chatContentContainer: {
+    paddingBottom: 20,
+  },
+  emptyChat: {
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
+  emptyChatIcon: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: colors.muted,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  emptyChatTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.text,
     marginBottom: 8,
-    maxWidth: '80%',
   },
-  aiBubble: {
-    backgroundColor: '#f1f1f1',
-    alignSelf: 'flex-start',
+  emptyChatText: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    textAlign: 'center',
+  },
+  messageRow: {
+    flexDirection: 'row',
+    marginBottom: 16,
+    gap: 10,
+  },
+  userRow: {
+    justifyContent: 'flex-end',
+  },
+  aiRow: {
+    justifyContent: 'flex-start',
+  },
+  messageAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  aiAvatar: {
+    backgroundColor: '#667EEA',
+  },
+  messageBubble: {
+    maxWidth: '80%',
+    padding: 12,
+    borderRadius: 18,
+    ...createShadow({ opacity: 0.05, radius: 2 }),
   },
   userBubble: {
-    backgroundColor: '#667EEA',
-    alignSelf: 'flex-end',
+    backgroundColor: colors.primary,
+    borderBottomRightRadius: 4,
   },
-  chatText: {
+  aiBubble: {
+    backgroundColor: colors.muted,
+    borderBottomLeftRadius: 4,
+  },
+  messageText: {
     fontSize: 14,
-    color: '#333',
+    lineHeight: 20,
+    color: colors.text,
+  },
+  userMessageText: {
+    color: '#fff',
+  },
+  cursor: {
+    width: 2,
+    height: 14,
+    backgroundColor: colors.primary,
+    marginLeft: 2,
+    ...Platform.select({
+      web: {
+        display: 'inline-block' as any,
+        verticalAlign: 'middle' as any,
+      },
+      default: {
+        display: 'flex',
+      }
+    })
+  },
+  aiAnalytics: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 8,
+  },
+  analyticBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.muted,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+    gap: 4,
+  },
+  analyticText: {
+    fontSize: 9,
+    color: colors.textSecondary,
+    fontWeight: '600',
+  },
+  metadataRow: {
+    marginTop: 8,
+    gap: 4,
+  },
+  confidenceBar: {
+    height: 3,
+    backgroundColor: colors.border,
+    borderRadius: 1.5,
+    overflow: 'hidden',
+  },
+  confidenceFill: {
+    height: '100%',
+    backgroundColor: '#4CAF50',
+    borderRadius: 1.5,
   },
   confidenceText: {
     fontSize: 10,
-    color: '#aaa',
-    marginTop: 4,
+    color: colors.textSecondary,
   },
-  thinkingBubble: {
+  suggestedActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 8,
+  },
+  suggestedActionChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 12,
+    backgroundColor: colors.background,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 14,
+    gap: 6,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  suggestedActionText: {
+    fontSize: 12,
+    color: colors.primary,
+  },
+  messageTime: {
+    fontSize: 10,
+    color: colors.textSecondary,
+    marginTop: 6,
+  },
+  thinkingBubble: {
+    backgroundColor: colors.muted,
+  },
+  thinkingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   thinkingText: {
-    fontSize: 12,
-    color: '#666',
-    marginRight: 8,
+    fontSize: 13,
+    color: colors.textSecondary,
   },
   thinkingDots: {
     flexDirection: 'row',
+    gap: 4,
   },
-  dot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: '#666',
-    marginHorizontal: 2,
+  thinkingDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: colors.textSecondary,
+    opacity: 0.6,
   },
-  helpful: {
-    backgroundColor: '#E3F2FD',
+  inputWrapper: {
+    paddingVertical: 12,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
   },
-  creative: {
-    backgroundColor: '#F3E5F5',
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 10,
   },
-  brainstormer: {
-    backgroundColor: '#E8F5E9',
+  input: {
+    flex: 1,
+    backgroundColor: colors.muted,
+    borderRadius: 24,
+    paddingHorizontal: 16,
+    paddingVertical: Platform.OS === 'ios' ? 12 : 10,
+    paddingRight: 16,
+    fontSize: 14,
+    color: colors.text,
+    maxHeight: 100,
+    textAlignVertical: 'top',
+    ...Platform.select({
+      web: {
+        outlineStyle: 'none',
+      },
+    }),
   },
-  analytical: {
-    backgroundColor: '#FFF3E0',
+  sendButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    overflow: 'hidden',
+  },
+  sendButtonDisabled: {
+    opacity: 0.5,
+  },
+  sendButtonGradient: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  sendIconLTR: {
+    transform: [{ rotate: '-15deg' }],
+  },
+  sendIconRTL: {
+    transform: [{ rotate: '165deg' }],
+  },
+  inputHint: {
+    fontSize: 10,
+    color: colors.textSecondary,
+    marginTop: 6,
+    marginLeft: 16,
   },
 });
+
+export default AICollaborationAssistant;

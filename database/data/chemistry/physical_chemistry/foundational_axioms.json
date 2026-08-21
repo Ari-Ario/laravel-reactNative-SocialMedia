@@ -1,0 +1,58 @@
+[
+    {
+        "branch": "biochemistry",
+        "domain_partition": "chemistry_partition",
+        "thesis_statement": "Michaelis-Menten Kinetics: Describes the rate of enzymatic reactions by relating reaction rate v to substrate concentration [S]",
+        "parent_thesis": "Chemical Kinetics: The rate of a chemical reaction is proportional to the concentration of the reacting substances",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine."
+    },
+    {
+        "branch": "biochemistry",
+        "domain_partition": "chemistry_partition",
+        "thesis_statement": "Central Dogma of Molecular Biology: DNA transcribes to RNA, which translates to Protein",
+        "parent_thesis": "Polymerization Axiom: Monomers covalently bond to form long polymer chains",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine."
+    },
+    {
+        "branch": "biochemistry",
+        "domain_partition": "biology_partition",
+        "thesis_statement": "Monoamine Synthesis Pathway: Tyrosine is catalytically converted to L-DOPA, and then to Dopamine, dictating neuromodulatory availability",
+        "parent_thesis": "Arrhenius Equation: k = A e^{-E_a/(RT)} (Calculates the temperature dependence of chemical reaction rates)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine."
+    },
+    {
+        "branch": "biochemistry",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Michaelis-Menten enzyme kinetics",
+        "parent_thesis": "First law of thermodynamics energy conservation",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine."
+    },
+    {
+        "branch": "biochemistry",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Central dogma of molecular biology",
+        "parent_thesis": "First law of thermodynamics energy conservation",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine."
+    },
+    {
+        "branch": "biochemistry",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "ATP hydrolysis energy",
+        "parent_thesis": "First law of thermodynamics energy conservation",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine."
+    },
+    {
+        "branch": "biochemistry",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Protein folding thermodynamics",
+        "parent_thesis": "First law of thermodynamics energy conservation",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine."
+    }
+]

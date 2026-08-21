@@ -1,0 +1,71 @@
+[
+    {
+        "branch": "ecology",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Keystone species ecological impact",
+        "parent_thesis": "Newton first law of motion",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "f682122ed5c95f2c463276aa708355c81529fb22cfbab0a33125199042f9ea7c"
+    },
+    {
+        "branch": "ecology",
+        "domain_partition": "biology_partition",
+        "thesis_statement": "Ecosystem Energy Flow Axiom: Energy enters ecosystems via primary producers and is dissipated as heat at each successive trophic level",
+        "parent_thesis": "Second Law of Thermodynamics: Total entropy of an isolated system can never decrease over time (\u0394S \u2265 0)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "d543f6d828af20bdf5cb48dbcafd522c2b9de86e6a8b39ec420bbfbe4b33c4ee"
+    },
+    {
+        "branch": "ecology",
+        "domain_partition": "empirical_science",
+        "thesis_statement": "Trophic Level Energy Transfer Efficiency (The 10% Rule)",
+        "parent_thesis": "First law of thermodynamics energy conservation",
+        "formal_proof": "E_out / E_in \u2248 0.10. Bounded strictly by the Second Law of Thermodynamics (entropy increases), metabolic processes dissipate ~90% of energy as heat, severely restricting food web length.",
+        "context_description": "Only about 10% of the energy at one trophic level (e.g., plants) is passed on to the next (e.g., herbivores), explaining why apex predators are rare.",
+        "ast_signature": "aedfdede6b43980d6414e48cf7d63099b6fa4ef73dc0002434cc320dc418354e"
+    },
+    {
+        "branch": "ecology",
+        "domain_partition": "empirical_science",
+        "thesis_statement": "Lotka-Volterra Predator-Prey Equations",
+        "parent_thesis": "Epsilon-Delta Definition of a Limit: \u2200\u03b5>0 \u2203\u03b4>0 such that 0 < |x - c| < \u03b4 \u2192 |f(x) - L| < \u03b5",
+        "formal_proof": "dx/dt = \\alpha x - \\beta xy; dy/dt = \\delta xy - \\gamma y. A pair of first-order nonlinear differential equations demonstrating continuous dynamic equilibrium and oscillation between populations.",
+        "context_description": "A mathematical model that accurately predicts how predator and prey populations fluctuate over time in interdependent biological cycles.",
+        "ast_signature": "6c58f9a605f05654dad33a6e4cb831ab0c9cc4c4fa7f161c763ca0e2d673e756"
+    },
+    {
+        "branch": "ecology",
+        "domain_partition": "empirical_science",
+        "thesis_statement": "Competitive Exclusion Principle (Gause's Law)",
+        "parent_thesis": "Natural selection survival fitness",
+        "formal_proof": "If two species share an identical ecological niche (dx/dt variables overlap exactly in resource consumption), stable coexistence is mathematically impossible; one will outcompete the other.",
+        "context_description": "Two different species cannot occupy the exact same ecological niche in a habitat indefinitely; one will eventually dominate or the other will adapt/go extinct.",
+        "ast_signature": "581f4d7dbf5ceeae4a0a39b9784f30530ba316c6af4375c688113d1dbb7fc7e2"
+    },
+    {
+        "branch": "ecology",
+        "domain_partition": "biology_partition",
+        "thesis_statement": "Keystone Species Axiom: Certain species have a disproportionately large effect on their natural environment relative to their abundance",
+        "parent_thesis": "Ecosystem Energy Flow Axiom: Energy enters ecosystems via primary producers and is dissipated as heat at each successive trophic level",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "First proposed by Robert Paine, showing that top-down regulation by predators prevents competitive exclusion of other species, maintaining biodiversity."
+    },
+    {
+        "branch": "ecology",
+        "domain_partition": "biology_partition",
+        "thesis_statement": "Ecological Niche Concept: Every species occupies a multi-dimensional hypervolume of environmental factors and resource gradients determining its survival and reproduction",
+        "parent_thesis": "Ecosystem Energy Flow Axiom: Energy enters ecosystems via primary producers and is dissipated as heat at each successive trophic level",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Developed by G. Evelyn Hutchinson, formalizing the niche as a fundamental ecological mapping of a species to its resource and factor space."
+    },
+    {
+        "branch": "ecology",
+        "domain_partition": "biology_partition",
+        "thesis_statement": "Island Biogeography Theory: Species richness on an island is determined by immigration and extinction rates, which depend on island size and distance from the mainland",
+        "parent_thesis": "Ecosystem Energy Flow Axiom: Energy enters ecosystems via primary producers and is dissipated as heat at each successive trophic level",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Proposed by MacArthur and Wilson, expressing dynamic equilibrium of species diversity on isolated island habitats."
+    }
+]

@@ -1,0 +1,38 @@
+[
+    {
+        "branch": "microbiology",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Koch postulates for pathogens",
+        "parent_thesis": "Michaelis-Menten Kinetics: Describes the rate of enzymatic reactions by relating reaction rate v to substrate concentration [S]",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "6a4168012cc6a7f837778fdd86adf4b49af5687f6396586ab4896b334dc3191c"
+    },
+    {
+        "branch": "microbiology",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Antibiotic resistance selection",
+        "parent_thesis": "Michaelis-Menten Kinetics: Describes the rate of enzymatic reactions by relating reaction rate v to substrate concentration [S]",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "08806f63fb30584cf9b913874a4dce1b7a7edfa58ce188877f242c74e6db26c4"
+    },
+    {
+        "branch": "microbiology",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Viral replication lytic cycle",
+        "parent_thesis": "Michaelis-Menten Kinetics: Describes the rate of enzymatic reactions by relating reaction rate v to substrate concentration [S]",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "ab33958a1a477c4b90bca0917378d3134ff6fb1018bef7fb84088a5fe6d0d601"
+    },
+    {
+        "branch": "microbiology",
+        "domain_partition": "biology_partition",
+        "thesis_statement": "Germ Theory of Disease: Many diseases are caused by the presence and actions of specific microorganisms within the body",
+        "parent_thesis": "Cell Theory: All living organisms are composed of one or more cells, and the cell is the basic unit of structure and organization",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "3f150611bcd7b25ba40f307aab4d8df33c4e125287bebd57f6e22798ffe61ddb"
+    }
+]

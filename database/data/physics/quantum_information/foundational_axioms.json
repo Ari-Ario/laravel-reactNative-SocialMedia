@@ -1,0 +1,227 @@
+[
+    {
+        "branch": "Physics",
+        "domain_partition": "Quantum Information Science",
+        "thesis_statement": "Qubit Superposition - A quantum bit exists in a linear combination of states |0\u27e9 and |1\u27e9 until measured",
+        "parent_thesis": "Gramscian Cultural Hegemony - The ruling class maintains dominance by projecting its own worldview as universally accepted common sense, co-opting subordinate classes",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Physics",
+        "domain_partition": "Quantum Information Science",
+        "thesis_statement": "Quantum Entanglement (Bell's Theorem) - Particles can exhibit correlations that violate local realism",
+        "parent_thesis": "Gramscian Cultural Hegemony - The ruling class maintains dominance by projecting its own worldview as universally accepted common sense, co-opting subordinate classes",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Physics",
+        "domain_partition": "Quantum Information Science",
+        "thesis_statement": "No-Cloning Theorem - It is impossible to create an identical copy of an arbitrary unknown quantum state",
+        "parent_thesis": "Gramscian Cultural Hegemony - The ruling class maintains dominance by projecting its own worldview as universally accepted common sense, co-opting subordinate classes",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Physics",
+        "domain_partition": "Quantum Information Science",
+        "thesis_statement": "Quantum Teleportation - Quantum information can be transmitted from one location to another, provided classical communication and prior entanglement exist",
+        "parent_thesis": "Gramscian Cultural Hegemony - The ruling class maintains dominance by projecting its own worldview as universally accepted common sense, co-opting subordinate classes",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Physics",
+        "domain_partition": "Quantum Information Science",
+        "thesis_statement": "Heisenberg Uncertainty Principle - Certain pairs of physical properties cannot be simultaneously known to arbitrarily high precision",
+        "parent_thesis": "Gramscian Cultural Hegemony - The ruling class maintains dominance by projecting its own worldview as universally accepted common sense, co-opting subordinate classes",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Physics",
+        "domain_partition": "Quantum Information Science",
+        "thesis_statement": "Shor's Algorithm - A quantum computer can factor integers in polynomial time, exponentially faster than known classical algorithms",
+        "parent_thesis": "Gramscian Cultural Hegemony - The ruling class maintains dominance by projecting its own worldview as universally accepted common sense, co-opting subordinate classes",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Physics",
+        "domain_partition": "Quantum Information Science",
+        "thesis_statement": "Grover's Algorithm - A quantum computer can search an unsorted database quadratically faster than any classical algorithm",
+        "parent_thesis": "Gramscian Cultural Hegemony - The ruling class maintains dominance by projecting its own worldview as universally accepted common sense, co-opting subordinate classes",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Physics",
+        "domain_partition": "Quantum Information Science",
+        "thesis_statement": "Quantum Decoherence - Interactions with the environment cause a quantum system to lose its coherence and transition to classical probabilities",
+        "parent_thesis": "Gramscian Cultural Hegemony - The ruling class maintains dominance by projecting its own worldview as universally accepted common sense, co-opting subordinate classes",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Physics",
+        "domain_partition": "Quantum Information Science",
+        "thesis_statement": "Quantum Error Correction - Fragile quantum information can be protected from decoherence by encoding it across multiple entangled qubits",
+        "parent_thesis": "Gramscian Cultural Hegemony - The ruling class maintains dominance by projecting its own worldview as universally accepted common sense, co-opting subordinate classes",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Physics",
+        "domain_partition": "Quantum Information Science",
+        "thesis_statement": "DiVincenzo's Criteria - The necessary conditions for constructing a scalable quantum computer include well-characterized qubits and long coherence times",
+        "parent_thesis": "Gramscian Cultural Hegemony - The ruling class maintains dominance by projecting its own worldview as universally accepted common sense, co-opting subordinate classes",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Physics",
+        "domain_partition": "Quantum Information Science",
+        "thesis_statement": "Quantum Cryptography (BB84) - Quantum mechanics guarantees secure key distribution, as any eavesdropping inherently disturbs the system",
+        "parent_thesis": "Gramscian Cultural Hegemony - The ruling class maintains dominance by projecting its own worldview as universally accepted common sense, co-opting subordinate classes",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Physics",
+        "domain_partition": "Quantum Information Science",
+        "thesis_statement": "Quantum Supremacy - A quantum computer can solve a problem that no classical computer can solve in any feasible amount of time",
+        "parent_thesis": "Gramscian Cultural Hegemony - The ruling class maintains dominance by projecting its own worldview as universally accepted common sense, co-opting subordinate classes",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Physics",
+        "domain_partition": "Quantum Information Science",
+        "thesis_statement": "Density Matrix Formalism - Mixed quantum states and statistical ensembles are fully described by a density operator",
+        "parent_thesis": "Gramscian Cultural Hegemony - The ruling class maintains dominance by projecting its own worldview as universally accepted common sense, co-opting subordinate classes",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Physics",
+        "domain_partition": "Quantum Information Science",
+        "thesis_statement": "Von Neumann Entropy - The extension of classical Shannon entropy into the realm of quantum density matrices",
+        "parent_thesis": "Gramscian Cultural Hegemony - The ruling class maintains dominance by projecting its own worldview as universally accepted common sense, co-opting subordinate classes",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Physics",
+        "domain_partition": "Quantum Information Science",
+        "thesis_statement": "Quantum Logic Gates - Unitary transformations acting on qubits must be reversible",
+        "parent_thesis": "Gramscian Cultural Hegemony - The ruling class maintains dominance by projecting its own worldview as universally accepted common sense, co-opting subordinate classes",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Physics",
+        "domain_partition": "Quantum Information Science",
+        "thesis_statement": "CHSH Inequality - A specific form of Bell's inequality used to experimentally prove the existence of quantum entanglement",
+        "parent_thesis": "Gramscian Cultural Hegemony - The ruling class maintains dominance by projecting its own worldview as universally accepted common sense, co-opting subordinate classes",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Physics",
+        "domain_partition": "Quantum Information Science",
+        "thesis_statement": "Quantum Zeno Effect - Frequent measurement of a quantum system inhibits its evolution",
+        "parent_thesis": "Gramscian Cultural Hegemony - The ruling class maintains dominance by projecting its own worldview as universally accepted common sense, co-opting subordinate classes",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Physics",
+        "domain_partition": "Quantum Information Science",
+        "thesis_statement": "Topological Quantum Computing - Qubits encoded in the global topological properties of anyons are inherently protected from local errors",
+        "parent_thesis": "Gramscian Cultural Hegemony - The ruling class maintains dominance by projecting its own worldview as universally accepted common sense, co-opting subordinate classes",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Physics",
+        "domain_partition": "Quantum Information Science",
+        "thesis_statement": "Quantum Key Distribution (QKD) - Eavesdropping on a quantum channel inevitably introduces detectable anomalies",
+        "parent_thesis": "Gramscian Cultural Hegemony - The ruling class maintains dominance by projecting its own worldview as universally accepted common sense, co-opting subordinate classes",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Physics",
+        "domain_partition": "Quantum Information Science",
+        "thesis_statement": "Superdense Coding - Two bits of classical information can be transmitted using only one entangled qubit",
+        "parent_thesis": "Gramscian Cultural Hegemony - The ruling class maintains dominance by projecting its own worldview as universally accepted common sense, co-opting subordinate classes",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Physics",
+        "domain_partition": "Quantum Information Science",
+        "thesis_statement": "Church-Turing-Deutsch Principle - A universal computing device can simulate any physical process",
+        "parent_thesis": "Gramscian Cultural Hegemony - The ruling class maintains dominance by projecting its own worldview as universally accepted common sense, co-opting subordinate classes",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Physics",
+        "domain_partition": "Quantum Information Science",
+        "thesis_statement": "Born Rule - The probability of obtaining a specific measurement outcome is given by the squared magnitude of the amplitude",
+        "parent_thesis": "Gramscian Cultural Hegemony - The ruling class maintains dominance by projecting its own worldview as universally accepted common sense, co-opting subordinate classes",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Physics",
+        "domain_partition": "Quantum Information Science",
+        "thesis_statement": "Quantum Tunneling - A particle has a non-zero probability of passing through a potential barrier higher than its energy",
+        "parent_thesis": "Gramscian Cultural Hegemony - The ruling class maintains dominance by projecting its own worldview as universally accepted common sense, co-opting subordinate classes",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Physics",
+        "domain_partition": "Quantum Information Science",
+        "thesis_statement": "Many-Worlds Interpretation (Everett) - All possible alternate histories and futures are real, each representing an actual branching universe",
+        "parent_thesis": "Gramscian Cultural Hegemony - The ruling class maintains dominance by projecting its own worldview as universally accepted common sense, co-opting subordinate classes",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "Physics",
+        "domain_partition": "Quantum Information Science",
+        "thesis_statement": "Quantum Annealing - Optimization problems can be solved by finding the absolute minimum of a quantum system's energy landscape",
+        "parent_thesis": "Gramscian Cultural Hegemony - The ruling class maintains dominance by projecting its own worldview as universally accepted common sense, co-opting subordinate classes",
+        "formal_proof": "Derived phenomenologically and logically through human consensus.",
+        "context_description": "A fundamental axiom belonging to the missing epistemological pillars of Phase 8.",
+        "expert_review_required": false
+    }
+]

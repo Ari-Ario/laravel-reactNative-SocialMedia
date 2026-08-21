@@ -1,0 +1,18 @@
+[
+    {
+        "branch": "physics",
+        "domain_partition": "chemistry_thermodynamics",
+        "thesis_statement": "Water heated to 100 degrees Celsius at sea level boils.",
+        "parent_thesis": "Physical Constant Axiom: The physical universe operates according to immutable foundational constants",
+        "formal_proof": "T = 100 \\implies P_vap = P_atm",
+        "context_description": "Boiling point of water"
+    },
+    {
+        "branch": "physics",
+        "domain_partition": "chemistry_thermodynamics",
+        "thesis_statement": "Flipping a switch closes the circuit and turns on the light.",
+        "parent_thesis": "Physical Constant Axiom: The physical universe operates according to immutable foundational constants",
+        "formal_proof": "I = V/R > 0 \\implies \\text{light on}",
+        "context_description": "Basic electromagnetism"
+    }
+]

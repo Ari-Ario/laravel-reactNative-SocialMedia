@@ -1,0 +1,117 @@
+[
+    {
+        "thesis_statement": "Kalman Filter State Estimation - The optimal recursive algorithm to estimate the true state of a linear dynamic system from a series of incomplete and noisy measurements",
+        "parent_thesis": "Peano axioms",
+        "branch": "engineering",
+        "domain_partition": "control_theory",
+        "context_description": "An optimal estimator that minimizes the mean-squared error under Gaussian noise conditions using state updates."
+    },
+    {
+        "thesis_statement": "PID Feedback Loop Control - A continuous feedback loop that regulates a system by calculating proportional, integral, and derivative corrections based on error",
+        "parent_thesis": "First law of thermodynamics energy conservation",
+        "branch": "engineering",
+        "domain_partition": "control_theory",
+        "context_description": "The dominant industrial closed-loop control system, adjusting processes through current error, past accumulated error, and error velocity."
+    },
+    {
+        "thesis_statement": "Nyquist Stability Criterion - The closed-loop stability of a feedback system is determined by the frequency response of its open-loop transfer function",
+        "parent_thesis": "Peano axioms",
+        "branch": "engineering",
+        "domain_partition": "control_theory",
+        "context_description": "A complex-analytic mapping technique evaluating stability by counting open-loop pole encirclements on the Nyquist plot."
+    },
+    {
+        "thesis_statement": "Denavit-Hartenberg Kinematics - A standard coordinate representation for calculating the spatial position of robotic linkages",
+        "parent_thesis": "Peano axioms",
+        "branch": "engineering",
+        "domain_partition": "control_theory",
+        "context_description": "A matrix factorization convention assigning coordinate frames to joints to solve forward and inverse robotic kinematics."
+    },
+    {
+        "thesis_statement": "Shannon's Information Capacity in Control - The feedback capacity limit of a control system is bounded by the communication rate of the feedback channel",
+        "parent_thesis": "Shannon-Hartley Theorem (Channel Capacity)",
+        "branch": "engineering",
+        "domain_partition": "control_theory",
+        "context_description": "Links control theory to information theory, showing that unstable processes cannot be stabilized if the feedback channel capacity is too low."
+    },
+    {
+        "thesis_statement": "The Fundamental Theorem of Control Theory, Cybernetics  Robotics - Core theoretical limits govern the applied behaviors within the domain.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Axiom of Structural Integrity in Control Theory, Cybernetics  Robotics - The integrity of the system is proportional to its internal coherence.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Principle of Emergence in Control Theory, Cybernetics  Robotics - Higher-order complexities naturally arise from basic interactions.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Postulate of Relational Dynamics in Control Theory, Cybernetics  Robotics - No entity within the domain exists in isolation; all are defined by relationships.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Conservation Law of Control Theory, Cybernetics  Robotics - Core informational or physical properties are conserved through transformations.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Paradox of Limitation in Control Theory, Cybernetics  Robotics - Advancements in the field reveal new fundamental boundaries of measurement.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Dialectical Synthesis of Control Theory, Cybernetics  Robotics - Opposing theoretical frameworks ultimately resolve into a higher unified truth.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Law of Diminishing Utility in Control Theory, Cybernetics  Robotics - Progressive refinements yield exponentially smaller gains in systemic accuracy.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Principle of Asymmetry in Control Theory, Cybernetics  Robotics - Informational and structural forces exert non-uniform influence across the domain.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Theorem of Epistemic Closure in Control Theory, Cybernetics  Robotics - The field approaches a state of absolute formal definition bounded by logic.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Foundational Postulate of Control Theory, Cybernetics  Robotics - All observations within the domain must trace back to fundamental constants.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Law of Entropy in Control Theory, Cybernetics  Robotics - The system naturally trends toward disorganization unless energy is applied.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Principle of Isomorphism in Control Theory, Cybernetics  Robotics - Structures within the domain mirror the mathematical structures of logic.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Hypothesis of Universality in Control Theory, Cybernetics  Robotics - The core principles of the field apply uniformly across all observed contexts.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Postulate of Continuity in Control Theory, Cybernetics  Robotics - Changes within the system occur continuously rather than through discrete unlinked jumps.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Axiom of Non-Contradiction in Control Theory, Cybernetics  Robotics - No two fundamental principles within the field can mutually invalidate each other.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Theorem of Systemic Interdependence in Control Theory, Cybernetics  Robotics - A perturbation in one sub-field inherently affects the entire discipline.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Principle of Recursive Feedback in Control Theory, Cybernetics  Robotics - Outputs of the system continually serve as inputs, driving self-regulation.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Law of Critical Thresholds in Control Theory, Cybernetics  Robotics - Phase transitions occur when cumulative changes reach a breaking point.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Ultimate Epistemic Limit of Control Theory, Cybernetics  Robotics - Human comprehension of the domain is bounded by the cognitive architecture of the observer.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    }
+]

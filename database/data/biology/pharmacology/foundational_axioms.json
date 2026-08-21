@@ -1,0 +1,54 @@
+[
+    {
+        "branch": "pharmacology",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Pharmacokinetics ADME",
+        "parent_thesis": "Michaelis-Menten Kinetics: Describes the rate of enzymatic reactions by relating reaction rate v to substrate concentration [S]",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "65f9c498430ebc2a2b66f27ba4e0518f3850ebd01a02e9b39a35b0ac21e630e8"
+    },
+    {
+        "branch": "pharmacology",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Receptor agonist-antagonist binding",
+        "parent_thesis": "Michaelis-Menten Kinetics: Describes the rate of enzymatic reactions by relating reaction rate v to substrate concentration [S]",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "ae74301cf4b5d7a9e0774dae5ef0f154562da346f45e9c844fe673b9d00ff06e"
+    },
+    {
+        "branch": "pharmacology",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Therapeutic index toxicity",
+        "parent_thesis": "Michaelis-Menten Kinetics: Describes the rate of enzymatic reactions by relating reaction rate v to substrate concentration [S]",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "ff4e98fb51a137eabd4690c795cdf9ccaeb960f1424c27ea82e9ed17fc2a8e53"
+    },
+    {
+        "branch": "pharmacology",
+        "domain_partition": "biology_partition",
+        "thesis_statement": "Receptor Binding Theory: Drugs exert their effects by binding to specific biological receptors, following mass action kinetics",
+        "parent_thesis": "Michaelis-Menten Kinetics: Describes the rate of enzymatic reactions by relating reaction rate v to substrate concentration [S]",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "3261c8a3815670e3c6cf7face1f6569359c138f70ce5010b4d7dfa0b69c8a17a"
+    },
+    {
+        "branch": "pharmacology",
+        "domain_partition": "biology_partition",
+        "thesis_statement": "ADME Scheme (Pharmacokinetics): The concentration and activity of a drug over time are determined by its absorption, distribution, metabolism, and excretion",
+        "parent_thesis": "Receptor Binding Theory: Drugs exert their effects by binding to specific biological receptors, following mass action kinetics",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Quantifies physiological drug disposition through biological barriers, blood circulation, enzymatic breakdown (metabolism), and clearance channels (excretion)."
+    },
+    {
+        "branch": "pharmacology",
+        "domain_partition": "biology_partition",
+        "thesis_statement": "Therapeutic Index Principle: The margin of drug safety is quantified by the ratio of the toxic dose to the effective dose (TD50 / ED50)",
+        "parent_thesis": "Receptor Binding Theory: Drugs exert their effects by binding to specific biological receptors, following mass action kinetics",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Measures compound safety margins, comparing the dose that induces toxicity in 50% of subjects to the dose that produces therapeutic effects in 50%."
+    }
+]

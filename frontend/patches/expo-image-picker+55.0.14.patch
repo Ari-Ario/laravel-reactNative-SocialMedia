@@ -1,0 +1,32 @@
+diff --git a/node_modules/expo-image-picker/build/ExponentImagePicker.web.js b/node_modules/expo-image-picker/build/ExponentImagePicker.web.js
+index 94b3173..eabf8e0 100644
+--- a/node_modules/expo-image-picker/build/ExponentImagePicker.web.js
++++ b/node_modules/expo-image-picker/build/ExponentImagePicker.web.js
+@@ -135,14 +135,26 @@ async function getVideoMetadata(blobUrl) {
+     return new Promise((resolve) => {
+         const video = document.createElement('video');
+         video.preload = 'metadata';
++        video.muted = true;
++        video.playsInline = true;
++        video.setAttribute('playsinline', '');
++        video.setAttribute('webkit-playsinline', '');
++        const timeout = setTimeout(() => {
++            console.warn('[expo-image-picker] getVideoMetadata timed out');
++            resolve({ width: 0, height: 0, duration: 0 });
++        }, 6000);
+         video.onloadedmetadata = () => {
++            clearTimeout(timeout);
+             resolve({
+                 width: video.videoWidth,
+                 height: video.videoHeight,
+                 duration: video.duration,
+             });
+         };
+-        video.onerror = () => resolve({ width: 0, height: 0, duration: 0 });
++        video.onerror = () => {
++            clearTimeout(timeout);
++            resolve({ width: 0, height: 0, duration: 0 });
++        };
+         video.src = blobUrl;
+     });
+ }

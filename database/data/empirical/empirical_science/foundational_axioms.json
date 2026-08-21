@@ -1,0 +1,58 @@
+[
+    {
+        "thesis_statement": "Principle of Uniformitarianism - The present is the key to the past in geological processes",
+        "parent_thesis": "First law of thermodynamics energy conservation"
+    },
+    {
+        "thesis_statement": "Steno's Law of Superposition - In undisturbed strata, the oldest layer lies at the bottom",
+        "parent_thesis": "First law of thermodynamics energy conservation"
+    },
+    {
+        "thesis_statement": "Geostrophic Balance - Fluid flow in the atmosphere is governed by the balance between Coriolis and pressure gradient forces",
+        "parent_thesis": "Newton first law of motion"
+    },
+    {
+        "thesis_statement": "Kepler's First Law - Planetary orbits are ellipses with the sun at one focus",
+        "parent_thesis": "Newton's Second Law of Motion: F = dp/dt (Force equals the time derivative of momentum)"
+    },
+    {
+        "thesis_statement": "Kepler's Second Law - A line segment joining a planet and the Sun sweeps out equal areas during equal intervals of time",
+        "parent_thesis": "1: Being (True)"
+    },
+    {
+        "thesis_statement": "Kepler's Third Law - The square of the orbital period is proportional to the cube of the semi-major axis",
+        "parent_thesis": "Newton's Second Law of Motion: F = dp/dt (Force equals the time derivative of momentum)"
+    },
+    {
+        "thesis_statement": "Hubble's Law - The recessional velocity of a galaxy is proportional to its proper distance from Earth",
+        "parent_thesis": "1: Being (True)"
+    },
+    {
+        "thesis_statement": "Theory of Plate Tectonics - Earth's outer shell is divided into several plates that glide over the mantle",
+        "parent_thesis": "First law of thermodynamics energy conservation"
+    },
+    {
+        "thesis_statement": "Milankovitch Cycles - Long-term climate variations are driven by collective effects of changes in Earth's movements",
+        "parent_thesis": "First law of thermodynamics energy conservation"
+    },
+    {
+        "thesis_statement": "Bernoulli's Principle - An increase in the speed of a fluid occurs simultaneously with a decrease in pressure",
+        "parent_thesis": "First law of thermodynamics energy conservation"
+    },
+    {
+        "thesis_statement": "Hardy-Weinberg Equilibrium - Allele frequencies in a population remain constant in the absence of evolutionary influences",
+        "parent_thesis": "Natural selection survival fitness"
+    },
+    {
+        "thesis_statement": "Competitive Exclusion Principle (Gause's Law)",
+        "parent_thesis": "Natural selection survival fitness"
+    },
+    {
+        "thesis_statement": "Lotka-Volterra Predator-Prey Equations",
+        "parent_thesis": "Epsilon-Delta Definition of a Limit: \u2200\u03b5>0 \u2203\u03b4>0 such that 0 < |x - c| < \u03b4 \u2192 |f(x) - L| < \u03b5"
+    },
+    {
+        "thesis_statement": "Navier-Stokes existence and smoothness",
+        "parent_thesis": "Newton's Second Law of Motion: F = dp/dt (Force equals the time derivative of momentum)"
+    }
+]

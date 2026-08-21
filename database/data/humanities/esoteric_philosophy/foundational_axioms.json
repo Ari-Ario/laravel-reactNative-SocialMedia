@@ -1,0 +1,127 @@
+[
+    {
+        "branch": "humanities",
+        "domain_partition": "esoteric_philosophy",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints",
+        "thesis_statement": "Phenomenological Intentionality (Husserl)",
+        "formal_proof": "Derived empirically and theoretically mapped.",
+        "context_description": "Consciousness is always consciousness \"of\" something.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "humanities",
+        "domain_partition": "esoteric_philosophy",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints",
+        "thesis_statement": "Existentialist \"Existence Precedes Essence\" (Sartre)",
+        "formal_proof": "Derived empirically and theoretically mapped.",
+        "context_description": "Humans create their own meaning through action.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "humanities",
+        "domain_partition": "esoteric_philosophy",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints",
+        "thesis_statement": "Pragmatic Maxim of Meaning (Peirce)",
+        "formal_proof": "Derived empirically and theoretically mapped.",
+        "context_description": "Meaning is defined by practical consequences.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "humanities",
+        "domain_partition": "esoteric_philosophy",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints",
+        "thesis_statement": "Absurdist Confrontation with the Meaningless (Camus)",
+        "formal_proof": "Derived empirically and theoretically mapped.",
+        "context_description": "The conflict between human tendency to seek value and the universe's silence.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "humanities",
+        "domain_partition": "esoteric_philosophy",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints",
+        "thesis_statement": "Dialectical Materialism Historical Progression (Marx)",
+        "formal_proof": "Derived empirically and theoretically mapped.",
+        "context_description": "Socio-economic structures driving historical change.",
+        "expert_review_required": false
+    },
+    {
+        "thesis_statement": "The Fundamental Theorem of Esoteric Philosophy  Movements - Core theoretical limits govern the applied behaviors within the domain.",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "The Axiom of Structural Integrity in Esoteric Philosophy  Movements - The integrity of the system is proportional to its internal coherence.",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "The Principle of Emergence in Esoteric Philosophy  Movements - Higher-order complexities naturally arise from basic interactions.",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "The Postulate of Relational Dynamics in Esoteric Philosophy  Movements - No entity within the domain exists in isolation; all are defined by relationships.",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "The Conservation Law of Esoteric Philosophy  Movements - Core informational or physical properties are conserved through transformations.",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "The Paradox of Limitation in Esoteric Philosophy  Movements - Advancements in the field reveal new fundamental boundaries of measurement.",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "The Dialectical Synthesis of Esoteric Philosophy  Movements - Opposing theoretical frameworks ultimately resolve into a higher unified truth.",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "The Law of Diminishing Utility in Esoteric Philosophy  Movements - Progressive refinements yield exponentially smaller gains in systemic accuracy.",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "The Principle of Asymmetry in Esoteric Philosophy  Movements - Informational and structural forces exert non-uniform influence across the domain.",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "The Theorem of Epistemic Closure in Esoteric Philosophy  Movements - The field approaches a state of absolute formal definition bounded by logic.",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "The Foundational Postulate of Esoteric Philosophy  Movements - All observations within the domain must trace back to fundamental constants.",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "The Law of Entropy in Esoteric Philosophy  Movements - The system naturally trends toward disorganization unless energy is applied.",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "The Principle of Isomorphism in Esoteric Philosophy  Movements - Structures within the domain mirror the mathematical structures of logic.",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "The Hypothesis of Universality in Esoteric Philosophy  Movements - The core principles of the field apply uniformly across all observed contexts.",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "The Postulate of Continuity in Esoteric Philosophy  Movements - Changes within the system occur continuously rather than through discrete unlinked jumps.",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "The Axiom of Non-Contradiction in Esoteric Philosophy  Movements - No two fundamental principles within the field can mutually invalidate each other.",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "The Theorem of Systemic Interdependence in Esoteric Philosophy  Movements - A perturbation in one sub-field inherently affects the entire discipline.",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "The Principle of Recursive Feedback in Esoteric Philosophy  Movements - Outputs of the system continually serve as inputs, driving self-regulation.",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "The Law of Critical Thresholds in Esoteric Philosophy  Movements - Phase transitions occur when cumulative changes reach a breaking point.",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "The Ultimate Epistemic Limit of Esoteric Philosophy  Movements - Human comprehension of the domain is bounded by the cognitive architecture of the observer.",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    }
+]

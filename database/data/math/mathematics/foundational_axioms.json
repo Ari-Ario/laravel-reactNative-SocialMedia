@@ -1,0 +1,20 @@
+[
+    {
+        "branch": "mathematics",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "x = (-b +/- sqrt(b^2 - 4ac)) / 2a",
+        "parent_thesis": "Definition of a Field: A commutative ring where every non-zero element has a multiplicative inverse",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "afbc9c5ce5b523629dadf73248073057f4df2beb4afc813fe9192fddaf7b05af"
+    },
+    {
+        "branch": "mathematics",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "a^2 - b^2 = (a-b)(a+b)",
+        "parent_thesis": "Distributive property of multiplication over addition (a * (b + c) = (a * b) + (a * c))",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "9df40d118f9bca72a0ad34923efd71b8e9f5c5d6d8b31cd7c261aed681b895ef"
+    }
+]

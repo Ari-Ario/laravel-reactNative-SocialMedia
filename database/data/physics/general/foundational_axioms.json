@@ -1,0 +1,29 @@
+[
+    {
+        "branch": "general",
+        "domain_partition": "chemistry_partition",
+        "thesis_statement": "Atomic Theory: Matter is composed of discrete units called atoms",
+        "parent_thesis": "Physical Constant Axiom: The physical universe operates according to immutable foundational constants",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "92d463354682dd3a5cd8c4c7e0b4b48217a77acfd5bdf2ab12071ed2791d66bb"
+    },
+    {
+        "branch": "general",
+        "domain_partition": "chemistry_partition",
+        "thesis_statement": "Conservation of Mass: Matter cannot be created or destroyed in an isolated system (Non-relativistic limit)",
+        "parent_thesis": "Mass-Energy Equivalence: E = mc^2",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "58d3502966e60618914b7553dce16596d563ecff7171478007b13754a3f83021"
+    },
+    {
+        "branch": "general",
+        "domain_partition": "physics_partition",
+        "thesis_statement": "Physical Constant Axiom: The physical universe operates according to immutable foundational constants",
+        "parent_thesis": "Zermelo-Fraenkel sets",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "007019c1e261f4d47875e188dc21b076c0c23f37ceaaa01684420edd61ca501e"
+    }
+]

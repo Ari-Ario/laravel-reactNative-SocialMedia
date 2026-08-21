@@ -1,0 +1,128 @@
+[
+    {
+        "branch": "philosophical_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Principle of Bivalence",
+        "parent_thesis": "Boolean Axiom: Law of Excluded Middle: (P OR NOT P)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "730b1b358a1ce9cee99c01bd7083621e5bb30826478646cb8014875e646b6d1c"
+    },
+    {
+        "branch": "philosophical_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Reductio ad Absurdum (Proof by Contradiction)",
+        "parent_thesis": "Principle of Bivalence",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "b714250945ca02511f467a5b38f9eae5761b08e520fb163741023287a9e88885"
+    },
+    {
+        "branch": "philosophical_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Constructive Dilemma",
+        "parent_thesis": "Contraposition (P\u2192Q \u22a2 \u00acQ\u2192\u00acP)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "1396213499335eaf9dcd8eb08aac4e741aa3d5ffc884e4103f86116209a1dcf1"
+    },
+    {
+        "branch": "philosophical_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Destructive Dilemma",
+        "parent_thesis": "Constructive Dilemma",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "427b64387d8295cc8bf92b31477f3a371a31cca94ee361b77f245e1557e64424"
+    },
+    {
+        "branch": "philosophical_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Double Negation Elimination",
+        "parent_thesis": "Principle of Bivalence",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "c3cbc8ac3856124422adc6cf12727a36a11a156d71a84652e5fec5c12021d8dd"
+    },
+    {
+        "branch": "philosophical_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Frege Context Principle",
+        "parent_thesis": "Justified True Belief (JTB / Gettier Definition)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "04f1d48c44349e9b4da805ea26ae0249e873f598c9d39f2d1c0f3d673b8ccf2e"
+    },
+    {
+        "branch": "philosophical_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Leibniz Substitution Salva Veritate",
+        "parent_thesis": "Law of identity",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "97553584ce6ee7d295bfb84649ca2ac7732800d9afb3ae4a0d0c1519bd1cf247"
+    },
+    {
+        "branch": "philosophical_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Paradox of Entailment",
+        "parent_thesis": "Principle of Explosion",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "df8477ad7ae36950c2aa8a9541cbf4f8375300d44e1cee5f7870f00396a3e91c"
+    },
+    {
+        "branch": "philosophical_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Truth-value gaps and gluts resolution",
+        "parent_thesis": "Principle of Bivalence",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "7b54d21b2eca9e48e0e455d037a7ba84d2b031367fd5a59d3a23bfe899acb204"
+    },
+    {
+        "branch": "philosophical_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Defeasible reasoning inference",
+        "parent_thesis": "Justified True Belief (JTB / Gettier Definition)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "e5158e670b03cfc2403b6737b1aa4f6bd83f9902274ba1542950d495cffcc896"
+    },
+    {
+        "branch": "philosophical_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Liar Paradox Resolution (Tarskian hierarchy)",
+        "parent_thesis": "This statement is false.",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "a0c301b108cc889faa301e3039a9e42da2fe7a1d973c333f13aecba3dbd1f80e"
+    },
+    {
+        "branch": "philosophical_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Sorites Paradox (Fuzzy Logic limit)",
+        "parent_thesis": "A grain of sand is not a heap. Adding one grain of sand to something that is not a heap does not make it a heap. Therefore, no amount of sand can form a heap.",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "cea9f6200ffb74d868dc2bcd06b14ce05d5f9f9b5ad262a832f96851075ad63a"
+    },
+    {
+        "branch": "philosophical_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Deontic Logic (Obligation and Permission rules)",
+        "parent_thesis": "Standard Deontic Logic SDL \u2014 based on Modal System D",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "fa877fbf4402763c2741d05cb4386a4829277f02eba92c16192fa9612b3399f4"
+    },
+    {
+        "branch": "philosophical_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Paraconsistent Logic (Dialetheism / Contradiction tolerance)",
+        "parent_thesis": "Paraconsistent Logic rejects Explosion (P\u2227\u00acP \u22ac Q)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "c52e0fa561b96c5a3e8e480c0d72fc66fefa87d98e646caae837ebef052efa24"
+    }
+]

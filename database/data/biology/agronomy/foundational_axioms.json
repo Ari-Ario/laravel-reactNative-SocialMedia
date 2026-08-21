@@ -1,0 +1,14 @@
+[
+    {
+        "thesis_statement": "Law of the Minimum (Liebig's Law) - Plant growth is dictated not by total resources available, but by the scarcest resource (limiting factor)",
+        "parent_thesis": "1: Being (True)"
+    },
+    {
+        "thesis_statement": "Artificial Selection (Domestication) - Human-directed selective breeding alters the phenotypic traits of populations over generations",
+        "parent_thesis": "Natural selection survival fitness"
+    },
+    {
+        "thesis_statement": "Nitrogen Cycle - Nitrogen is converted into multiple chemical forms as it circulates among atmospheric, terrestrial, and marine ecosystems",
+        "parent_thesis": "First law of thermodynamics energy conservation"
+    }
+]

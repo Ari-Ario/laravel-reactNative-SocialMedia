@@ -91,21 +91,10 @@ export default function CreateMarketItemModal({ visible, onClose, editItem }: Cr
   };
 
   const getVideoDuration = async (uri: string): Promise<number> => {
-    if (Platform.OS === 'web') {
-      return new Promise((resolve) => {
-        const video = document.createElement('video');
-        video.preload = 'metadata';
-        video.playsInline = true;
-        video.muted = true;
-        video.setAttribute('playsinline', '');
-        video.setAttribute('webkit-playsinline', '');
-        video.onloadedmetadata = () => resolve(video.duration * 1000);
-        video.onerror = () => resolve(0);
-        video.src = uri;
-      });
-    }
-    // For native, we'd use expo-av or similar, but for now fallback to 0 or use the Picker result
-    return 0;
+    if (Platform.OS !== 'web') return 0;
+    // MediaCompressor.getVideoDuration: includes video.load(), muted/playsInline,
+    // 8s timeout, and Infinity handling for unseekable streams (camera blobs)
+    return await MediaCompressor.getVideoDuration(uri);
   };
 
   const generateVideoThumbnail = async (uri: string): Promise<string | null> => {
@@ -238,13 +227,21 @@ export default function CreateMarketItemModal({ visible, onClose, editItem }: Cr
       for (const asset of result.assets) {
         try {
           const type = asset.type === 'video' ? 'video' : 'image';
-          let duration = asset.duration || 0;
+          // On web, expo-image-picker returns duration in SECONDS.
+          // It silently returns 0 when probe fails. Re-probe via MediaCompressor.
+          let duration = asset.duration ?? 0;
 
-          if (type === 'video' && (duration === 0 || duration < 2000)) {
-            duration = await getVideoDuration(asset.uri);
+          if (type === 'video') {
+            if (Platform.OS === 'web' && (duration <= 0 || duration < 2)) {
+              duration = await getVideoDuration(asset.uri);
+            } else if (Platform.OS !== 'web' && duration > 0) {
+              // Native: expo-image-picker returns ms — convert to seconds
+              duration = duration / 1000;
+            }
           }
 
-          const isLong = type === 'video' && duration > 120000;
+          // duration is now SECONDS. Infinity = unseekable stream → always trim.
+          const isLong = type === 'video' && (!isFinite(duration) || duration > 120);
 
           if (isLong) {
             longVideosCount++;
@@ -393,8 +390,8 @@ export default function CreateMarketItemModal({ visible, onClose, editItem }: Cr
       Alert.alert(
         t('long_videos_detected'),
         t('trim_videos_warning'),
-        [{ 
-          text: t('trim_now'), 
+        [{
+          text: t('trim_now'),
           onPress: () => {
             const firstIdx = media.findIndex(item => item.type === 'video' && (item.duration || 0) > 120000 && !item.startTime);
             if (firstIdx !== -1) {
@@ -444,7 +441,7 @@ export default function CreateMarketItemModal({ visible, onClose, editItem }: Cr
           } else {
             const response = await fetch(item.uri);
             const blob = await response.blob();
-            
+
             // Use blob's actual type or fallback
             const actualMime = blob.type || (item.type === 'video' ? 'video/webm' : 'image/jpeg');
             const ext = actualMime.split('/')[1]?.replace('jpeg', 'jpg') || (item.type === 'video' ? 'webm' : 'jpg');
@@ -464,7 +461,7 @@ export default function CreateMarketItemModal({ visible, onClose, editItem }: Cr
             name,
           } as any);
         }
-        
+
         // Add trim metadata - Units are in seconds (from VideoTrimmer)
         if (item.type === 'video') {
           if (item.startTime !== undefined) {

@@ -18,19 +18,64 @@ class ChatbotTraining extends Model
         'context',
         'keywords',
         'category',
+        'subcategory',
+        'branch',
+        'domain_partition',
+        'parent_thesis',
+        'parent_axiom_id',
+        'formal_proof',
+        'knowledge_axiom_id',
+        'promoted_at',
         'needs_review',
         'is_active',
-        'trained_by'
+        'trained_by',
+        'assigned_to',
+        'reviewed_by',
+        'usage_count',
+        'success_rate',
+        'confidence_score',
+        'tags',
+        'last_used_at'
     ];
 
     protected $casts = [
-        'keywords' => 'array',
-        'needs_review' => 'boolean',
-        'is_active' => 'boolean'
+        'keywords'          => 'array',
+        'tags'              => 'array',
+        'needs_review'      => 'boolean',
+        'is_active'         => 'boolean',
+        'last_used_at'      => 'datetime',
+        'promoted_at'       => 'datetime',
+        'confidence_score'  => 'float',
     ];
 
     public function trainer()
     {
         return $this->belongsTo(User::class, 'trained_by');
+    }
+
+    public function assignedTo()
+    {
+        return $this->belongsTo(User::class, 'assigned_to');
+    }
+
+    public function reviewedBy()
+    {
+        return $this->belongsTo(User::class, 'reviewed_by');
+    }
+
+    /**
+     * The KnowledgeAxiom this ticket was promoted to (if approved).
+     */
+    public function knowledgeAxiom()
+    {
+        return $this->belongsTo(\App\Models\KnowledgeAxiom::class, 'knowledge_axiom_id');
+    }
+
+    /**
+     * Parent axiom selected during expert review.
+     */
+    public function parentAxiom()
+    {
+        return $this->belongsTo(\App\Models\KnowledgeAxiom::class, 'parent_axiom_id');
     }
 }

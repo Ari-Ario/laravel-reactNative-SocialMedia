@@ -1,0 +1,56 @@
+[
+    {
+        "branch": "information_theory",
+        "domain_partition": "math_partition",
+        "thesis_statement": "Shannon Entropy Axiom: H(X) = -\u2211 P(x)log P(x). The fundamental limit to data compression and the expected value of information contained in a message",
+        "parent_thesis": "Kolmogorov Axiom 3: Probability of countable disjoint events is the sum of their probabilities",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "0468753692e0bf7d147431a7d91f0c69b4c2e02b65113fc174fdfd32bc76f517"
+    },
+    {
+        "branch": "information_theory",
+        "domain_partition": "math_partition",
+        "thesis_statement": "Shannon's Source Coding Theorem",
+        "parent_thesis": "Shannon Entropy Axiom: H(X) = -\u2211 P(x)log P(x). The fundamental limit to data compression and the expected value of information contained in a message",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Source Coding Theorem: Shows that a lossless code must have an average length at least equal to the entropy rate of the source.",
+        "ast_signature": "ea00dc34c4a5becb5b215f2af1a1cc63a03fc5c1049f242cc7cc168324e8ee28"
+    },
+    {
+        "branch": "information_theory",
+        "domain_partition": "math_partition",
+        "thesis_statement": "Shannon's Noisy-Channel Coding Theorem",
+        "parent_thesis": "Shannon's Source Coding Theorem",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Noisy-Channel Coding Theorem: Proves that error-free communication is possible over a noisy channel up to its capacity C.",
+        "ast_signature": "d52dbd1ce429f231d5c3b00e6fb77112963f566a4f128c9d8afd903518feea71"
+    },
+    {
+        "branch": "information_theory",
+        "domain_partition": "math_partition",
+        "thesis_statement": "Data Processing Inequality",
+        "parent_thesis": "Shannon Entropy Axiom: H(X) = -\u2211 P(x)log P(x). The fundamental limit to data compression and the expected value of information contained in a message",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Data Processing Inequality: Asserts that passing variables through a physical processing system cannot increase mutual information.",
+        "ast_signature": "86d8ee8b10606c223a799dff722846debb0775b34a1e5a861ab753b4b77be0e2"
+    },
+    {
+        "branch": "information_theory",
+        "domain_partition": "math_partition",
+        "thesis_statement": "Asymptotic Equipartition Property (AEP)",
+        "parent_thesis": "Law of Large Numbers",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Asymptotic Equipartition Property: Information theory's analog to the weak Law of Large Numbers, stating that sample entropy converges to the source entropy rate.",
+        "ast_signature": "f568f41f847adc4abcff87dcd0893776829f3a65c498c10295daeb873a626abc"
+    },
+    {
+        "branch": "information_theory",
+        "domain_partition": "math_partition",
+        "thesis_statement": "Kullback-Leibler Divergence non-negativity",
+        "parent_thesis": "Shannon Entropy Axiom: H(X) = -\u2211 P(x)log P(x). The fundamental limit to data compression and the expected value of information contained in a message",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "KL Divergence: Measures relative entropy between two probability distributions, proving it is strictly non-negative via Gibbs' inequality.",
+        "ast_signature": "6573482e7eb3b6c8a337b56eb3aed63a90f01d6317707e463d8125623631b49a"
+    }
+]

@@ -352,7 +352,7 @@ export default function PrivacySettingsScreen() {
             <View style={styles.container}>
                 <StatusBar barStyle="dark-content" />
                 <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
-                    <BackButton onPress={() => router.back()} />
+                    <BackButton onPress={() => { if (router.canGoBack()) router.back(); else router.replace("/(tabs)"); }} />
                     <Text style={styles.headerTitle}>{t('privacy')}</Text>
                     <View style={{ width: 44 }} />
                 </View>
@@ -372,7 +372,7 @@ export default function PrivacySettingsScreen() {
                 colors={[colors.surface, colors.background]}
                 style={[styles.header, { paddingTop: insets.top + 10 }]}
             >
-                <BackButton onPress={() => router.back()} />
+                <BackButton onPress={() => { if (router.canGoBack()) router.back(); else router.replace("/(tabs)"); }} />
 
                 <View style={styles.headerCenter}>
                     <Text style={styles.headerTitle}>{t('privacy')}</Text>

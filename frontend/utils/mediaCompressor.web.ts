@@ -139,4 +139,130 @@ export class MediaCompressor {
             fileName: finalFileName,
         };
     }
+
+    /**
+     * Hardened video duration prober for web (mobile Safari/Chrome safe).
+     *
+     * Key fixes (based on expo-image-picker ExponentImagePicker.web.ts source study):
+     *  1. muted + playsInline + webkit-playsinline: required on iOS Safari for the
+     *     media pipeline to initialize without a user-gesture interaction.
+     *  2. video.load() called explicitly after setting .src: Safari requires this;
+     *     without it onloadedmetadata NEVER fires on blob: URIs or large files.
+     *  3. Returns seconds (not ms) — raw browser standard. Callers convert as needed.
+     *  4. Returns Infinity for unseekable MediaRecorder blobs so callers can route to trimmer.
+     *  5. 8-second safety timeout prevents UI hangs on constrained 4G connections.
+     */
+    static getVideoDuration(uri: string, timeoutMs = 8000): Promise<number> {
+        return new Promise((resolve) => {
+            if (typeof window === 'undefined') return resolve(0);
+
+            const video = document.createElement('video');
+            video.preload = 'metadata';
+            video.muted = true;
+            video.playsInline = true;
+            video.setAttribute('playsinline', '');
+            video.setAttribute('webkit-playsinline', '');
+
+            let settled = false;
+            const done = (val: number) => {
+                if (settled) return;
+                settled = true;
+                clearTimeout(timer);
+                video.onloadedmetadata = null;
+                video.onerror = null;
+                video.src = '';
+                try { video.load(); } catch (_) {}
+                resolve(val);
+            };
+
+            const timer = setTimeout(() => {
+                console.warn('[MediaCompressor] Duration probe timed out:', uri);
+                done(0);
+            }, timeoutMs);
+
+            video.onloadedmetadata = () => {
+                // duration in SECONDS (browser standard). Infinity = unseekable stream.
+                done(isNaN(video.duration) ? 0 : video.duration);
+            };
+            video.onerror = () => done(0);
+
+            video.src = uri;
+            video.load(); // mandatory on iOS Safari
+        });
+    }
+
+    /**
+     * Hardened thumbnail generator for web.
+     * Returns a JPEG data URL or null on failure/timeout.
+     */
+    static generateThumbnail(uri: string, timeoutMs = 10000): Promise<string | null> {
+        return new Promise((resolve) => {
+            if (typeof window === 'undefined') return resolve(null);
+
+            const video = document.createElement('video');
+            video.preload = 'metadata';
+            video.muted = true;
+            video.playsInline = true;
+            video.setAttribute('playsinline', '');
+            video.setAttribute('webkit-playsinline', '');
+            // crossOrigin only for remote URLs — blob: URIs break with it on Safari
+            if (!uri.startsWith('blob:')) video.crossOrigin = 'anonymous';
+
+            let settled = false;
+            const done = (val: string | null) => {
+                if (settled) return;
+                settled = true;
+                clearTimeout(timer);
+                video.onseeked = null;
+                video.onloadedmetadata = null;
+                video.onerror = null;
+                video.src = '';
+                try { video.load(); } catch (_) {}
+                resolve(val);
+            };
+
+            const timer = setTimeout(() => {
+                console.warn('[MediaCompressor] Thumbnail probe timed out:', uri);
+                done(null);
+            }, timeoutMs);
+
+            video.onloadedmetadata = () => {
+                // Seek to 0.5s or 10% into the video to avoid a black first frame
+                video.currentTime = Math.min(0.5, isFinite(video.duration) ? video.duration * 0.1 : 0.5);
+            };
+
+            video.onseeked = () => {
+                try {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = video.videoWidth || 320;
+                    canvas.height = video.videoHeight || 240;
+                    const ctx = canvas.getContext('2d');
+                    if (ctx) {
+                        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                        done(canvas.toDataURL('image/jpeg', 0.7));
+                    } else {
+                        done(null);
+                    }
+                } catch (e) {
+                    console.warn('[MediaCompressor] Thumbnail canvas failed:', e);
+                    done(null);
+                }
+            };
+
+            video.onerror = () => done(null);
+
+            video.src = uri;
+            video.load(); // mandatory on iOS Safari
+        });
+    }
+
+    /**
+     * Revokes a blob: URL to free browser memory.
+     * Safe no-op for non-blob URIs or when called on server.
+     */
+    static cleanupMedia(uri: string | null | undefined): void {
+        if (uri && uri.startsWith('blob:') && typeof window !== 'undefined') {
+            try { URL.revokeObjectURL(uri); } catch (_) {}
+        }
+    }
 }

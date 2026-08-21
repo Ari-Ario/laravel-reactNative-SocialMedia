@@ -1,0 +1,101 @@
+[
+    {
+        "branch": "social_science",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Price rises when demand exceeds supply",
+        "parent_thesis": "Law of Supply and Demand: In a competitive market, the unit price for a particular good will vary until it settles at a point where the quantity demanded equals the quantity supplied",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "cf6ae024e927bbebdd40d56bd250dcd7f37898fe072ff2842ce73b7ea193476f"
+    },
+    {
+        "branch": "social_science",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Every choice has an opportunity cost",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "521af338f23e912e1f411fcc82b8eb13a158c8731725434bd22bb5145f6f15c2"
+    },
+    {
+        "branch": "social_science",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Adding more factors of production eventually yields lower per-unit returns",
+        "parent_thesis": "Law of Diminishing Marginal Utility: As a person increases consumption of a product, there is a decline in the marginal utility that person derives from consuming each additional unit",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "1b208ce4fbcc1f010489a1b6af10e7ae208da19b8a407fbca5a4a731fbea90f6"
+    },
+    {
+        "branch": "social_science",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Trade benefits both parties when they specialize",
+        "parent_thesis": "Comparative advantage in trade",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "61dc280ff972ed1533f2488169ce10a7dc6240c1e7b659620e9c93f8c8c01ebf"
+    },
+    {
+        "branch": "social_science",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Shared resources are depleted by individual rational action",
+        "parent_thesis": "Tragedy of the Commons (Resource Depletion)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "15afb563a9511ec7cef99b4eb94364515e981f0e5dc6c0c0907c3b08452a5817"
+    },
+    {
+        "branch": "social_science",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Individuals learn norms through society",
+        "parent_thesis": "Durkheim social facts and anomie",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "b6caafa3db3c5a7ef655311bde9fe7abdcc6bc37f0d3ea52e053790aea5d8273"
+    },
+    {
+        "branch": "social_science",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Price rises when demand exceeds supply",
+        "parent_thesis": "Natural selection survival fitness",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "cf6ae024e927bbebdd40d56bd250dcd7f37898fe072ff2842ce73b7ea193476f"
+    },
+    {
+        "branch": "social_science",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Every choice has an opportunity cost",
+        "parent_thesis": "Natural selection survival fitness",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "521af338f23e912e1f411fcc82b8eb13a158c8731725434bd22bb5145f6f15c2"
+    },
+    {
+        "branch": "social_science",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Adding more factors of production eventually yields lower per-unit returns",
+        "parent_thesis": "Natural selection survival fitness",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "1b208ce4fbcc1f010489a1b6af10e7ae208da19b8a407fbca5a4a731fbea90f6"
+    },
+    {
+        "branch": "social_science",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Trade benefits both parties when they specialize",
+        "parent_thesis": "Natural selection survival fitness",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "61dc280ff972ed1533f2488169ce10a7dc6240c1e7b659620e9c93f8c8c01ebf"
+    },
+    {
+        "branch": "social_science",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Shared resources are depleted by individual rational action",
+        "parent_thesis": "Natural selection survival fitness",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "15afb563a9511ec7cef99b4eb94364515e981f0e5dc6c0c0907c3b08452a5817"
+    }
+]

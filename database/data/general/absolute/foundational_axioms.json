@@ -1,0 +1,20 @@
+[
+    {
+        "branch": "absolute",
+        "domain_partition": "cpu_root",
+        "thesis_statement": "0: Nothing (False)",
+        "parent_thesis": null,
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "c7d07eb7462193ff11dde074f4e88e07b45df54b8dcc96823e5dea8716848e43"
+    },
+    {
+        "branch": "absolute",
+        "domain_partition": "cpu_root",
+        "thesis_statement": "1: Being (True)",
+        "parent_thesis": null,
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "234e14b57521320e63eb7ff8372ca5069956afd6a7afc57b8330b311399551d6"
+    }
+]

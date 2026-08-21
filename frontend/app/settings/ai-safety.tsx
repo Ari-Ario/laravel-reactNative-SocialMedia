@@ -124,7 +124,7 @@ export default function AiSafetyScreen() {
                 colors={[colors.surface, colors.background]}
                 style={[styles.header, { paddingTop: insets.top + 10 }]}
             >
-                <BackButton onPress={() => router.back()} />
+                <BackButton onPress={() => { if (router.canGoBack()) router.back(); else router.replace("/(tabs)"); }} />
                 <View style={styles.headerCenter}>
                     <Text style={styles.headerTitle}>{t('security')}</Text>
                     <View style={styles.headerUnderline} />

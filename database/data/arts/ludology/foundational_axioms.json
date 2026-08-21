@@ -1,0 +1,137 @@
+[
+    {
+        "thesis_statement": "MDA Game Design Framework - Games are systems analyzed through three overlapping perspectives: Mechanics, Dynamics, and Aesthetics",
+        "parent_thesis": "1: Being (True)",
+        "branch": "arts",
+        "domain_partition": "ludology",
+        "context_description": "The Mechanics, Dynamics, and Aesthetics model bridging rule systems, runtime play, and player emotional responses."
+    },
+    {
+        "thesis_statement": "Huizinga's Magic Circle - Play takes place within a self-contained spatial and temporal boundary with rules distinct from ordinary life",
+        "parent_thesis": "1: Being (True)",
+        "branch": "arts",
+        "domain_partition": "ludology",
+        "context_description": "Johan Huizinga's concept defining the psychological and spatial boundaries of play where real-world consequences are suspended."
+    },
+    {
+        "thesis_statement": "Flow State Optimization - Player engagement is sustained when a game's challenges dynamically scale to match the player's increasing skill level",
+        "parent_thesis": "1: Being (True)",
+        "branch": "arts",
+        "domain_partition": "ludology",
+        "context_description": "Mihaly Csikszentmihalyi's flow model applied to interactive environments, preventing player boredom (under-stimulation) or anxiety (over-stimulation)."
+    },
+    {
+        "thesis_statement": "Bartle Player Taxonomy - Multi-user players categorize into Achievers, Explorers, Socializers, or Killers, depending on interactive preference",
+        "parent_thesis": "Nash equilibrium in game theory",
+        "branch": "arts",
+        "domain_partition": "ludology",
+        "context_description": "Richard Bartle's categorization of multiplayer dynamics, modeling how player motivation styles seek strategic equilibrium within virtual environments."
+    },
+    {
+        "thesis_statement": "Caillois' Game Classifications - Play exhibits varied combinations of competition (Agon), chance (Alea), mimicry (Mimicry), and vertigo (Ilinx)",
+        "parent_thesis": "1: Being (True)",
+        "branch": "arts",
+        "domain_partition": "ludology",
+        "context_description": "Roger Caillois' framework organizing play across the spectrum of competition, random chance, role-play simulation, and sensory disruption."
+    },
+    {
+        "thesis_statement": "Principle of Game design - A fundamental concept in the study of Game design",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "Principle of Affinity space - A fundamental concept in the study of Game design",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "Principle of Game balance - A fundamental concept in the study of Game design",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "Principle of Game mechanics - A fundamental concept in the study of Game design",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "Principle of House rule - A fundamental concept in the study of Game design",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "Principle of Kingmaker scenario - A fundamental concept in the study of Game design",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "Principle of Lusory attitude - A fundamental concept in the study of Game design",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "Principle of Procedural rhetoric - A fundamental concept in the study of Game design",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "Principle of Simultaneous action selection - A fundamental concept in the study of Game design",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "Principle of Technology tree - A fundamental concept in the study of Game design",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "The Fundamental Theorem of Game Design, Ludology  Play Theory - Core theoretical limits govern the applied behaviors within the domain.",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "The Axiom of Structural Integrity in Game Design, Ludology  Play Theory - The integrity of the system is proportional to its internal coherence.",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "The Principle of Emergence in Game Design, Ludology  Play Theory - Higher-order complexities naturally arise from basic interactions.",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "The Postulate of Relational Dynamics in Game Design, Ludology  Play Theory - No entity within the domain exists in isolation; all are defined by relationships.",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "The Conservation Law of Game Design, Ludology  Play Theory - Core informational or physical properties are conserved through transformations.",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "The Paradox of Limitation in Game Design, Ludology  Play Theory - Advancements in the field reveal new fundamental boundaries of measurement.",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "The Dialectical Synthesis of Game Design, Ludology  Play Theory - Opposing theoretical frameworks ultimately resolve into a higher unified truth.",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "The Law of Diminishing Utility in Game Design, Ludology  Play Theory - Progressive refinements yield exponentially smaller gains in systemic accuracy.",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "The Principle of Asymmetry in Game Design, Ludology  Play Theory - Informational and structural forces exert non-uniform influence across the domain.",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "The Theorem of Epistemic Closure in Game Design, Ludology  Play Theory - The field approaches a state of absolute formal definition bounded by logic.",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "The Foundational Postulate of Game Design, Ludology  Play Theory - All observations within the domain must trace back to fundamental constants.",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "The Law of Entropy in Game Design, Ludology  Play Theory - The system naturally trends toward disorganization unless energy is applied.",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "The Principle of Isomorphism in Game Design, Ludology  Play Theory - Structures within the domain mirror the mathematical structures of logic.",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "The Hypothesis of Universality in Game Design, Ludology  Play Theory - The core principles of the field apply uniformly across all observed contexts.",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    },
+    {
+        "thesis_statement": "The Postulate of Continuity in Game Design, Ludology  Play Theory - Changes within the system occur continuously rather than through discrete unlinked jumps.",
+        "parent_thesis": "Universal Approximation Theorem: A feedforward neural network with a single hidden layer containing a finite number of neurons can approximate any continuous function on compact subsets of R^n under mild assumptions on the activation function"
+    }
+]

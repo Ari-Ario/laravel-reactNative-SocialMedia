@@ -1,0 +1,14 @@
+[
+    {
+        "thesis_statement": "Space-Time Tradeoff - Computational speed can often be increased at the expense of increased memory consumption",
+        "parent_thesis": "Time Complexity (Big O) bounds the asymptotic growth of an algorithm's runtime"
+    },
+    {
+        "thesis_statement": "Graph Representation - Networks can be modeled as sets of vertices (nodes) and edges (connections)",
+        "parent_thesis": "1: Being (True)"
+    },
+    {
+        "thesis_statement": "Von Neumann Architecture - A computer architecture based on a single memory space holding both instructions and data",
+        "parent_thesis": "1: Being (True)"
+    }
+]

@@ -1,0 +1,78 @@
+[
+    {
+        "branch": "game_theory",
+        "domain_partition": "math_partition",
+        "thesis_statement": "Definition of a Strategic Game: Players, strategies, and payoffs mapping to real numbers",
+        "parent_thesis": "Construction of Real Numbers (R) via Dedekind Cuts",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "f5090331d532f37439494d6282e0a423dabe1decb8d6bbb88d13ac8f1ad03266"
+    },
+    {
+        "branch": "game_theory",
+        "domain_partition": "math_partition",
+        "thesis_statement": "Nash Equilibrium Existence Theorem (Every finite game has at least one mixed-strategy Nash equilibrium)",
+        "parent_thesis": "Definition of a Strategic Game: Players, strategies, and payoffs mapping to real numbers",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "cc8d9f0d9ed596ea20ddb7296c5bc301e15f253ed9d53ef156e6f8b5085ee37c"
+    },
+    {
+        "branch": "game_theory",
+        "domain_partition": "math_partition",
+        "thesis_statement": "Pareto Efficiency Axiom: An allocation is Pareto efficient if no individual can be made better off without making someone else worse off",
+        "parent_thesis": "Axiom of Necessity for Rational Choice: If agent prefers A to B necessarily, it must choose A over B when possible",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "82fb637e5ee0c99dd7266de202ee837d70b8fc6e06ccd8c6bd1391e10b29c826"
+    },
+    {
+        "branch": "game_theory",
+        "domain_partition": "math_partition",
+        "thesis_statement": "Extensive Form Game Axiom: Games with sequential moves can be represented as mathematical trees where nodes are decision points",
+        "parent_thesis": "Nash Equilibrium Existence Theorem (Every finite game has at least one mixed-strategy Nash equilibrium)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "8f0721e52152043894cd46903fb19c51195a7d2e402d0e083578bb16098ae19a"
+    },
+    {
+        "branch": "game_theory",
+        "domain_partition": "math_partition",
+        "thesis_statement": "Arrow's Impossibility Theorem: No social choice function can satisfy unrestricted domain, non-dictatorship, Pareto efficiency, and independence of irrelevant alternatives simultaneously",
+        "parent_thesis": "Pareto Efficiency Axiom: An allocation is Pareto efficient if no individual can be made better off without making someone else worse off",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Demonstrates the fundamental limits of aggregation rules for individual preferences into a social preference ranking."
+    },
+    {
+        "branch": "game_theory",
+        "domain_partition": "math_partition",
+        "thesis_statement": "Sen's Liberal Paradox: No social choice function can satisfy both unrestricted domain, weak Pareto efficiency, and minimal libertarianism",
+        "parent_thesis": "Pareto Efficiency Axiom: An allocation is Pareto efficient if no individual can be made better off without making someone else worse off",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Shows that Pareto efficiency conflicts with minimal individual liberty requirements over personal choices."
+    },
+    {
+        "branch": "game_theory",
+        "domain_partition": "math_partition",
+        "thesis_statement": "Subgame Perfect Equilibrium Axiom: A strategy profile is subgame perfect if it induces a Nash equilibrium in every subgame of the extensive form game",
+        "parent_thesis": "Extensive Form Game Axiom: Games with sequential moves can be represented as mathematical trees where nodes are decision points",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Refines Nash equilibrium by ruling out non-credible threats in sequential games, solved via backward induction."
+    },
+    {
+        "branch": "game_theory",
+        "domain_partition": "math_partition",
+        "thesis_statement": "Revelation Principle: Any Bayesian Nash equilibrium of an indirect mechanism can be replicated as a truthful equilibrium in a direct mechanism",
+        "parent_thesis": "Nash Equilibrium Existence Theorem (Every finite game has at least one mixed-strategy Nash equilibrium)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Foundational result in mechanism design showing that direct revelation mechanisms are sufficient to analyze implementable outcomes."
+    },
+    {
+        "branch": "game_theory",
+        "domain_partition": "math_partition",
+        "thesis_statement": "Aumann's Common Knowledge Axiom: An event is common knowledge among a group of agents if all agents know it, and know that all know it, infinitely",
+        "parent_thesis": "Definition of a Strategic Game: Players, strategies, and payoffs mapping to real numbers",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Formalizes common knowledge, which is essential for coordination, rational agreement, and solution concepts in games."
+    }
+]

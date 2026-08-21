@@ -311,7 +311,7 @@ export default function BookmarksScreen() {
             <StatusBar barStyle={activeScheme === 'dark' ? 'light-content' : 'dark-content'} />
 
             <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
-                <BackButton onPress={() => router.back()} />
+                <BackButton onPress={() => { if (router.canGoBack()) router.back(); else router.replace("/(tabs)"); }} />
                 <View style={styles.headerTitle}>
                     <Text style={styles.greeting}>{getTimeBasedGreeting()},</Text>
                     <Text style={styles.headerMainTitle}>{t('save')}</Text>

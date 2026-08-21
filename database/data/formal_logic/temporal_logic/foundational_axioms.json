@@ -1,0 +1,137 @@
+[
+    {
+        "branch": "temporal_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "LTL Operator G \u2014 GP means P holds globally (always)",
+        "parent_thesis": "Universal quantification",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "8675d8e0ffee3984eb12bd8e3188decd76e1478c33cb14e52abf392d6c577f63"
+    },
+    {
+        "branch": "temporal_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "LTL Operator F \u2014 FP means P holds finally (eventually)",
+        "parent_thesis": "Existential quantification",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "3e35776a609d9154ead31efcc35a8feef229cfcd7403967e7adabfef40809a42"
+    },
+    {
+        "branch": "temporal_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "LTL Operator X \u2014 XP means P holds in the neXt state",
+        "parent_thesis": "LTL Operator G \u2014 GP means P holds globally (always)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "d4b3584f099164eebd1311ebd35b9310f027b0475d7d90d528ea5515b8325579"
+    },
+    {
+        "branch": "temporal_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "LTL Operator U \u2014 P U Q means P holds Until Q holds",
+        "parent_thesis": "LTL Operator G \u2014 GP means P holds globally (always)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "1d5cb125bb7849b785430cd3cb9c2023a4f025356575258ad7b88ea6921dd62e"
+    },
+    {
+        "branch": "temporal_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "LTL Operator R \u2014 P R Q (release: Q holds until and including when P holds)",
+        "parent_thesis": "LTL Operator U \u2014 P U Q means P holds Until Q holds",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "dbc2ea7a635e8c5a96a5a6eddc1d298019ff273ab5d5b831211c949f7d847b37"
+    },
+    {
+        "branch": "temporal_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "LTL Duality \u2014 GP \u2261 \u00acF\u00acP; FP \u2261 \u00acG\u00acP",
+        "parent_thesis": "LTL Operator G \u2014 GP means P holds globally (always)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "c93b744d70ab146aadab54901c81bbb143c3c810f47445166c7b603016a1f593"
+    },
+    {
+        "branch": "temporal_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "LTL Expansion Law \u2014 GP \u2261 P\u2227X(GP); FP \u2261 P\u2228X(FP)",
+        "parent_thesis": "LTL Operator G \u2014 GP means P holds globally (always)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "6f50cb627768ace15a63f6a361418ecaf491b0b33c3e533a13837da0106f8257"
+    },
+    {
+        "branch": "temporal_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "LTL Until Expansion \u2014 P U Q \u2261 Q\u2228(P\u2227X(P U Q))",
+        "parent_thesis": "LTL Operator U \u2014 P U Q means P holds Until Q holds",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "d85e4f867e2cda022e1d467397166e31d0065ba5a552b8a7ea5155ad24d342ce"
+    },
+    {
+        "branch": "temporal_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "CTL Path Quantifier A \u2014 for All computation paths",
+        "parent_thesis": "LTL Operator G \u2014 GP means P holds globally (always)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "b01a712d95b54079a667518e1b4a27ebfb83e3ebb181964d12412bbb22ead11a"
+    },
+    {
+        "branch": "temporal_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "CTL Path Quantifier E \u2014 there Exists a computation path",
+        "parent_thesis": "CTL Path Quantifier A \u2014 for All computation paths",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "9633c4884c92125fee6a018fd731c2f745db8d14c6aa579e7c7ce4e87dcc21ba"
+    },
+    {
+        "branch": "temporal_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "CTL Formula AGP \u2014 on All paths Globally P (safety)",
+        "parent_thesis": "CTL Path Quantifier A \u2014 for All computation paths",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "2808875e587fcca120f684577bb8c75296c3ee278c18dd365452f73221253ec1"
+    },
+    {
+        "branch": "temporal_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "CTL Formula EFP \u2014 there Exists a path where Finally P (reachability)",
+        "parent_thesis": "CTL Path Quantifier E \u2014 there Exists a computation path",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "c40d4599e45576bcf055e2d3cc1dba46cf996ed522e77544a6c149a7047275e6"
+    },
+    {
+        "branch": "temporal_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "CTL* \u2014 subsumes both LTL and CTL",
+        "parent_thesis": "CTL Path Quantifier A \u2014 for All computation paths",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "0a9f09158a8449b92f06818ca5a89c9bc14bb46eee787d4d0b2837c7ad5971b3"
+    },
+    {
+        "branch": "temporal_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Fairness Constraints in Temporal Logic \u2014 GFP (infinitely often P)",
+        "parent_thesis": "CTL* \u2014 subsumes both LTL and CTL",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "c4dda874266ae508695e9a41e3dea7bc2f7dc71914a18e44e88ab747a63df852"
+    },
+    {
+        "branch": "temporal_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Pnueli Theorem \u2014 LTL model checking is PSPACE-complete",
+        "parent_thesis": "LTL Operator G \u2014 GP means P holds globally (always)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "4194c138ca290de5cfc0cceaf09afc2497e91f5ce708e6e9a647c9acd89e5ab3"
+    }
+]

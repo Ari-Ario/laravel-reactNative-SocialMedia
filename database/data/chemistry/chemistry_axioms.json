@@ -1,0 +1,154 @@
+[
+    {
+        "branch": "quantum_chemistry",
+        "domain_partition": "chemistry_partition",
+        "thesis_statement": "Born-Oppenheimer Approximation: The motion of atomic nuclei and electrons in a molecule can be treated separately",
+        "parent_thesis": "Schr\u00f6dinger Equation: i\u210f \u2202\u03a8/\u2202t = \u0124\u03a8 (Time evolution of quantum state)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine."
+    },
+    {
+        "branch": "quantum_chemistry",
+        "domain_partition": "chemistry_partition",
+        "thesis_statement": "Aufbau Principle / Hund's Rule: Electrons fill lower-energy atomic orbitals before higher-energy ones",
+        "parent_thesis": "Pauli Exclusion Principle: Two identical fermions cannot occupy the same quantum state simultaneously",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine."
+    },
+    {
+        "branch": "physical_chemistry",
+        "domain_partition": "chemistry_partition",
+        "thesis_statement": "Chemical Kinetics: The rate of a chemical reaction is proportional to the concentration of the reacting substances",
+        "parent_thesis": "Gibbs Free Energy: \u0394G = \u0394H - T\u0394S (Criterion for spontaneity)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine."
+    },
+    {
+        "branch": "physical_chemistry",
+        "domain_partition": "chemistry_partition",
+        "thesis_statement": "Ideal Gas Law: PV = nRT",
+        "parent_thesis": "First Law of Thermodynamics (Conservation of Energy): \u0394U = Q - W",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine."
+    },
+    {
+        "branch": "physical_chemistry",
+        "domain_partition": "physics_partition",
+        "thesis_statement": "Arrhenius Equation: k = A e^{-E_a/(RT)} (Calculates the temperature dependence of chemical reaction rates)",
+        "parent_thesis": "Maxwell-Boltzmann Distribution: Describes the distribution of speeds of particles in an idealized gas under thermal equilibrium",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine."
+    },
+    {
+        "branch": "quantum_chemistry",
+        "domain_partition": "physics_partition",
+        "thesis_statement": "Molecular Orbital Theory Axiom: Atomic orbitals combine to form molecular orbitals governed by the Schr\u00f6dinger equation, dictating chemical bonding",
+        "parent_thesis": "Probability Amplitude Axiom: Quantum states are represented by complex probability amplitudes whose squared modulus determines the observable probability",
+        "formal_proof": "The Linear Combination of Atomic Orbitals (LCAO) approximates molecular orbitals as \u03c8 = c_a \u03c8_a + c_b \u03c8_b. The bonding energy is minimized when probability amplitudes constructively interfere, lowering the Hamiltonian expectation value.",
+        "context_description": "This explains how atoms stick together to form molecules. By sharing electron probability clouds, atoms drop into a lower, more stable energy state."
+    },
+    {
+        "branch": "physical_chemistry",
+        "domain_partition": "chemistry_partition",
+        "thesis_statement": "Dalton's Law of Partial Pressures: P_total = \u2211 P_i (The total pressure of a mixture of ideal gases is the sum of their partial pressures)",
+        "parent_thesis": "Ideal Gas Law: PV = nRT",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine."
+    },
+    {
+        "branch": "physical_chemistry",
+        "domain_partition": "chemistry_partition",
+        "thesis_statement": "Raoult's Law: P_i = x_i P_i^* (The vapor pressure of an ideal solution is dependent on the vapor pressure of each chemical component and its mole fraction)",
+        "parent_thesis": "Ideal Gas Law: PV = nRT",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine."
+    },
+    {
+        "branch": "physical_chemistry",
+        "domain_partition": "chemistry_partition",
+        "thesis_statement": "Le Chatelier's Principle: A system at equilibrium will adjust to counteract any imposed change in concentration, temperature, or pressure",
+        "parent_thesis": "Gibbs Free Energy: \u0394G = \u0394H - T\u0394S (Criterion for spontaneity)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine."
+    },
+    {
+        "branch": "physical_chemistry",
+        "domain_partition": "chemistry_partition",
+        "thesis_statement": "Henry's Law: C = k P (At a constant temperature, the amount of a given gas dissolved in a liquid is directly proportional to its partial pressure)",
+        "parent_thesis": "Ideal Gas Law: PV = nRT",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine."
+    },
+    {
+        "branch": "physical_chemistry",
+        "domain_partition": "chemistry_partition",
+        "thesis_statement": "Van 't Hoff Equation: d(ln K)/dT = \u0394H\u00b0 / (R T^2) (Relates equilibrium constant change to standard enthalpy change)",
+        "parent_thesis": "Arrhenius Equation: k = A e^{-E_a/(RT)} (Calculates the temperature dependence of chemical reaction rates)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine."
+    },
+    {
+        "branch": "physical_chemistry",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Ideal gas law PV=nRT",
+        "parent_thesis": "First law of thermodynamics energy conservation",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine."
+    },
+    {
+        "branch": "physical_chemistry",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Gibbs free energy",
+        "parent_thesis": "First law of thermodynamics energy conservation",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine."
+    },
+    {
+        "branch": "physical_chemistry",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Arrhenius equation for activation energy",
+        "parent_thesis": "First law of thermodynamics energy conservation",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine."
+    },
+    {
+        "branch": "physical_chemistry",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Raoult law of vapor pressure",
+        "parent_thesis": "First law of thermodynamics energy conservation",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine."
+    },
+    {
+        "branch": "quantum_chemistry",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Molecular orbital theory",
+        "parent_thesis": "First law of thermodynamics energy conservation",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine."
+    },
+    {
+        "branch": "quantum_chemistry",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Valence bond theory",
+        "parent_thesis": "First law of thermodynamics energy conservation",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine."
+    },
+    {
+        "branch": "quantum_chemistry",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Hund rule of maximum multiplicity",
+        "parent_thesis": "First law of thermodynamics energy conservation",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine."
+    },
+    {
+        "branch": "quantum_chemistry",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Aufbau principle",
+        "parent_thesis": "First law of thermodynamics energy conservation",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine."
+    }
+]

@@ -1,0 +1,63 @@
+[
+    {
+        "branch": "civil_engineering",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Euler critical load structural limits",
+        "parent_thesis": "Euler-Bernoulli Beam Bending Axiom: The bending moment at any cross section of a beam is proportional to the curvature of the beam at that section",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "1d585f61211782764e5e8415e73b2219a51dfb30d5c1b7de8d4e38c029b7f181"
+    },
+    {
+        "branch": "civil_engineering",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Bernoulli-Euler bending limits",
+        "parent_thesis": "Euler-Bernoulli Beam Bending Axiom: The bending moment at any cross section of a beam is proportional to the curvature of the beam at that section",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "398e259341bb62d7d94eda093f6eb31ec3ad482f43cc4c0054d66199927c6e6f"
+    },
+    {
+        "branch": "civil_engineering",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Mohr circle stress plane",
+        "parent_thesis": "Structural Statics Axiom: For a structure to be in equilibrium, the sum of all forces and the sum of all moments acting on it must be zero",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "b07355496d294f31a2531f38a02a682dbd502868dd509f34c3a53db484da4346"
+    },
+    {
+        "branch": "civil_engineering",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Terzaghi effective stress principle",
+        "parent_thesis": "Terzaghi's Effective Stress Principle: The total stress on a soil mass is the sum of effective stress (carried by soil particles) and pore water pressure",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "bbda59fd6ea944eb9eeb3bd00d5d5194c3f791fa19d3147f2b8db7efddb7a8de"
+    },
+    {
+        "branch": "civil_engineering",
+        "domain_partition": "engineering_partition",
+        "thesis_statement": "Structural Statics Axiom: For a structure to be in equilibrium, the sum of all forces and the sum of all moments acting on it must be zero",
+        "parent_thesis": "Newton's First Law of Motion (Inertia): An object remains at rest or in uniform motion unless acted upon by a net external force",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "2d3ba71e9758d62517323a3f463c778a2522de920e9e53e26ef23fc89649b786"
+    },
+    {
+        "branch": "civil_engineering",
+        "domain_partition": "engineering_partition",
+        "thesis_statement": "Terzaghi's Effective Stress Principle: The total stress on a soil mass is the sum of effective stress (carried by soil particles) and pore water pressure",
+        "parent_thesis": "Structural Statics Axiom: For a structure to be in equilibrium, the sum of all forces and the sum of all moments acting on it must be zero",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Formulated by Karl Terzaghi, defining soil consolidation and strength based on stress carried by soil skeleton versus fluids."
+    },
+    {
+        "branch": "civil_engineering",
+        "domain_partition": "engineering_partition",
+        "thesis_statement": "Euler-Bernoulli Beam Bending Axiom: The bending moment at any cross section of a beam is proportional to the curvature of the beam at that section",
+        "parent_thesis": "Structural Statics Axiom: For a structure to be in equilibrium, the sum of all forces and the sum of all moments acting on it must be zero",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "The fundamental model for structural member deflection under lateral loads, establishing linear strain variation across sections."
+    }
+]

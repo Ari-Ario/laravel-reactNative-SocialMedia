@@ -1,0 +1,83 @@
+[
+    {
+        "branch": "differential_equations",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Laplace transform",
+        "parent_thesis": "Fundamental Theorem of Calculus Part 2 (\u222b_a^b f(x)dx = F(b) - F(a))",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "0d769cbc99c4b7256e7955dd6269be3495fd5c89f3fc63b638f7dcea6d29e098"
+    },
+    {
+        "branch": "differential_equations",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Fourier series",
+        "parent_thesis": "Definition of a Vector Space over a Field: An Abelian group of vectors with compatible scalar multiplication from a Field",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "0ef4ff13f267a870072759030b779ccf5496eb0d9a887a88411fb070669c2a00"
+    },
+    {
+        "branch": "differential_equations",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Heat equation diffusion",
+        "parent_thesis": "Definition of Derivative: f'(x) = lim(h\u21920) [f(x+h) - f(x)] / h",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "db572a8b26967bfd8281e9171769c4349eccbf6578b62a5a32be9bff81495b75"
+    },
+    {
+        "branch": "differential_equations",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Navier-Stokes existence",
+        "parent_thesis": "Heat equation diffusion",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "92175363002af762b341b2f2c764266b5f32059bcf9d7cc4ea49f804a01d9d7d"
+    },
+    {
+        "branch": "differential_equations",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Picard-Lindelof Existence and Uniqueness Theorem",
+        "parent_thesis": "Banach Fixed-Point Theorem (Contraction Mapping Principle)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "a24275cf18a6a81efdc799db4efa2f003f241ac19faebfd003c77eed0c7a90d8"
+    },
+    {
+        "branch": "differential_equations",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Cauchy-Kowalevski Theorem",
+        "parent_thesis": "Picard-Lindelof Existence and Uniqueness Theorem",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "9d6b3bf74f691b7cc409ea23c5018f6be217fcb8587d7750a616f15d59bbfede"
+    },
+    {
+        "branch": "differential_equations",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Sturm-Liouville Theorem",
+        "parent_thesis": "Eigenvalues and eigenvectors",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "4eeeee4535213b3f06e16d6801ad1c85a7249d25764c262de098664c0b1d930b"
+    },
+    {
+        "branch": "differential_equations",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Green's Function solving ODEs",
+        "parent_thesis": "Fundamental Theorem of Calculus Part 2 (\u222b_a^b f(x)dx = F(b) - F(a))",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "ecd6fec62325d0459de9a7bb94791765b30999926b4791f02c0515770071c5e9"
+    },
+    {
+        "branch": "differential_equations",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Fourier Transform inversion",
+        "parent_thesis": "Fourier series",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "83fe82dbd2f02ae0d716d749004d6c217f0e93cb0549bd12356e9c80d628a04d"
+    }
+]

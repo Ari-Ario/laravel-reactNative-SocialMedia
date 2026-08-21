@@ -1,0 +1,56 @@
+[
+    {
+        "branch": "cell_biology",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Cell theory (all life is cells)",
+        "parent_thesis": "Michaelis-Menten Kinetics: Describes the rate of enzymatic reactions by relating reaction rate v to substrate concentration [S]",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "5690f2db061801364ae240ed2ea3c35ad974527eb52a0bda1ed840c6c4e61d6f"
+    },
+    {
+        "branch": "cell_biology",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Osmosis and diffusion",
+        "parent_thesis": "Michaelis-Menten Kinetics: Describes the rate of enzymatic reactions by relating reaction rate v to substrate concentration [S]",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "3020304587f4097963ca5be2e6e8cb44096c05a0b8634a80ce173ef903ce674b"
+    },
+    {
+        "branch": "cell_biology",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Mitosis cell division",
+        "parent_thesis": "Michaelis-Menten Kinetics: Describes the rate of enzymatic reactions by relating reaction rate v to substrate concentration [S]",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "748abb89d94093d6f18d0367e95219ea79c4e5e60e92f3b4c37109a22cfc6dca"
+    },
+    {
+        "branch": "cell_biology",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Apoptosis programmed cell death",
+        "parent_thesis": "Michaelis-Menten Kinetics: Describes the rate of enzymatic reactions by relating reaction rate v to substrate concentration [S]",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "8a546c1e1eca0967544b987555b83e83f647341f4a64a8163b984472cca377ec"
+    },
+    {
+        "branch": "cell_biology",
+        "domain_partition": "biology_partition",
+        "thesis_statement": "Cell Theory: All living organisms are composed of one or more cells, and the cell is the basic unit of structure and organization",
+        "parent_thesis": "Central Dogma of Molecular Biology: DNA transcribes to RNA, which translates to Protein",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "f49690b8ccd5371547f2085615da8bf8688420d0bfdcf41589d9b1ee9bb81a9b"
+    },
+    {
+        "branch": "cell_biology",
+        "domain_partition": "biology_partition",
+        "thesis_statement": "Cellular Respiration Axiom: Cells extract energy from organic molecules via metabolic pathways (e.g., Glycolysis, Krebs cycle) to produce ATP",
+        "parent_thesis": "Hess's Law: The total enthalpy change during the complete course of a chemical reaction is the same whether the reaction is made in one step or in several steps",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "850b19dc21fc2216d539019b6a7df0633577025cf2100c46c16aaa6e9c8e1317"
+    }
+]

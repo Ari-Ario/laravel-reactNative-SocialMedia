@@ -1,0 +1,200 @@
+[
+    {
+        "branch": "mathematical_logic",
+        "domain_partition": "math_partition",
+        "thesis_statement": "Lowenheim-Skolem Theorem",
+        "parent_thesis": "First-order logic validities",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "64ec3aa19a1453f46c560b28779b45db06a0e27f60320e0e547972212823848c"
+    },
+    {
+        "branch": "mathematical_logic",
+        "domain_partition": "math_partition",
+        "thesis_statement": "Compactness Theorem",
+        "parent_thesis": "First-order logic validities",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "1facfd5e5adc791bdd236ddd67157a5648670d95efaf77db20cae4ed3d8ecc09"
+    },
+    {
+        "branch": "mathematical_logic",
+        "domain_partition": "math_partition",
+        "thesis_statement": "Halting Problem (Turing Undecidability)",
+        "parent_thesis": "G\u00f6del First Incompleteness Theorem \u2014 consistent PA contains unprovable truths",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "87e1102c65aa6bdf9aa84b213c89b4bbe5b9b69c3d035903db396ea541fb51e8"
+    },
+    {
+        "branch": "mathematical_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "G\u00f6del First Incompleteness Theorem",
+        "parent_thesis": "Peano Axiom \u2014 Mathematical Induction Schema",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "efdff689e5cc71dfa898f9ccd63d8c77aefa8adec837f45fa6c43c7d0fa473f9"
+    },
+    {
+        "branch": "mathematical_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "G\u00f6del Second Incompleteness Theorem",
+        "parent_thesis": "G\u00f6del First Incompleteness Theorem \u2014 consistent PA contains unprovable truths",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "d51ba101acae8f0900558f428a7d82ace0deb4b2884c3c14db84e950cc27d570"
+    },
+    {
+        "branch": "mathematical_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Axiom of Choice (ZFC)",
+        "parent_thesis": "1: Being (True)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "2b2553f7480d35291bce725468a4ebb1daf7246123611fa075fd102417f9afd2"
+    },
+    {
+        "branch": "mathematical_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Tarski Undefinability Theorem",
+        "parent_thesis": "G\u00f6del First Incompleteness Theorem \u2014 consistent PA contains unprovable truths",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "c7216608c02a09ddcc4b96831888abfaf18bd68768129b3bc8212721dd1092ce"
+    },
+    {
+        "branch": "mathematical_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Church-Turing Thesis",
+        "parent_thesis": "Halting Problem (Turing Undecidability)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "02b8185d2dd3be27bcb871deb7e3c1eb7bb8948536e5333b59fe6be8ebdd0b77"
+    },
+    {
+        "branch": "mathematical_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Peano Axiom \u2014 Zero is a natural number",
+        "parent_thesis": "1: Being (True)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "1493f502fdcee3a043acea8c2c4420865a3d48755eb8330441fb2e5de77f6f90"
+    },
+    {
+        "branch": "mathematical_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Peano Axiom \u2014 S(n) is natural for every natural n",
+        "parent_thesis": "Peano Axiom \u2014 Zero is a natural number",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "0d4267a791cc52cd9caf00b386bb7140486f41c08aa458bd3a9d16cd16f0eda3"
+    },
+    {
+        "branch": "mathematical_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Peano Axiom \u2014 S(n)=0 is false for all n",
+        "parent_thesis": "Peano Axiom \u2014 Zero is a natural number",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "f3f4b6fdadf31c94baff11fac48661b45045564d1333726f581056b72d21875d"
+    },
+    {
+        "branch": "mathematical_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Peano Axiom \u2014 S(m)=S(n) implies m=n (injectivity)",
+        "parent_thesis": "Peano Axiom \u2014 Zero is a natural number",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "51840c8c0466441599ce447ec49bb7f0253a2a439c22958d3f0014c4ba695334"
+    },
+    {
+        "branch": "mathematical_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Peano Axiom \u2014 Mathematical Induction Schema",
+        "parent_thesis": "Peano Axiom \u2014 S(n) is natural for every natural n",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "05ada4255e93e01ae27b471151276876f924b0b496453d0482d204d69b0720c5"
+    },
+    {
+        "branch": "mathematical_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Robinson Arithmetic Q \u2014 Peano without induction schema",
+        "parent_thesis": "Peano Axiom \u2014 Mathematical Induction Schema",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "7c5bf88b070ffd38f89116ff10dcfd3aa6fcc61899a9c8828cda09474dce319c"
+    },
+    {
+        "branch": "mathematical_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Primitive Recursion \u2014 base case + recursive step defines all recursive functions",
+        "parent_thesis": "Peano Axiom \u2014 Mathematical Induction Schema",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "7b33bddcdf19ecd931e81512753433b9ecbf3fcbc0409874196dcb38a58be0c5"
+    },
+    {
+        "branch": "mathematical_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "\u03bc-Recursion \u2014 minimisation extends primitive recursion to partial functions",
+        "parent_thesis": "Primitive Recursion \u2014 base case + recursive step defines all recursive functions",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "0fb7554d1ec26721e053e41410222b1c9e9e278d9269d1da871e6c46473c5aa1"
+    },
+    {
+        "branch": "mathematical_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Kleene Normal Form Theorem",
+        "parent_thesis": "\u03bc-Recursion \u2014 minimisation extends primitive recursion to partial functions",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "e9f8ddae370a0c685534cd9c768f570f74dff908a989e6a07505f442c8a1859f"
+    },
+    {
+        "branch": "mathematical_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Rice Theorem \u2014 every non-trivial property of programs is undecidable",
+        "parent_thesis": "Halting Problem (Turing Undecidability)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "83c0b15d366d9e1665a1274b70d3d4922d9143235111b4c5a91a508cf9ac72c7"
+    },
+    {
+        "branch": "mathematical_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Post Correspondence Problem \u2014 undecidability",
+        "parent_thesis": "Halting Problem (Turing Undecidability)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "bb22e76f3097596ab786d2721a139d10767e5594a89880994d8e6bb40f42256c"
+    },
+    {
+        "branch": "mathematical_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Arithmetical Hierarchy \u2014 \u03a3\u2099 and \u03a0\u2099 complexity classes",
+        "parent_thesis": "Halting Problem (Turing Undecidability)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "3d109ef6167307f332e2eadc23835bb3d033fd6044bc5c9222604a4c9bec7121"
+    },
+    {
+        "branch": "mathematical_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Craig's Interpolation Theorem",
+        "parent_thesis": "G\u00f6del completeness",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "If \u03c6 \u2192 \u03c8 is valid, there exists an interpolant \u03b8 using only symbols common to \u03c6 and \u03c8 such that \u03c6 \u2192 \u03b8 and \u03b8 \u2192 \u03c8 are valid.",
+        "ast_signature": "cfba9eb1ed8256c2459b628fe29b5db4156bbe0924d6bb25943aed2d127a9b3e"
+    },
+    {
+        "branch": "mathematical_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Cook-Levin Theorem (NP-completeness of SAT)",
+        "parent_thesis": "Halting Problem (Turing Undecidability)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Proves that the boolean satisfiability problem (SAT) is NP-complete, laying the foundation of computational complexity theory.",
+        "ast_signature": "2d2d396a30c9fc94d3e9ba4b2a0b3421558c6fb0520bd47e0b3e026675a24d6f"
+    }
+]

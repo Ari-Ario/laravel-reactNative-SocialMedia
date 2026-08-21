@@ -1,0 +1,117 @@
+[
+    {
+        "thesis_statement": "Nitrogen Fixation Cycle - Atmospheric nitrogen must be biologically converted to reactive ammonia by specialized microbes to support plant life",
+        "parent_thesis": "1: Being (True)",
+        "branch": "biology",
+        "domain_partition": "agriculture",
+        "context_description": "The biochemical pathway through which nitrogenase enzymes in diazotrophs reduce gaseous N2 to bio-available ammonia NH3."
+    },
+    {
+        "thesis_statement": "Soil Cation Exchange Capacity (CEC) - The quantity of exchangeable positive ions a soil can hold dictates its nutrient retention and plant fertility",
+        "parent_thesis": "1: Being (True)",
+        "branch": "biology",
+        "domain_partition": "agriculture",
+        "context_description": "A vital soil chemistry metric representing the availability of positive mineral ions (like calcium, magnesium, and potassium) to plant roots."
+    },
+    {
+        "thesis_statement": "Crop Rotation Soil Replenishment - Alternating crop species prevents specific nutrient depletion and disrupts soil-borne pest cycles",
+        "parent_thesis": "Darwinian Natural Selection: Organisms better adapted to their environment tend to survive and produce more offspring",
+        "branch": "biology",
+        "domain_partition": "agriculture",
+        "context_description": "An agronomic practice leveraging biological niche diversity to naturally sustain soil fertility and break pest survival cycles."
+    },
+    {
+        "thesis_statement": "Permaculture Ecological Design - Agricultural systems designed to mimic natural ecosystem patterns achieve high yield and self-regulation",
+        "parent_thesis": "Darwinian Natural Selection: Organisms better adapted to their environment tend to survive and produce more offspring",
+        "branch": "biology",
+        "domain_partition": "agriculture",
+        "context_description": "An ecological design philosophy integrating agricultural production with natural ecological succession and symbiotic relationships."
+    },
+    {
+        "thesis_statement": "Photosynthetic Energy Efficiency - Plant growth is fundamentally limited by the thermodynamic conversion efficiency of solar radiation into glucose",
+        "parent_thesis": "First law of thermodynamics energy conservation",
+        "branch": "biology",
+        "domain_partition": "agriculture",
+        "context_description": "The absolute physical constraints on plant yield, governed by the efficiency of chlorophyll light absorption and Rubisco carbon fixation."
+    },
+    {
+        "thesis_statement": "The Fundamental Theorem of Agricultural Science, Soil Chemistry  Permaculture - Core theoretical limits govern the applied behaviors within the domain.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Axiom of Structural Integrity in Agricultural Science, Soil Chemistry  Permaculture - The integrity of the system is proportional to its internal coherence.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Principle of Emergence in Agricultural Science, Soil Chemistry  Permaculture - Higher-order complexities naturally arise from basic interactions.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Postulate of Relational Dynamics in Agricultural Science, Soil Chemistry  Permaculture - No entity within the domain exists in isolation; all are defined by relationships.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Conservation Law of Agricultural Science, Soil Chemistry  Permaculture - Core informational or physical properties are conserved through transformations.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Paradox of Limitation in Agricultural Science, Soil Chemistry  Permaculture - Advancements in the field reveal new fundamental boundaries of measurement.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Dialectical Synthesis of Agricultural Science, Soil Chemistry  Permaculture - Opposing theoretical frameworks ultimately resolve into a higher unified truth.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Law of Diminishing Utility in Agricultural Science, Soil Chemistry  Permaculture - Progressive refinements yield exponentially smaller gains in systemic accuracy.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Principle of Asymmetry in Agricultural Science, Soil Chemistry  Permaculture - Informational and structural forces exert non-uniform influence across the domain.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Theorem of Epistemic Closure in Agricultural Science, Soil Chemistry  Permaculture - The field approaches a state of absolute formal definition bounded by logic.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Foundational Postulate of Agricultural Science, Soil Chemistry  Permaculture - All observations within the domain must trace back to fundamental constants.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Law of Entropy in Agricultural Science, Soil Chemistry  Permaculture - The system naturally trends toward disorganization unless energy is applied.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Principle of Isomorphism in Agricultural Science, Soil Chemistry  Permaculture - Structures within the domain mirror the mathematical structures of logic.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Hypothesis of Universality in Agricultural Science, Soil Chemistry  Permaculture - The core principles of the field apply uniformly across all observed contexts.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Postulate of Continuity in Agricultural Science, Soil Chemistry  Permaculture - Changes within the system occur continuously rather than through discrete unlinked jumps.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Axiom of Non-Contradiction in Agricultural Science, Soil Chemistry  Permaculture - No two fundamental principles within the field can mutually invalidate each other.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Theorem of Systemic Interdependence in Agricultural Science, Soil Chemistry  Permaculture - A perturbation in one sub-field inherently affects the entire discipline.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Principle of Recursive Feedback in Agricultural Science, Soil Chemistry  Permaculture - Outputs of the system continually serve as inputs, driving self-regulation.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Law of Critical Thresholds in Agricultural Science, Soil Chemistry  Permaculture - Phase transitions occur when cumulative changes reach a breaking point.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Ultimate Epistemic Limit of Agricultural Science, Soil Chemistry  Permaculture - Human comprehension of the domain is bounded by the cognitive architecture of the observer.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    }
+]

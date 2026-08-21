@@ -1,0 +1,62 @@
+[
+    {
+        "branch": "botany",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Photosynthesis Calvin cycle",
+        "parent_thesis": "Michaelis-Menten Kinetics: Describes the rate of enzymatic reactions by relating reaction rate v to substrate concentration [S]",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "3472b20a2b70225bb58eeb8aefe7413457f1c6db3795b9be67c80e7350653751"
+    },
+    {
+        "branch": "botany",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Transpiration cohesion-tension theory",
+        "parent_thesis": "Michaelis-Menten Kinetics: Describes the rate of enzymatic reactions by relating reaction rate v to substrate concentration [S]",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "f522e468c92ed640be91ffad4f65ff48dc3e9109b38e641562df5fba0a27e7a9"
+    },
+    {
+        "branch": "botany",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Phototropism auxin distribution",
+        "parent_thesis": "Michaelis-Menten Kinetics: Describes the rate of enzymatic reactions by relating reaction rate v to substrate concentration [S]",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "71764303a7cd649278e5d0d9a1c4f46df9aa0e38d8b0f0a6e3f420c2881d6e8c"
+    },
+    {
+        "branch": "botany",
+        "domain_partition": "biology_partition",
+        "thesis_statement": "Photosynthesis Axiom: Plants convert light energy into chemical energy to synthesize organic compounds",
+        "parent_thesis": "Cell Theory: All living organisms are composed of one or more cells, and the cell is the basic unit of structure and organization",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "75ae9585a19b273d1e9ebcb35adf9af959ac07ad8414ea04752ad8ade7e7b781"
+    },
+    {
+        "branch": "botany",
+        "domain_partition": "biology_partition",
+        "thesis_statement": "Transpiration Cohesion-Tension Theory: Movement of water from roots to leaves in plants is driven by transpiration creating tension pulled up via cohesive forces between water molecules",
+        "parent_thesis": "Photosynthesis Axiom: Plants convert light energy into chemical energy to synthesize organic compounds",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Formulated by Dixon and Joly, explaining hydraulic lift of sap through vascular xylem under thermodynamic tension without active energy expenditure."
+    },
+    {
+        "branch": "botany",
+        "domain_partition": "biology_partition",
+        "thesis_statement": "Phototropism (Auxin Distribution): Plant stems grow towards light because light causes the growth hormone auxin to accumulate on the shaded side, stimulating cell elongation",
+        "parent_thesis": "Photosynthesis Axiom: Plants convert light energy into chemical energy to synthesize organic compounds",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Developed from Darwin's early studies and formalized by Cholodny and Went, showing directional auxin migration to optimize light absorption."
+    },
+    {
+        "branch": "botany",
+        "domain_partition": "biology_partition",
+        "thesis_statement": "Alternation of Generations: The life cycle of plants alternates between a multicellular haploid gametophyte stage and a multicellular diploid sporophyte stage",
+        "parent_thesis": "Mendelian Inheritance (Law of Segregation): Allele pairs separate during gamete formation and randomly unite at fertilization",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "First noted by Hofmeister, tracking morphological alternation of haploid (n) gamete-producing and diploid (2n) spore-producing stages in land plants."
+    }
+]

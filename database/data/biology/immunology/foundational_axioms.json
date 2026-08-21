@@ -1,0 +1,38 @@
+[
+    {
+        "branch": "immunology",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Clonal selection theory",
+        "parent_thesis": "Michaelis-Menten Kinetics: Describes the rate of enzymatic reactions by relating reaction rate v to substrate concentration [S]",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "626f7b71659e8060524fc215803301f0b7badc99ef1537e10734fedcde6ebc83"
+    },
+    {
+        "branch": "immunology",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Major histocompatibility complex restriction",
+        "parent_thesis": "Michaelis-Menten Kinetics: Describes the rate of enzymatic reactions by relating reaction rate v to substrate concentration [S]",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "40794603754b359fea836a3d267048fe2cbb86e5ea4c57371c69e362b400f73b"
+    },
+    {
+        "branch": "immunology",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Innate vs adaptive immunity",
+        "parent_thesis": "Michaelis-Menten Kinetics: Describes the rate of enzymatic reactions by relating reaction rate v to substrate concentration [S]",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "3393c070782e95a85f82bac89aad6d17a34ddcda5b5d5772cc34e47b33747d34"
+    },
+    {
+        "branch": "immunology",
+        "domain_partition": "biology_partition",
+        "thesis_statement": "Antigen-Antibody Recognition Axiom: The immune system identifies and neutralizes foreign objects via specific molecular recognition",
+        "parent_thesis": "Germ Theory of Disease: Many diseases are caused by the presence and actions of specific microorganisms within the body",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "d3e61176cd18a593fda7861ef81b3c7b5fe8d9eecdafe66ec3dba8a0b8087531"
+    }
+]

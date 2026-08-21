@@ -1,0 +1,94 @@
+[
+    {
+        "branch": "geology",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Plate tectonics continental drift",
+        "parent_thesis": "Newton first law of motion",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "207bba3582377b9291615265339cbfd6e8a00632d2284d569121436c872d0cbc"
+    },
+    {
+        "branch": "geology",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Law of superposition (stratigraphy)",
+        "parent_thesis": "Newton first law of motion",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "244eff5c177381f4615c05bc52001d3cdccb83f0198ad7c58dc1a1393352ec0e"
+    },
+    {
+        "branch": "geology",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Uniformitarianism",
+        "parent_thesis": "Newton first law of motion",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "9420e7f76703424d36223fd2bcb7cde8ca524ffa5e004f050ba894f827702450"
+    },
+    {
+        "branch": "geology",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Rock cycle",
+        "parent_thesis": "Newton first law of motion",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "cc31f684c493dd984dfa08aaccc417043a1cdc81df03cde29bd30a17d0ff7e80"
+    },
+    {
+        "branch": "geology",
+        "domain_partition": "biology_partition",
+        "thesis_statement": "Plate Tectonics Axiom: The Earth's lithosphere is divided into plates that move over the asthenosphere",
+        "parent_thesis": "Newton's First Law of Motion (Inertia): An object remains at rest or in uniform motion unless acted upon by a net external force",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine."
+    },
+    {
+        "branch": "geology",
+        "domain_partition": "biology_partition",
+        "thesis_statement": "Law of Superposition: In an undeformed sequence of sedimentary rocks, each layer is older than the one above it and younger than the one below it",
+        "parent_thesis": "Newton's Law of Universal Gravitation: F = G*(m1*m2)/r^2",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Formulated by Nicolas Steno, establishing that gravity deposits sediments horizontally in chronological order, with oldest at the bottom."
+    },
+    {
+        "branch": "geology",
+        "domain_partition": "biology_partition",
+        "thesis_statement": "Uniformitarianism Axiom: The geological processes operating today to shape the Earth's surface have operated in the past with the same intensity ('the present is the key to the past')",
+        "parent_thesis": "Plate Tectonics Axiom: The Earth's lithosphere is divided into plates that move over the asthenosphere",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Established by James Hutton and Charles Lyell, arguing that geological changes occur through slow, continuous processes observed today."
+    },
+    {
+        "branch": "geology",
+        "domain_partition": "biology_partition",
+        "thesis_statement": "Rock Cycle Axiom: Rocks are continuously transformed between igneous, sedimentary, and metamorphic states through geological processes",
+        "parent_thesis": "Plate Tectonics Axiom: The Earth's lithosphere is divided into plates that move over the asthenosphere",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Describes the transition of rock materials driven by internal tectonic heat, subduction, surface weathering, erosion, and deposition."
+    },
+    {
+        "branch": "geology",
+        "domain_partition": "biology_partition",
+        "thesis_statement": "Principle of Original Horizontality: Layers of sediment are originally deposited horizontally under the influence of gravity",
+        "parent_thesis": "Newton's Law of Universal Gravitation: F = G*(m1*m2)/r^2",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Proposed by Nicolas Steno, stating that non-horizontal sedimentary layers have been tilted or deformed by external tectonic forces after deposition."
+    },
+    {
+        "branch": "geology",
+        "domain_partition": "biology_partition",
+        "thesis_statement": "Principle of Lateral Continuity: Layers of sediment initially extend laterally in all directions until they thin out or are obstructed by a physical barrier",
+        "parent_thesis": "Newton's Law of Universal Gravitation: F = G*(m1*m2)/r^2",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Steno's law stating that similar sedimentary strata separated by valleys or erosion were originally laterally continuous."
+    },
+    {
+        "branch": "geology",
+        "domain_partition": "biology_partition",
+        "thesis_statement": "Bowen's Reaction Series: Minerals crystallize from cooling silicate magma in a systematic sequence determined by their melting points and chemical composition",
+        "parent_thesis": "Gibbs Free Energy: \u0394G = \u0394H - T\u0394S (Criterion for spontaneity)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Formulated by Norman Bowen, showing the chemical crystallization order of silicate minerals (continuous and discontinuous series) under cooling conditions."
+    }
+]

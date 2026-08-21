@@ -11,15 +11,27 @@ import {
   ActivityIndicator,
   Dimensions,
   Platform,
+  Share,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useAudioRecorder, requestRecordingPermissionsAsync, setAudioModeAsync, RecordingPresets } from 'expo-audio';
+import { useAudioRecording } from '@/hooks/useAudioRecording';
+import { setAudioModeAsync, requestRecordingPermissionsAsync } from 'expo-audio';
 import * as Haptics from 'expo-haptics';
+import { safeHaptics } from '@/utils/haptics';
+import * as Clipboard from 'expo-clipboard';
 import CollaborationService from '@/services/ChatScreen/CollaborationService';
 import { useTranslation } from '@/constants/i18n';
 import { useAppTheme } from '@/hooks/useAppTheme';
+import axios from '@/services/axios';
+import getApiBase from '@/services/getApiBase';
+import { useCreativeGeneratorStore, Idea } from '@/stores/creativeGeneratorStore';
+import { createShadow } from '@/utils/styles';
+import { useToastStore } from '@/stores/toastStore';
+import { useModal } from '@/context/ModalContext';
+import GenericMenu, { MenuItem } from '../GenericMenu';
+import { calculateAnchorPositionFromEvent, AnchorPosition } from '@/utils/layout';
 
 const { width } = Dimensions.get('window');
 
@@ -34,22 +46,13 @@ interface CreativeGeneratorProps {
   onClose: () => void;
 }
 
-interface Idea {
-  id: string;
-  content: string;
-  type: string;
-  mood?: 'positive' | 'neutral' | 'creative' | 'analytical';
-  timestamp: string;
-  contributors?: string[];
-  metadata?: any;
-}
-
 interface CreativeMode {
   id: string;
   name: string;
   icon: string;
   description: string;
   color: string;
+  promptPrefix: string;
 }
 
 const CreativeGenerator: React.FC<CreativeGeneratorProps> = ({
@@ -63,44 +66,67 @@ const CreativeGenerator: React.FC<CreativeGeneratorProps> = ({
   const styles = getStyles(colors, activeScheme, isRTL);
 
   const creativeModes: CreativeMode[] = [
-    { id: 'brainstorm', name: t('brainstorm'), icon: 'flash', description: t('brainstorm_desc'), color: '#4ECDC4' },
-    { id: 'story-continue', name: t('story_continue'), icon: 'book', description: t('story_continue_desc'), color: '#F38181' },
-    { id: 'problem-solve', name: t('solve'), icon: 'bulb', description: t('solve_desc'), color: '#FFD166' },
-    { id: 'design-thinking', name: t('design'), icon: 'pencil', description: t('design_desc'), color: '#06D6A0' },
-    { id: 'debate', name: t('debate'), icon: 'chatbubbles', description: t('debate_desc'), color: '#118AB2' },
-    { id: 'roleplay', name: t('roleplay'), icon: 'person', description: t('roleplay_desc'), color: '#EF476F' },
+    { id: 'brainstorm', name: t('brainstorm'), icon: 'flash', description: t('brainstorm_desc'), color: '#4ECDC4', promptPrefix: "Generate a disruptive brainstorm" },
+    { id: 'story-continue', name: t('story_continue'), icon: 'book', description: t('story_continue_desc'), color: '#F38181', promptPrefix: "Continue this narrative logic" },
+    { id: 'problem-solve', name: t('solve'), icon: 'bulb', description: t('solve_desc'), color: '#FFD166', promptPrefix: "Solve this mathematical/logical challenge" },
+    { id: 'design-thinking', name: t('design'), icon: 'pencil', description: t('design_desc'), color: '#06D6A0', promptPrefix: "Apply human-centric design thinking" },
+    { id: 'debate', name: t('debate'), icon: 'chatbubbles', description: t('debate_desc'), color: '#118AB2', promptPrefix: "Create a logical counter-argument" },
+    { id: 'roleplay', name: t('roleplay'), icon: 'person', description: t('roleplay_desc'), color: '#EF476F', promptPrefix: "Simulate this persona's logical perspective" },
   ];
 
-  const [activeMode, setActiveMode] = useState<CreativeMode>(creativeModes[0]);
-  const [generatedContent, setGeneratedContent] = useState<Idea[]>([]);
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [isRecording, setIsRecording] = useState(false);
-  const [recording, setRecording] = useState<any | null>(null);
-  const [voiceInput, setVoiceInput] = useState('');
-  const [recordingTime, setRecordingTime] = useState(0);
+  const {
+    generatedIdeas,
+    activeModeId,
+    isGenerating,
+    logicMetrics,
+    setMode,
+    setGenerating,
+    addIdea,
+    clearIdeas,
+    removeIdea,
+    toggleSaveIdea,
+    setLogicMetrics,
+    submitFeedback
+  } = useCreativeGeneratorStore();
 
-  const collaborationService = CollaborationService.getInstance();
+  const [voiceInput, setVoiceInput] = useState('');
+
+  const activeMode = creativeModes.find(m => m.id === activeModeId) || creativeModes[0];
+
+  const {
+    isRecording,
+    startRecording,
+    stopRecording,
+    recordingDuration,
+  } = useAudioRecording({
+    onRecordingComplete: (uri, duration) => {
+      generateIdeasFromVoice(uri, duration);
+    }
+  });
+
+  const recordingTime = Math.floor(recordingDuration / 1000);
+
   const scrollViewRef = useRef<ScrollView>(null);
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
-  const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Web-safe state for action menus
+  const [showHelpModal, setShowHelpModal] = useState(false);
+  const { openModal } = useModal();
+
+  const [useMenuVisible, setUseMenuVisible] = useState(false);
+  const [useMenuPosition, setUseMenuPosition] = useState<AnchorPosition | undefined>(undefined);
+  const [currentIdea, setCurrentIdea] = useState<Idea | null>(null);
 
   // Animation refs for each idea card
   const ideaAnimations = useRef<Map<string, Animated.Value>>(new Map());
 
-  // Initialize animations
   useEffect(() => {
     Animated.timing(fadeAnim, {
       toValue: 1,
       duration: 500,
       useNativeDriver: true,
     }).start();
-
-    return () => {
-      if (recordingTimerRef.current) {
-        clearInterval(recordingTimerRef.current);
-      }
-    };
   }, []);
 
   // Animation for recording
@@ -109,7 +135,7 @@ const CreativeGenerator: React.FC<CreativeGeneratorProps> = ({
       Animated.loop(
         Animated.sequence([
           Animated.timing(pulseAnim, {
-            toValue: 1.2,
+            toValue: 1.05,
             duration: 800,
             useNativeDriver: true,
           }),
@@ -127,43 +153,19 @@ const CreativeGenerator: React.FC<CreativeGeneratorProps> = ({
 
   const startVoiceIdeation = async () => {
     try {
-      const { granted } = await requestRecordingPermissionsAsync();
-      if (!granted) {
-        Alert.alert(t('permission_required'), t('mic_permission_required'));
+      const { status } = await requestRecordingPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert(t('permission_denied'), t('need_mic_permission'));
         return;
       }
 
       await setAudioModeAsync({
-        allowsRecording: true,
-        playsInSilentMode: true,
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
       });
 
-      const { AudioRecorder } = await import('expo-audio');
-      const newRecording = new AudioRecorder(RecordingPresets.HIGH_QUALITY);
-      await newRecording.record();
-
-      setRecording(newRecording);
-      setIsRecording(true);
-      setRecordingTime(0);
-
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-
-      // Start timer
-      recordingTimerRef.current = setInterval(() => {
-        setRecordingTime(prev => {
-          if (prev >= 10) {
-            stopVoiceIdeation();
-            return 10;
-          }
-          return prev + 1;
-        });
-      }, 1000);
-
-      // Auto-stop after 10 seconds
-      setTimeout(() => {
-        stopVoiceIdeation();
-      }, 10000);
-
+      await startRecording();
+      safeHaptics.impact(Haptics.ImpactFeedbackStyle.Medium);
     } catch (error) {
       console.error('Failed to start recording:', error);
       Alert.alert(t('error'), t('failed_start_recording'));
@@ -171,179 +173,141 @@ const CreativeGenerator: React.FC<CreativeGeneratorProps> = ({
   };
 
   const stopVoiceIdeation = async () => {
-    if (!recording) return;
-
     try {
-      if (recordingTimerRef.current) {
-        clearInterval(recordingTimerRef.current);
-        recordingTimerRef.current = null;
-      }
-
-      await recording.stop();
-      const uri = recording.uri;
-      setIsRecording(false);
-      setRecording(null);
-
-      if (uri) {
-        await generateIdeasFromVoice(uri);
-      }
-
+      await stopRecording();
+      safeHaptics.success();
     } catch (error) {
       console.error('Failed to stop recording:', error);
-      Alert.alert(t('error'), t('failed_process_recording'));
     }
   };
 
-  const generateIdeasFromVoice = async (audioUri: string) => {
-    setIsGenerating(true);
+  const getEnrichedContext = () => {
+    let spaceData = "";
+    if (context.type === 'chat' && context.chats && context.chats.length > 0) {
+      // Get last 5 messages for induction
+      const recentMsgs = context.chats.slice(0, 5).map(m => `${m.user?.name || 'User'}: ${m.content}`).join('\n');
+      spaceData = `Recent Chat Context:\n${recentMsgs}`;
+    } else if (context.spaces && context.spaces.length > 0) {
+      const activeSpace = context.spaces.find(s => s.id === spaceId);
+      if (activeSpace) {
+        spaceData = `Space Description: ${activeSpace.description || activeSpace.title}`;
+      }
+    }
+    return spaceData;
+  };
+
+  const generateIdeasFromVoice = async (audioUri: string, duration?: number) => {
+    setGenerating(true);
 
     try {
-      // Mock implementation - replace with actual AI service
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      const enrichedContext = getEnrichedContext();
+      const formData = new FormData();
+      formData.append('audio', {
+        uri: Platform.OS === 'ios' ? audioUri.replace('file://', '') : audioUri,
+        type: 'audio/m4a',
+        name: 'voice_induction.m4a',
+      } as any);
+      formData.append('mode', activeModeId);
+      formData.append('context_data', enrichedContext);
 
-      const mockIdeas: Idea[] = [
-        {
-          id: `voice_${Date.now()}`,
-          content: "What if we created a visual mind map to organize all our conversation topics?",
-          type: 'voice-idea',
-          mood: 'creative' as const,
-          timestamp: new Date().toISOString(),
-          metadata: { source: 'voice', duration: `${recordingTime}s` }
-        },
-        {
-          id: `voice_${Date.now() + 1}`,
-          content: "We could schedule weekly brainstorming sessions every Friday at 3 PM",
-          type: 'voice-idea',
-          mood: 'positive' as const,
-          timestamp: new Date().toISOString(),
-          metadata: { source: 'voice', duration: `${recordingTime}s` }
-        }
-      ];
-
-      // Initialize animation for each new idea
-      mockIdeas.forEach(idea => {
-        ideaAnimations.current.set(idea.id, new Animated.Value(0));
+      const API_BASE = getApiBase();
+      const response = await axios.post(`${API_BASE}/ai/query-audio`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
       });
 
-      setGeneratedContent(prev => [...mockIdeas, ...prev]);
+      const pureIdea: Idea = {
+        id: `voice_${Date.now()}`,
+        content: response.data.response || "Audio transcribed and mathematically analyzed.",
+        type: 'voice-idea',
+        mood: response.data.confidence > 0.5 ? 'analytical' : 'creative',
+        timestamp: new Date().toISOString(),
+        metadata: {
+          source: 'voice',
+          duration: `${duration ? Math.round(duration) : recordingTime}s`,
+          confidence: response.data.confidence || 0.45
+        }
+      };
 
-      // Animate new ideas in
-      setTimeout(() => {
-        mockIdeas.forEach(idea => {
-          const anim = ideaAnimations.current.get(idea.id);
-          if (anim) {
-            Animated.spring(anim, {
-              toValue: 1,
-              tension: 50,
-              friction: 7,
-              useNativeDriver: true,
-            }).start();
-          }
-        });
-      }, 100);
-      if (Platform.OS !== 'web') {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      }
+      addIdea(pureIdea);
+
+      setLogicMetrics({
+        confidence: response.data.confidence || 0.45,
+        tier: (response.data.confidence || 0.45) > 0.8 ? 1 : ((response.data.confidence || 0.45) > 0.5 ? 2 : 3),
+        synergy: Math.min(100, Math.round((response.data.confidence || 0.45) * 120)),
+        activeNodes: Math.floor(Math.random() * 10) + 5
+      });
+
+      safeHaptics.success();
 
     } catch (error) {
-      console.error('Error generating ideas:', error);
-      Alert.alert(t('error'), t('failed_generate_voice_ideas'));
+      console.error('Error generating voice ideas:', error);
+      Alert.alert(t('error'), t('failed_voice_induction'));
     } finally {
-      setIsGenerating(false);
+      setGenerating(false);
     }
   };
 
-  const generateAlternateRealities = async () => {
-    setIsGenerating(true);
+  const generateAlternateRealities = async (customPrompt?: string) => {
+    setGenerating(true);
 
     try {
-      // Use actual spaceId, not "global"
       const actualSpaceId = spaceId && spaceId !== 'global' ? spaceId : undefined;
+      const enrichedContext = getEnrichedContext();
+      const API_BASE = getApiBase();
+      
+      const query = customPrompt || `Generate alternate perspectives for this context: ${enrichedContext.substring(0, 200) || (context.type === 'chat' ? 'chat conversations' : 'collaboration')}`;
 
-      if (!actualSpaceId) {
-        // Generate mock data if no spaceId
-        const mockRealities = [
-          "What if we approached this from an optimistic perspective where everything goes perfectly?",
-          "Consider the pessimistic view - what are the potential challenges and how can we mitigate them?",
-          "From a radically creative angle, what if we combined this with completely unrelated concepts?"
-        ];
+      const response = await axios.post(`${API_BASE}/ai/query-training`, {
+        query: query,
+        context: { 
+          mode: activeModeId, 
+          requestType: 'alternate_perspectives', 
+          spaceId: actualSpaceId,
+          enriched_data: enrichedContext 
+        }
+      });
 
+      if (!actualSpaceId || response.data.confidence < 0.1) {
         const newIdea: Idea = {
           id: `realities_${Date.now()}`,
-          content: "Alternate perspectives generated:\n\n• " + mockRealities.join("\n\n• "),
+          content: response.data.response || "Alternate perspectives generated purely through trial and error.",
           type: 'alternate-realities',
           mood: 'analytical',
           timestamp: new Date().toISOString(),
-          metadata: {
-            realities: mockRealities,
-            generatedAt: new Date().toISOString()
-          }
+          metadata: { generatedAt: new Date().toISOString(), confidence: response.data.confidence || 0.42 }
         };
 
-        ideaAnimations.current.set(newIdea.id, new Animated.Value(0));
-        setGeneratedContent(prev => [newIdea, ...prev]);
-
-        setTimeout(() => {
-          const anim = ideaAnimations.current.get(newIdea.id);
-          if (anim) {
-            Animated.spring(anim, {
-              toValue: 1,
-              tension: 50,
-              friction: 7,
-              useNativeDriver: true,
-            }).start();
-          }
-        }, 100);
+        addIdea(newIdea);
 
       } else {
-        // Use actual AI query
-        const response = await collaborationService.queryAI(
-          actualSpaceId,
-          `Generate 3 alternate perspectives for: ${context.type === 'chat' ? 'chat conversations' : 'collaboration'}`,
-          {
-            context,
-            mode: activeMode.id,
-            requestType: 'alternate_perspectives'
-          },
-          'generate_perspectives'
-        );
+        const aiResponse = await axios.post(`${API_BASE}/ai/query-training`, {
+          query: `Generate 3 alternate perspectives for: ${context.type === 'chat' ? 'chat conversations' : 'collaboration'}`,
+          context: { mode: activeMode.id, requestType: 'alternate_perspectives', spaceId: actualSpaceId }
+        });
 
         const newIdea: Idea = {
           id: `realities_${Date.now()}`,
-          content: response.ai_response || t('alternate_perspectives_generated'),
+          content: aiResponse.data.response || t('alternate_perspectives_generated'),
           type: 'alternate-realities',
           mood: 'analytical',
           timestamp: new Date().toISOString(),
-          metadata: {
-            response,
-            generatedAt: new Date().toISOString()
-          }
+          metadata: { confidence: aiResponse.data.confidence || 0.5, generatedAt: new Date().toISOString() }
         };
 
-        ideaAnimations.current.set(newIdea.id, new Animated.Value(0));
-        setGeneratedContent(prev => [newIdea, ...prev]);
+        addIdea(newIdea);
 
-        setTimeout(() => {
-          const anim = ideaAnimations.current.get(newIdea.id);
-          if (anim) {
-            Animated.spring(anim, {
-              toValue: 1,
-              tension: 50,
-              friction: 7,
-              useNativeDriver: true,
-            }).start();
-          }
-        }, 100);
-      }
-
-      if (Platform.OS !== 'web') {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        setLogicMetrics({
+          confidence: aiResponse.data.confidence || 0.52,
+          tier: (aiResponse.data.confidence || 0.52) > 0.8 ? 1 : ((aiResponse.data.confidence || 0.52) > 0.5 ? 2 : 3),
+          synergy: Math.min(100, Math.round((aiResponse.data.confidence || 0.52) * 110)),
+          activeNodes: Math.floor(Math.random() * 15) + 8
+        });
+        safeHaptics.success();
       }
 
     } catch (error: any) {
       console.error('Error generating alternate realities:', error);
 
-      // Provide fallback content
       const fallbackIdea: Idea = {
         id: `fallback_${Date.now()}`,
         content: "Try looking at this from different angles:\n\n1. The Optimist: Everything works perfectly\n2. The Realist: Practical considerations\n3. The Innovator: Radical new approaches",
@@ -352,36 +316,27 @@ const CreativeGenerator: React.FC<CreativeGeneratorProps> = ({
         timestamp: new Date().toISOString(),
       };
 
-      ideaAnimations.current.set(fallbackIdea.id, new Animated.Value(0));
-      setGeneratedContent(prev => [fallbackIdea, ...prev]);
-
-      setTimeout(() => {
-        const anim = ideaAnimations.current.get(fallbackIdea.id);
-        if (anim) {
-          Animated.spring(anim, {
-            toValue: 1,
-            tension: 50,
-            friction: 7,
-            useNativeDriver: true,
-          }).start();
-        }
-      }, 100);
+      addIdea(fallbackIdea);
 
     } finally {
-      setIsGenerating(false);
+      setGenerating(false);
     }
   };
 
   const startCollaborativeStory = async () => {
-    setIsGenerating(true);
+    setGenerating(true);
 
     try {
-      // Use actual spaceId, not "global"
       const actualSpaceId = spaceId && spaceId !== 'global' ? spaceId : undefined;
+      const API_BASE = getApiBase();
+      const response = await axios.post(`${API_BASE}/ai/query-training`, {
+        query: "Start a collaborative story. First sentence should be engaging and open-ended.",
+        context: { mode: 'story-continue', storyType: 'collaborative' }
+      });
 
-      if (!actualSpaceId) {
-        // Mock story start
-        const storyStart = "In a world where ideas take physical form, a group of collaborators discovered a mysterious glowing artifact that responded to their collective creativity...";
+      if (!actualSpaceId || response.data.confidence < 0.1) {
+        // Use the pure mathematical fallback if no spaceId
+        const storyStart = response.data.response || "Logic dictates the beginning of our story...";
 
         const storyIdea: Idea = {
           id: `story_${Date.now()}`,
@@ -390,67 +345,38 @@ const CreativeGenerator: React.FC<CreativeGeneratorProps> = ({
           mood: 'creative',
           timestamp: new Date().toISOString(),
           contributors: [t('ai')],
-          metadata: {
-            nextPrompt: 'What happens when they touch the artifact?',
-            storySeed: 'mysterious_artifact'
-          }
+          metadata: { nextPrompt: 'What happens next?', confidence: response.data.confidence }
         };
 
-        ideaAnimations.current.set(storyIdea.id, new Animated.Value(0));
-        setGeneratedContent(prev => [storyIdea, ...prev]);
+        addIdea(storyIdea);
 
       } else {
         // Use actual AI query
-        const response = await collaborationService.queryAI(
-          actualSpaceId,
-          "Start a collaborative story. First sentence should be engaging and open-ended, suitable for multiple people to continue.",
-          {
-            context,
-            mode: 'story-continue',
-            storyType: 'collaborative',
-            maxLength: 100
-          },
-          'start_story'
-        );
+        const aiResponse = await axios.post(`${API_BASE}/ai/query-training`, {
+          query: "Start a collaborative story. First sentence should be engaging and open-ended, suitable for multiple people to continue.",
+          context: { mode: 'story-continue', storyType: 'collaborative', spaceId: actualSpaceId }
+        });
 
         const storyIdea: Idea = {
           id: `story_${Date.now()}`,
-          content: response.ai_response || "Once upon a time in a collaborative digital realm...",
+          content: aiResponse.data.response || "Once upon a time in a pure logical realm...",
           type: 'story-start',
           mood: 'creative',
           timestamp: new Date().toISOString(),
           contributors: ['AI'],
-          metadata: {
-            nextPrompt: 'Continue the story...',
-            response
-          }
+          metadata: { nextPrompt: 'Continue the logic...', confidence: aiResponse.data.confidence }
         };
 
-        ideaAnimations.current.set(storyIdea.id, new Animated.Value(0));
-        setGeneratedContent(prev => [storyIdea, ...prev]);
+        addIdea(storyIdea);
       }
 
-      // Animate the new story idea
-      setTimeout(() => {
-        const newIdeaId = `story_${Date.now()}`;
-        const anim = ideaAnimations.current.get(newIdeaId);
-        if (anim) {
-          Animated.spring(anim, {
-            toValue: 1,
-            tension: 50,
-            friction: 7,
-            useNativeDriver: true,
-          }).start();
-        }
-      }, 100);
-
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      safeHaptics.impact(Haptics.ImpactFeedbackStyle.Medium);
 
     } catch (error) {
       console.error('Error starting story:', error);
       Alert.alert(t('error'), t('failed_start_story'));
     } finally {
-      setIsGenerating(false);
+      setGenerating(false);
     }
   };
 
@@ -469,6 +395,157 @@ const CreativeGenerator: React.FC<CreativeGeneratorProps> = ({
   const getModeIcon = (modeId: string): string => {
     const mode = creativeModes.find(m => m.id === modeId);
     return mode?.icon || 'sparkles';
+  };
+
+  const handleShareIdea = async (idea: Idea) => {
+    safeHaptics.impact(Haptics.ImpactFeedbackStyle.Light);
+    
+    // Reinforce logic on share (+0.05)
+    await submitFeedback(
+      context.type === 'chat' ? 'shared_from_chat' : activeModeId,
+      idea.content,
+      'save',
+      activeModeId
+    );
+
+    // Use the global share modal which now supports 'idea'
+    openModal('share', { idea: idea });
+  };
+
+  const handleUseIdea = async (idea: Idea, event?: any) => {
+    safeHaptics.impact(Haptics.ImpactFeedbackStyle.Medium);
+    setCurrentIdea(idea);
+
+    if (Platform.OS === 'web' && event) {
+      const position = calculateAnchorPositionFromEvent(event, 220);
+      setUseMenuPosition(position);
+      setUseMenuVisible(true);
+      return;
+    }
+
+    // Native Alert fallback for mobile
+    Alert.alert(
+      t('use_insight'),
+      t('use_insight_desc'),
+      [
+        { text: t('cancel'), style: 'cancel' },
+        { 
+          text: t('send_to_chat'), 
+          onPress: () => performUseAction(idea, 'chat')
+        },
+        {
+          text: t('create_post'),
+          onPress: () => performUseAction(idea, 'post')
+        }
+      ]
+    );
+  };
+
+  const performUseAction = async (idea: Idea, type: 'chat' | 'post') => {
+    try {
+      if (type === 'chat') {
+        if (spaceId && spaceId !== 'global') {
+          await CollaborationService.getInstance().sendMessage(spaceId, idea.content);
+          useToastStore.getState().showToast(t('idea_sent_to_chat'), 'success');
+          onClose();
+        } else {
+          Alert.alert(t('error'), t('no_active_space_to_send'));
+        }
+      } else {
+        router.push({
+          pathname: '/(tabs)/spaces/create' as any,
+          params: {
+            title: idea.content.substring(0, 30),
+            description: idea.content,
+            type: 'post'
+          }
+        });
+        onClose();
+      }
+
+      // Reinforce logic on Use (+0.1)
+      await submitFeedback(
+        context.type === 'chat' ? 'used_in_chat' : activeModeId,
+        idea.content,
+        'save',
+        activeModeId
+      );
+
+    } catch (err) {
+      console.error('Error performing use action:', err);
+    } finally {
+      setUseMenuVisible(false);
+      setCurrentIdea(null);
+    }
+  };
+
+  const handleFeedback = async (idea: Idea, type: 'save' | 'discard') => {
+    // Optimistic UI for save
+    if (type === 'save') {
+      toggleSaveIdea(idea.id, true);
+    }
+
+    const newWeight = await submitFeedback(
+      context.type === 'chat' ? 'chat context' : activeModeId,
+      idea.content,
+      type,
+      activeModeId
+    );
+
+    if (newWeight !== null) {
+      if (type === 'save') {
+        safeHaptics.success();
+      } else {
+        Alert.alert(
+          t('logical_pruning'),
+          t('idea_weight_reduced').replace('{weight}', '-0.2') + ` (Weight: ${newWeight})`
+        );
+        removeIdea(idea.id);
+      }
+    } else if (type === 'save') {
+      // Revert if error
+      toggleSaveIdea(idea.id, false);
+      Alert.alert(t('error'), t('feedback_sync_error'));
+    }
+  };
+
+  const renderLogicDashboard = () => {
+    return (
+      <View style={styles.logicDashboard}>
+        <View style={styles.logicMetric}>
+          <Text style={styles.metricLabel}>{t('tier')}</Text>
+          <Text style={[styles.metricValue, { color: getTierColor(logicMetrics.tier) }]}>
+            {logicMetrics.tier}
+          </Text>
+        </View>
+        <View style={styles.metricDivider} />
+        <View style={styles.logicMetric}>
+          <Text style={styles.metricLabel}>{t('confidence')}</Text>
+          <Text style={styles.metricValue}>{Math.round(logicMetrics.confidence * 100)}%</Text>
+        </View>
+        <View style={styles.metricDivider} />
+        <View style={styles.logicMetric}>
+          <Text style={styles.metricLabel}>{t('knowledge_depth')}</Text>
+          <Text style={[styles.metricValue, { color: colors.success }]}>
+            {context.chats?.length ? 'High' : 'Pure Logic'}
+          </Text>
+        </View>
+        <View style={styles.metricDivider} />
+        <View style={styles.logicMetric}>
+          <Text style={styles.metricLabel}>{t('synergy')}</Text>
+          <Text style={styles.metricValue}>{logicMetrics.synergy}%</Text>
+        </View>
+      </View>
+    );
+  };
+
+  const getTierColor = (tier: number) => {
+    switch (tier) {
+      case 1: return '#06D6A0'; // High confidence
+      case 2: return '#FFD166'; // Medium
+      case 3: return '#EF476F'; // Low
+      default: return colors.text;
+    }
   };
 
   const renderIdeaCard = (idea: Idea, index: number) => {
@@ -502,6 +579,28 @@ const CreativeGenerator: React.FC<CreativeGeneratorProps> = ({
 
         <Text style={styles.ideaText}>{idea.content}</Text>
 
+        {idea.metadata?.confidence !== undefined && (
+          <View style={styles.synergyContainer}>
+            <View style={styles.synergyInfo}>
+              <Ionicons name="analytics" size={14} color={colors.textSecondary} />
+              <Text style={styles.synergyLabel}>
+                {t('confidence_label').replace('{value}', Math.round(idea.metadata.confidence * 100).toString())}
+              </Text>
+            </View>
+            <View style={styles.synergyBarWrapper}>
+              <View
+                style={[
+                  styles.synergyBar,
+                  {
+                    width: `${Math.round(idea.metadata.confidence * 100)}%`,
+                    backgroundColor: getTierColor(idea.metadata.confidence > 0.8 ? 1 : (idea.metadata.confidence > 0.5 ? 2 : 3))
+                  }
+                ]}
+              />
+            </View>
+          </View>
+        )}
+
         {idea.contributors && idea.contributors.length > 0 && (
           <View style={styles.contributors}>
             <Ionicons name="people" size={14} color="#666" />
@@ -514,268 +613,234 @@ const CreativeGenerator: React.FC<CreativeGeneratorProps> = ({
         <View style={styles.ideaActions}>
           <TouchableOpacity
             style={styles.actionButton}
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              Alert.alert(t('idea_saved'), t('added_to_collection'));
+            onPress={async () => {
+              if (idea.isSaved) return;
+              safeHaptics.impact(Haptics.ImpactFeedbackStyle.Light);
+              await handleFeedback(idea, 'save');
             }}
           >
-            <Ionicons name="heart-outline" size={18} color="#FF6B6B" />
-            <Text style={styles.actionButtonText}>{t('save')}</Text>
+            <Ionicons 
+              name={idea.isSaved ? "heart" : "heart-outline"} 
+              size={18} 
+              color={idea.isSaved ? "#FF3B30" : colors.text} 
+            />
+            <Text style={[styles.actionButtonText, idea.isSaved && { color: "#FF3B30" }]}>{t('save')}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.actionButton}
-            onPress={() => {
-              // Share idea
-              Alert.alert(t('share'), t('share_idea_prompt'), [
-                { text: t('cancel'), style: 'cancel' },
-                {
-                  text: t('share'), onPress: () => {
-                    // Implement sharing
-                  }
-                }
-              ]);
-            }}
+            onPress={() => handleShareIdea(idea)}
           >
-            <Ionicons name="arrow-redo-outline" size={18} color="#45B7D1" />
+            <Ionicons name="share-outline" size={18} color={colors.textSecondary} />
             <Text style={styles.actionButtonText}>{t('share')}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.actionButton}
-            onPress={() => {
-              Alert.alert(
-                t('use'),
-                t('create_space_from_idea'),
-                [
-                  { text: t('cancel'), style: 'cancel' },
-                  {
-                    text: t('create'), onPress: () => {
-                      router.push({
-                        pathname: '/(tabs)/spaces/create' as any,
-                        params: {
-                          idea: idea.content.substring(0, 100),
-                          ideaType: idea.type
-                        }
-                      });
-                      onClose();
-                    }
-                  }
-                ]
-              );
-            }}
+            onPress={(e) => handleUseIdea(idea, e)}
           >
-            <Ionicons name="cube-outline" size={18} color="#4ECDC4" />
+            <Ionicons name="rocket-outline" size={18} color={colors.success} />
             <Text style={styles.actionButtonText}>{t('use')}</Text>
           </TouchableOpacity>
-        </View>
 
-        {idea.metadata?.source === 'voice' && (
-          <View style={styles.voiceMetadata}>
-            <Ionicons name="mic" size={12} color="#666" />
-            <Text style={styles.voiceMetadataText}>
-              Voice input • {idea.metadata.duration}
-            </Text>
-          </View>
-        )}
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={async () => {
+              safeHaptics.impact(Haptics.ImpactFeedbackStyle.Medium);
+              await handleFeedback(idea, 'discard');
+            }}
+          >
+            <Ionicons name="trash-outline" size={18} color="#999" />
+            <Text style={styles.actionButtonText}>{t('discard_btn')}</Text>
+          </TouchableOpacity>
+        </View>
       </Animated.View>
     );
   };
 
-  const handleModeSelect = (mode: CreativeMode) => {
-    setActiveMode(mode);
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-  };
+  const useMenuItems: MenuItem[] = [
+    { 
+      icon: 'chatbubble-outline', 
+      label: t('send_to_chat'), 
+      onPress: () => currentIdea && performUseAction(currentIdea, 'chat') 
+    },
+    { 
+      icon: 'create-outline', 
+      label: t('create_post'), 
+      onPress: () => currentIdea && performUseAction(currentIdea, 'post') 
+    },
+  ];
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
       <View style={[styles.header, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
         <TouchableOpacity onPress={onClose} style={[styles.backButton, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
-          <Ionicons name={isRTL ? "chevron-forward" : "chevron-back"} size={28} color="#fff" />
+          <Ionicons name={isRTL ? "chevron-forward" : "chevron-back"} size={28} color={colors.text} />
           <Text style={styles.backText}>{t('back')}</Text>
         </TouchableOpacity>
- 
+
         <View style={styles.headerCenter}>
-          <Ionicons name="sparkles" size={24} color="#FFD700" />
           <Text style={styles.headerTitle}>{t('creative_generator')}</Text>
         </View>
- 
+
         <TouchableOpacity
           style={styles.helpButton}
-          onPress={() => Alert.alert(
-            t('creative_help_title'),
-            t('creative_help_desc')
-          )}
+          onPress={() => {
+            safeHaptics.impact(Haptics.ImpactFeedbackStyle.Light);
+            if (Platform.OS === 'web') {
+              setShowHelpModal(true);
+            } else {
+              Alert.alert(t('creative_help_title'), t('creative_help_desc'), [{ text: t('ok') }], { cancelable: true });
+            }
+          }}
         >
-          <Ionicons name="help-circle" size={24} color="#fff" />
+          <Ionicons name="help-circle-outline" size={24} color={colors.text} />
         </TouchableOpacity>
       </View>
 
-      {/* Mode Selector */}
+      {/* Web Help Modal */}
+      {showHelpModal && (
+        <View style={styles.webHelpOverlay}>
+          <View style={styles.webHelpModal}>
+            <View style={styles.webHelpHeader}>
+              <Text style={styles.webHelpTitle}>{t('creative_help_title')}</Text>
+              <TouchableOpacity onPress={() => setShowHelpModal(false)}>
+                <Ionicons name="close" size={24} color={colors.text} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={styles.webHelpContent}>
+              <Text style={styles.webHelpText}>{t('creative_help_desc')}</Text>
+            </ScrollView>
+            <TouchableOpacity 
+              style={styles.webHelpCloseBtn}
+              onPress={() => setShowHelpModal(false)}
+            >
+              <Text style={styles.webHelpCloseText}>{t('ok')}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
+      {useMenuVisible && (
+        <GenericMenu
+          visible={useMenuVisible}
+          onClose={() => setUseMenuVisible(false)}
+          items={useMenuItems}
+          anchorPosition={useMenuPosition}
+        />
+      )}
+
+      <View style={styles.modesHeader}>
+        <Text style={styles.modesTitle}>{t('observation_layer')}</Text>
+        <Text style={styles.modesSubtitle}>{t('observation_layer_desc')}</Text>
+      </View>
+
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        style={styles.modeSelector}
-        contentContainerStyle={styles.modeSelectorContent}
+        style={styles.modesContainer}
+        contentContainerStyle={styles.modesContent}
       >
-        {creativeModes.map(mode => (
+        {creativeModes.map((mode) => (
           <TouchableOpacity
             key={mode.id}
             style={[
-              styles.modeButton,
-              activeMode.id === mode.id && { backgroundColor: mode.color + '20' }
+              styles.modeCard,
+              activeModeId === mode.id && { borderColor: mode.color, backgroundColor: mode.color + '15' }
             ]}
-            onPress={() => handleModeSelect(mode)}
+            onPress={() => {
+              safeHaptics.impact(Haptics.ImpactFeedbackStyle.Light);
+              setMode(mode.id);
+              // Proactive induction: analyze context with this framework specifically
+              generateAlternateRealities(`${mode.promptPrefix}: ${getEnrichedContext().substring(0, 150)}`);
+            }}
           >
-            <View style={[
-              styles.modeIconContainer,
-              activeMode.id === mode.id && { backgroundColor: mode.color }
-            ]}>
-              <Ionicons name={mode.icon as any} size={22} color="#fff" />
+            <View style={[styles.modeIconContainer, { backgroundColor: mode.color }]}>
+              <Ionicons name={mode.icon as any} size={24} color="#FFF" />
             </View>
-            <Text style={[styles.modeText, { textAlign: isRTL ? 'right' : 'left' }, activeMode.id === mode.id && { color: mode.color, fontWeight: '600' }]}>
+            <Text style={[styles.modeName, activeModeId === mode.id && { color: mode.color }]}>
               {mode.name}
             </Text>
-            <Text style={[styles.modeDescription, { textAlign: isRTL ? 'right' : 'left' }]} numberOfLines={1}>
+            <Text style={styles.modeDescription} numberOfLines={2}>
               {mode.description}
             </Text>
           </TouchableOpacity>
         ))}
       </ScrollView>
 
-      {/* Voice Recording Indicator */}
-      {isRecording && (
-        <Animated.View
-          style={[
-            styles.recordingIndicator,
-            { transform: [{ scale: pulseAnim }] }
-          ]}
-        >
-          <View style={[styles.recordingInfo, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
-            <View style={styles.recordingDot} />
-            <Text style={styles.recordingText}>
-              {t('recording_status')} {recordingTime}s
-            </Text>
-          </View>
-          <TouchableOpacity
-            onPress={stopVoiceIdeation}
-            style={[styles.stopButton, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}
-          >
-            <Ionicons name="stop-circle" size={28} color="#FF6B6B" />
-            <Text style={styles.stopButtonText}>{t('stop')}</Text>
-          </TouchableOpacity>
-        </Animated.View>
-      )}
+      {renderLogicDashboard()}
 
-      {/* Generated Content */}
       <ScrollView
         ref={scrollViewRef}
-        style={styles.contentArea}
-        contentContainerStyle={[
-          styles.contentAreaContent,
-          generatedContent.length === 0 && styles.emptyContentArea
-        ]}
+        style={styles.content}
+        contentContainerStyle={generatedIdeas.length === 0 ? styles.emptyContent : styles.contentContainer}
         showsVerticalScrollIndicator={false}
       >
         {isGenerating && (
           <View style={styles.generatingContainer}>
-            <ActivityIndicator size="large" color={activeMode.color} />
-            <Text style={styles.generatingText}>
-              {t('generating_ideas').replace('{mode}', activeMode.name)}
-            </Text>
+            <ActivityIndicator size="large" color={colors.tint} />
+            <Text style={styles.generatingText}>{t('ai_thinking')}</Text>
           </View>
         )}
 
-        {generatedContent.length === 0 && !isGenerating ? (
+        {generatedIdeas.length === 0 && !isGenerating ? (
           <View style={styles.emptyState}>
-            <Ionicons name="bulb-outline" size={80} color="#333" />
-            <Text style={styles.emptyTitle}>{t('no_ideas_title')}</Text>
-            <Text style={[styles.emptyDescription, { textAlign: 'center' }]}>
-              {t('no_ideas_desc')}
-            </Text>
-            <View style={[styles.emptyTips, { alignItems: isRTL ? 'flex-end' : 'flex-start' }]}>
-              <Text style={styles.emptyTipsTitle}>{t('creative_tips_title')}</Text>
-              <Text style={styles.emptyTip}>• {t('tip_voice')}</Text>
-              <Text style={styles.emptyTip}>• {t('tip_modes')}</Text>
-              <Text style={styles.emptyTip}>• {t('tip_save')}</Text>
+            <Ionicons name="sparkles-outline" size={80} color={colors.border} />
+            <Text style={styles.emptyTitle}>{t('start_creating')}</Text>
+            <Text style={styles.emptyDescription}>{t('start_creating_desc')}</Text>
+            <View style={styles.emptyTips}>
+              <Text style={styles.emptyTipsTitle}>{t('quick_tips')}</Text>
+              <Text style={styles.emptyTip}>• {t('tip_voice_induction')}</Text>
+              <Text style={styles.emptyTip}>• {t('tip_deductive_depth')}</Text>
             </View>
           </View>
         ) : (
-          generatedContent.map((idea, index) => renderIdeaCard(idea, index))
+          generatedIdeas.map((idea, index) => renderIdeaCard(idea, index))
         )}
       </ScrollView>
 
-      {/* Controls */}
-      <View style={styles.controls}>
-        <TouchableOpacity
-          style={[
-            styles.controlButton,
-            isRecording && { backgroundColor: '#FF6B6B20' }
-          ]}
-          onPress={isRecording ? stopVoiceIdeation : startVoiceIdeation}
-          disabled={isGenerating}
-        >
-          <Animated.View style={isRecording && { transform: [{ scale: pulseAnim }] }}>
-            <Ionicons
-              name={isRecording ? "stop" : "mic"}
-              size={24}
-              color={isRecording ? "#FF6B6B" : "#fff"}
-            />
-          </Animated.View>
-          <Text style={[
-            styles.controlText,
-            isRecording && { color: '#FF6B6B' }
-          ]}>
-            {isRecording ? t('stop') : t('voice')}
-          </Text>
-        </TouchableOpacity>
+      <View style={styles.actionControls}>
+        <View style={styles.mainControls}>
+          <TouchableOpacity
+            style={[styles.opButton, styles.voiceButton, isRecording && styles.activeVoice]}
+            onPress={isRecording ? stopVoiceIdeation : startVoiceIdeation}
+          >
+            <Ionicons name={isRecording ? "stop" : "mic"} size={28} color="#FFF" />
+            {isRecording && (
+              <View style={styles.recordingIndicator}>
+                <Text style={styles.recordingTimeText}>{recordingTime}s</Text>
+              </View>
+            )}
+          </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.controlButton}
-          onPress={generateAlternateRealities}
-          disabled={isGenerating || isRecording}
-        >
-          <Ionicons name="git-branch" size={24} color="#fff" />
-          <Text style={styles.controlText}>{t('perspectives')}</Text>
-        </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.opButton, styles.inductButton]}
+            onPress={generateAlternateRealities}
+            disabled={isGenerating}
+          >
+            <Ionicons name="sparkles" size={24} color={colors.tint} />
+            <Text style={styles.opLabel}>{t('induct_insight')}</Text>
+          </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.controlButton}
-          onPress={startCollaborativeStory}
-          disabled={isGenerating || isRecording}
-        >
-          <Ionicons name="book" size={24} color="#fff" />
-          <Text style={styles.controlText}>{t('story_continue')}</Text>
-        </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.opButton, styles.deepenButton]}
+            onPress={startCollaborativeStory}
+            disabled={isGenerating}
+          >
+            <Ionicons name="infinite" size={24} color={colors.tint} />
+            <Text style={styles.opLabel}>{t('deepen_logic')}</Text>
+          </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.controlButton}
-          onPress={() => {
-            if (generatedContent.length > 0) {
-              Alert.alert(
-                t('clear'),
-                t('clear_ideas_confirm'),
-                [
-                  { text: t('cancel'), style: 'cancel' },
-                  {
-                    text: t('clear'),
-                    style: 'destructive',
-                    onPress: () => {
-                      setGeneratedContent([]);
-                      ideaAnimations.current.clear();
-                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                    }
-                  }
-                ]
-              );
-            }
-          }}
-          disabled={isGenerating || isRecording}
-        >
-          <Ionicons name="trash" size={24} color="#fff" />
-          <Text style={styles.controlText}>{t('clear')}</Text>
-        </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.opButton, styles.clearButton]}
+            onPress={() => {
+              clearIdeas();
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            }}
+          >
+            <Ionicons name="trash" size={20} color="#FFF" />
+          </TouchableOpacity>
+        </View>
       </View>
     </SafeAreaView>
   );
@@ -790,120 +855,153 @@ const getStyles = (colors: any, activeScheme: string, isRTL: boolean) => StyleSh
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 16,
-    backgroundColor: colors.surface,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#333',
+    borderBottomColor: colors.border,
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.text,
   },
   backButton: {
-    flexDirection: 'row',
     alignItems: 'center',
   },
   backText: {
     color: colors.text,
     fontSize: 16,
-    [isRTL ? 'marginRight' : 'marginLeft']: 4,
-    fontWeight: '500',
-  },
-  headerCenter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  headerTitle: {
-    color: colors.text,
-    fontSize: 18,
-    fontWeight: '700',
     [isRTL ? 'marginRight' : 'marginLeft']: 8,
   },
   helpButton: {
-    padding: 4,
+    padding: 12,
+    marginRight: -8, // Compensate for padding to align with edge
   },
-  modeSelector: {
-    backgroundColor: colors.surface,
+  modesHeader: {
+    paddingHorizontal: 20,
+    paddingTop: 16,
+  },
+  modesTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  modesSubtitle: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginTop: 2,
+  },
+  modesContainer: {
+    maxHeight: 160,
+  },
+  modesContent: {
+    paddingHorizontal: 16,
     paddingVertical: 12,
   },
-  modeSelectorContent: {
-    paddingHorizontal: 12,
-  },
-  modeButton: {
+  modeCard: {
+    width: 140,
+    backgroundColor: colors.surface,
+    borderRadius: 16,
+    padding: 12,
+    [isRTL ? 'marginLeft' : 'marginRight']: 12,
     alignItems: 'center',
-    marginHorizontal: 6,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    minWidth: 100,
+    borderWidth: 1,
+    borderColor: colors.border,
+    ...createShadow({
+      width: 0,
+      height: 2,
+      opacity: 0.1,
+      radius: 4,
+      elevation: 2,
+    }),
   },
   modeIconContainer: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#333',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 6,
+    marginBottom: 8,
   },
-  modeText: {
+  modeName: {
+    fontSize: 12,
+    fontWeight: '700',
     color: colors.text,
-    fontSize: 14,
-    fontWeight: '500',
-    marginBottom: 2,
+    textAlign: 'center',
+    marginBottom: 4,
   },
   modeDescription: {
-    color: colors.textSecondary,
     fontSize: 10,
+    color: colors.textSecondary,
     textAlign: 'center',
+    lineHeight: 14,
   },
-  recordingIndicator: {
+  logicDashboard: {
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: 'rgba(255, 107, 107, 0.1)',
-    marginHorizontal: 16,
-    marginVertical: 12,
-    padding: 16,
+    backgroundColor: activeScheme === 'dark' ? '#1A1A1A' : '#F0F0F0',
+    margin: 16,
+    padding: 12,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#FF6B6B',
-  },
-  recordingInfo: {
-    flexDirection: 'row',
+    borderColor: colors.border,
+    justifyContent: 'space-between',
     alignItems: 'center',
+  },
+  logicMetric: {
     flex: 1,
+    alignItems: 'center',
   },
-  recordingDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: '#FF6B6B',
-    [isRTL ? 'marginLeft' : 'marginRight']: 12,
+  metricLabel: {
+    fontSize: 10,
+    color: colors.textSecondary,
+    textTransform: 'uppercase',
+    marginBottom: 2,
   },
-  recordingText: {
-    color: '#FF6B6B',
+  metricValue: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: 'bold',
+    color: colors.text,
   },
-  stopButton: {
-    alignItems: 'center',
+  metricDivider: {
+    width: 1,
+    height: '60%',
+    backgroundColor: colors.border,
   },
-  stopButtonText: {
-    color: '#FF6B6B',
-    fontSize: 12,
-    marginTop: 2,
-    fontWeight: '500',
-  },
-  contentArea: {
+  content: {
     flex: 1,
   },
-  contentAreaContent: {
+  emptyContent: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  contentContainer: {
     paddingHorizontal: 16,
     paddingVertical: 16,
-    paddingBottom: 100,
+    paddingBottom: 120,
   },
-  emptyContentArea: {
-    justifyContent: 'center',
+  synergyContainer: {
+    marginTop: 12,
+  },
+  synergyInfo: {
+    flexDirection: 'row',
     alignItems: 'center',
+    marginBottom: 4,
+  },
+  synergyLabel: {
+    fontSize: 11,
+    color: colors.textSecondary,
+    marginLeft: 4,
+    fontStyle: 'italic',
+  },
+  synergyBarWrapper: {
+    height: 4,
+    backgroundColor: activeScheme === 'dark' ? '#333' : '#E0E0E0',
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+  synergyBar: {
+    height: '100%',
+    borderRadius: 2,
   },
   generatingContainer: {
     alignItems: 'center',
@@ -959,6 +1057,13 @@ const getStyles = (colors: any, activeScheme: string, isRTL: boolean) => StyleSh
     marginBottom: 12,
     borderWidth: 1,
     borderColor: colors.border,
+    ...createShadow({
+      width: 0,
+      height: 2,
+      opacity: 0.1,
+      radius: 4,
+      elevation: 3,
+    }),
   },
   ideaHeader: {
     flexDirection: 'row',
@@ -1002,7 +1107,7 @@ const getStyles = (colors: any, activeScheme: string, isRTL: boolean) => StyleSh
     flexDirection: 'row',
     alignItems: 'center',
     borderTopWidth: 1,
-    borderTopColor: '#333',
+    borderTopColor: colors.border,
     paddingTop: 12,
   },
   actionButton: {
@@ -1016,43 +1121,158 @@ const getStyles = (colors: any, activeScheme: string, isRTL: boolean) => StyleSh
     [isRTL ? 'marginRight' : 'marginLeft']: 4,
     fontWeight: '500',
   },
-  voiceMetadata: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  voiceMetadataText: {
-    color: colors.textSecondary,
-    fontSize: 11,
-    [isRTL ? 'marginRight' : 'marginLeft']: 4,
-  },
-  controls: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 16,
-    backgroundColor: colors.surface,
-    borderTopWidth: 1,
-    borderTopColor: '#333',
+  actionControls: {
     position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
+    bottom: 20,
+    left: 20,
+    right: 20,
+    backgroundColor: colors.surface,
+    borderRadius: 30,
+    padding: 6,
+    borderWidth: 1,
+    borderColor: colors.border,
+    ...createShadow({
+      width: 0,
+      height: 4,
+      opacity: 0.2,
+      radius: 8,
+      elevation: 10,
+    }),
   },
-  controlButton: {
+  mainControls: {
+    flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 12,
-    backgroundColor: '#333',
-    minWidth: 70,
+    justifyContent: 'space-between',
   },
-  controlText: {
-    color: colors.text,
+  opButton: {
+    height: 48,
+    borderRadius: 24,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 12,
+  },
+  voiceButton: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: colors.tint,
+  },
+  activeVoice: {
+    backgroundColor: '#FF3B30',
+  },
+  inductButton: {
+    flex: 1,
+    marginHorizontal: 8,
+    borderWidth: 1,
+    borderColor: colors.tint,
+    backgroundColor: colors.tint + '10',
+  },
+  deepenButton: {
+    flex: 1,
+    marginRight: 8,
+    borderWidth: 1,
+    borderColor: colors.tint,
+    backgroundColor: colors.tint + '10',
+  },
+  clearButton: {
+    width: 48,
+    backgroundColor: '#8E8E93',
+  },
+  opLabel: {
     fontSize: 12,
-    marginTop: 4,
-    fontWeight: '500',
+    fontWeight: '600',
+    color: colors.tint,
+    marginLeft: 6,
+  },
+  recordingIndicator: {
+    position: 'absolute',
+    top: -10,
+    right: -10,
+    backgroundColor: '#FF3B30',
+    borderRadius: 10,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  recordingTimeText: {
+    color: '#FFF',
+    fontSize: 10,
+    fontWeight: 'bold',
+  },
+  webActionMenu: {
+    flexDirection: 'row',
+    backgroundColor: colors.surface,
+    marginTop: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: 4,
+    ...createShadow({ width: 0, height: 2, opacity: 0.1, radius: 4 }),
+  },
+  webActionItem: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+  },
+  webActionText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.tint,
+    marginLeft: 6,
+  },
+  webActionDivider: {
+    width: 1,
+    height: '60%',
+    backgroundColor: colors.border,
+    alignSelf: 'center',
+  },
+  webHelpOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    zIndex: 9999,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  webHelpModal: {
+    width: '90%',
+    maxWidth: 500,
+    backgroundColor: colors.background,
+    borderRadius: 20,
+    padding: 20,
+    ...createShadow({ width: 0, height: 4, opacity: 0.3, radius: 10 }),
+  },
+  webHelpHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  webHelpTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: colors.text,
+  },
+  webHelpContent: {
+    maxHeight: 400,
+  },
+  webHelpText: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: colors.textSecondary,
+    whiteSpace: 'pre-wrap' as any,
+  },
+  webHelpCloseBtn: {
+    backgroundColor: colors.tint,
+    padding: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 20,
+  },
+  webHelpCloseText: {
+    color: '#FFF',
+    fontWeight: 'bold',
   },
 });
 

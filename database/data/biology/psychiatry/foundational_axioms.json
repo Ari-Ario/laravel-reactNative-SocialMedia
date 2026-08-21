@@ -1,0 +1,54 @@
+[
+    {
+        "branch": "psychiatry",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Dopamine hypothesis of schizophrenia",
+        "parent_thesis": "Michaelis-Menten Kinetics: Describes the rate of enzymatic reactions by relating reaction rate v to substrate concentration [S]",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "20342cd02994617ba077418276cfaaf9562224f15fb4caa63b4c74a0419d0f54"
+    },
+    {
+        "branch": "psychiatry",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Monoamine hypothesis of depression",
+        "parent_thesis": "Michaelis-Menten Kinetics: Describes the rate of enzymatic reactions by relating reaction rate v to substrate concentration [S]",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "7d5cf01627368b8a8ab4e3c6e7e6f66b10b8f792a2c94f98d0a57f64dadc8491"
+    },
+    {
+        "branch": "psychiatry",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Cognitive behavioral therapy mechanisms",
+        "parent_thesis": "Michaelis-Menten Kinetics: Describes the rate of enzymatic reactions by relating reaction rate v to substrate concentration [S]",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "cfd40b6a2eb8f82faa808e82691e42ef72304c863640d7cf25efd890cfbf5cdf"
+    },
+    {
+        "branch": "psychiatry",
+        "domain_partition": "biology_partition",
+        "thesis_statement": "Biopsychosocial Model Axiom: Mental health and disorders are the result of complex interactions between biological, psychological, and social factors",
+        "parent_thesis": "Synaptic Transmission Axiom: Neurons communicate via the release and binding of neurotransmitters across synaptic clefts",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "04ae1224ab05c898ceb932ec98e0795b398c4e6f1751649bfc3b577ef392c8aa"
+    },
+    {
+        "branch": "psychiatry",
+        "domain_partition": "biology_partition",
+        "thesis_statement": "Dopamine Hypothesis of Schizophrenia: Symptoms of schizophrenia arise from aberrant dopaminergic neurotransmission in subcortical and cortical pathways",
+        "parent_thesis": "Biopsychosocial Model Axiom: Mental health and disorders are the result of complex interactions between biological, psychological, and social factors",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Describes positive symptoms associated with subcortical D2 receptor hyperfunction and negative/cognitive symptoms linked to prefrontal D1 hypofunction."
+    },
+    {
+        "branch": "psychiatry",
+        "domain_partition": "biology_partition",
+        "thesis_statement": "Monoamine Hypothesis of Depression: Depressive disorders are associated with functional deficits in synaptic monoamine neurotransmitter levels",
+        "parent_thesis": "Biopsychosocial Model Axiom: Mental health and disorders are the result of complex interactions between biological, psychological, and social factors",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Traces depression to reduced synaptic levels or signaling efficacy of serotonin, norepinephrine, and dopamine."
+    }
+]

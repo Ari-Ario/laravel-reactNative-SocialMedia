@@ -1,0 +1,81 @@
+[
+    {
+        "branch": "electrical_engineering",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Ohm law V=IR",
+        "parent_thesis": "Ohm's Law: The current through a conductor between two points is directly proportional to the voltage across the two points",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "4b62f5a82ea4fdf4ec3807321ec699a5dbe940e2bab33c2e65fd5d56712538ed"
+    },
+    {
+        "branch": "electrical_engineering",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Kirchhoff current law",
+        "parent_thesis": "Kirchhoff's Circuit Laws: Conservation of charge and energy within electrical circuits",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "753601c09f0f7323fe750c1a2846377d37557ede4c9958d140d83cc041482981"
+    },
+    {
+        "branch": "electrical_engineering",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Kirchhoff voltage law",
+        "parent_thesis": "Kirchhoff's Circuit Laws: Conservation of charge and energy within electrical circuits",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "8f775e247623abbb401775be8e18a51fb4ef1093b3e2f628e5c4c24f38e02909"
+    },
+    {
+        "branch": "electrical_engineering",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Shannon-Hartley channel capacity",
+        "parent_thesis": "Shannon-Hartley Theorem (Channel Capacity)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "ace9ebb3f87956437f300e352c0bc41e34025c210bdafadbfef9e0de6e134657"
+    },
+    {
+        "branch": "electrical_engineering",
+        "domain_partition": "engineering_partition",
+        "thesis_statement": "Ohm's Law: The current through a conductor between two points is directly proportional to the voltage across the two points",
+        "parent_thesis": "Faraday's Law of Induction: A time-varying magnetic field induces an electromotive force",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "98910482980ee31823f6d8a11b03fb336e10f0d58f920b5feef0f096bfb644bc"
+    },
+    {
+        "branch": "electrical_engineering",
+        "domain_partition": "engineering_partition",
+        "thesis_statement": "Kirchhoff's Circuit Laws: Conservation of charge and energy within electrical circuits",
+        "parent_thesis": "Ohm's Law: The current through a conductor between two points is directly proportional to the voltage across the two points",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "a6ac47be151f566319ae28e36225608feb33972d78915425f57f9f0f2301b0b7"
+    },
+    {
+        "branch": "electrical_engineering",
+        "domain_partition": "engineering",
+        "thesis_statement": "Shannon-Hartley Theorem (Channel Capacity)",
+        "parent_thesis": "Shannon's Channel Capacity Theorem: For any channel with capacity C and transmission rate R < C, there exists a coding scheme that makes the probability of error at the receiver arbitrarily small",
+        "formal_proof": "C = B \\log_2(1 + S/N). Derived from Shannon entropy and Nyquist sampling theorem, establishing the absolute upper bound on the rate of information transmission over a noisy channel.",
+        "context_description": "The fundamental law of telecommunications and the internet, proving there is a maximum speed data can be transmitted without errors based on bandwidth and signal noise.",
+        "ast_signature": "10d28c2dcea5d0d6362881ff8befdcc3c0e5789ae37f4fc4f47d1bc144342473"
+    },
+    {
+        "branch": "electrical_engineering",
+        "domain_partition": "engineering_partition",
+        "thesis_statement": "Superposition Theorem for Linear Circuits: In a linear circuit, the response (voltage or current) in any branch is the sum of the responses caused by each independent source acting alone",
+        "parent_thesis": "Ohm's Law: The current through a conductor between two points is directly proportional to the voltage across the two points",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Allows analysis of linear circuits with multiple independent sources by computing responses individually and summing them."
+    },
+    {
+        "branch": "electrical_engineering",
+        "domain_partition": "engineering_partition",
+        "thesis_statement": "Thevenin's Theorem: Any linear electrical network with voltage and current sources and only resistances can be replaced at terminals A-B by an equivalent voltage source in series with an equivalent resistance",
+        "parent_thesis": "Ohm's Law: The current through a conductor between two points is directly proportional to the voltage across the two points",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Simplifies analysis of complex circuits by reducing them to a single voltage source and series resistor at a load terminal."
+    }
+]

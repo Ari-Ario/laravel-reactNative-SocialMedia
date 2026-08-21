@@ -1,0 +1,182 @@
+[
+    {
+        "branch": "ontology",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Law of identity",
+        "parent_thesis": "1: Being (True)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "f24f23bdb2f616d81893a0818780c4e46f9b8fdbf4d5d6698b80878185956d18"
+    },
+    {
+        "branch": "ontology",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Law of non-contradiction",
+        "parent_thesis": "1: Being (True)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "e3f18558775135afdbf04682f24ec079148a62b4b8fc5376c43ff3ddd9432a66"
+    },
+    {
+        "branch": "ontology",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Law of Excluded Middle (Ontological formulation)",
+        "parent_thesis": "1: Being (True)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "9fc2f7dd7118b5fb0b2d90616b9150cafd9c3603a7b9000ab2d16763e1b55430"
+    },
+    {
+        "branch": "ontology",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Ontological Dependence (Foundation)",
+        "parent_thesis": "1: Being (True)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "3949043abc9396363a1b8a114eaf55155f26e24245ef662fd202ac7104a3da9a"
+    },
+    {
+        "branch": "ontology",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Axiom of Being (Parmenides)",
+        "parent_thesis": "1: Being (True)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "7c2d2517bc4b7bbd62de47751c04be8bf7f0122aa22b843983dad105b6e9e58c"
+    },
+    {
+        "branch": "ontology",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Substantivalism vs Relationalism (Space and Time)",
+        "parent_thesis": "1: Being (True)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "5c9d5c4b668fd3e1c1b83f566c337c4f0cbc7878a6915820fcf2c1b99ef9a3f2"
+    },
+    {
+        "branch": "ontology",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Universal Instantiation (Realism vs Nominalism)",
+        "parent_thesis": "1: Being (True)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "29bde76b4ec5ddc5ab6124505efb3248ca8b470d0197c20b74b6704326f06992"
+    },
+    {
+        "branch": "ontology",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Modal Realism (David Lewis)",
+        "parent_thesis": "1: Being (True)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "a31bdaf5914e483d41966b1fbaf3672526f252ea355373edc3d3c27f3cc89292"
+    },
+    {
+        "branch": "ontology",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Bundle Theory of Objects",
+        "parent_thesis": "1: Being (True)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "97d7cb598938eac453221842982f58ae43aead7f4af63d54f32d5e64398e4397"
+    },
+    {
+        "branch": "ontology",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Hylomorphism (Form and Matter)",
+        "parent_thesis": "1: Being (True)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "aecdf3a9c2bdb3a4c0b731054f102db6f96b4eafacc41e0c5642304efe741109"
+    },
+    {
+        "branch": "ontology",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Aristotelian Essentialism: Objects possess essential properties that determine their identity and without which they cease to be what they are",
+        "parent_thesis": "Law of identity",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Axiom defining the difference between essential properties (necessary for identity) and accidental properties (contingent features) in ontology.",
+        "ast_signature": "9b1e13147a12ce9bc2589a396075f7c3c120a20d1191513300e2c040dd3df1a7"
+    },
+    {
+        "branch": "ontology",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Platonic Realism: Abstract objects and universals exist in a non-spatial, non-temporal realm independent of physical particulars",
+        "parent_thesis": "Universal Instantiation (Realism vs Nominalism)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "The ontological thesis that universals and mathematical objects have a real, independent existence outside of the physical universe.",
+        "ast_signature": "abdfaa793cd25ceb703750b9ecb40aee154e22e0df238ba10081f7e474bdedb8"
+    },
+    {
+        "branch": "ontology",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Kant's Axiom of Real Existence: Existence is not a real predicate or property of things, but the positing of a thing with all its determinations",
+        "parent_thesis": "Axiom of Being (Parmenides)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Critique of Pure Reason (Kant): Asserting that existence does not add new qualities to a concept, but instantiates the concept in reality.",
+        "ast_signature": "849958f069eeacb346d0012cfb991f825cd6b7daaa42a19a2d5e0bc19fffbc18"
+    },
+    {
+        "branch": "ontology",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Trope Nominalism: Properties are unique particulars (tropes) rather than shareable universals, and objects are bundles of tropes",
+        "parent_thesis": "Bundle Theory of Objects",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Ontological resolution to the problem of universals, stating that properties are localized, non-shareable particulars.",
+        "ast_signature": "2a430d0cc00bc300accc3667deea0c69b7b7ce31e100e0df760037d89f71611e"
+    },
+    {
+        "branch": "ontology",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Reflexivity of Parthood",
+        "parent_thesis": "1: Being (True)",
+        "formal_proof": "Mereology (SEP): For any object x, x is a part of itself (x \u2264 x). Proved via self-containment in set theory where every set is a subset of itself: X \u2286 X.",
+        "context_description": "Standard mereology foundation stating that parthood is reflexive.",
+        "ast_signature": "ff25e0b80f96606398cd63b260579e4e7630d45db653af2328ae72d330a863d2"
+    },
+    {
+        "branch": "ontology",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Antisymmetry of Parthood",
+        "parent_thesis": "Law of identity",
+        "formal_proof": "Mereology (SEP): If x is a part of y and y is a part of x, then x and y are identical (x \u2264 y \u2227 y \u2264 x \u2192 x = y). Proved via set extensionality: X \u2286 Y \u2227 Y \u2286 X \u2192 X = Y.",
+        "context_description": "Standard mereology foundation stating that parthood is antisymmetric.",
+        "ast_signature": "4733f1c279f87198cef3e707502cda7dd8fb246f83ffe02b9ee3b3ccda48c1d5"
+    },
+    {
+        "branch": "ontology",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Transitivity of Parthood",
+        "parent_thesis": "Law of identity",
+        "formal_proof": "Mereology (SEP): If x is a part of y and y is a part of z, then x is a part of z (x \u2264 y \u2227 y \u2264 z \u2192 x \u2264 z). Proved via set containment transitivity: X \u2286 Y \u2227 Y \u2286 Z \u2192 X \u2286 Z.",
+        "context_description": "Standard mereology foundation stating that parthood is transitive.",
+        "ast_signature": "d2ce62da5d2ca42a0acad4ac236253a8836da48c7399a1d4670d7f4b402ec892"
+    },
+    {
+        "branch": "ontology",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Weak Supplementation Principle",
+        "parent_thesis": "Ontological Dependence (Foundation)",
+        "formal_proof": "Mereology (SEP): If y is a proper part of x, then there is a part z of x that does not overlap y. Proved via set complementation: if Y \u2282 X, then there exists a non-empty Z \u2286 X such that Y \u2229 Z = \u2205.",
+        "context_description": "Critical mereological axiom stating that any proper part must be accompanied by a disjoint remainder.",
+        "ast_signature": "e4f3bf3d6e265a30c83e2697551c3dbd8768af37df877946badf27a1c28a4373"
+    },
+    {
+        "branch": "ontology",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Indiscernibility of Identicals",
+        "parent_thesis": "Law of identity",
+        "formal_proof": "Leibniz's Law (SEP): If x is identical to y, then x and y share all properties (x = y \u2192 \u2200F(Fx \u2194 Fy)). Proved via formal substitution logic.",
+        "context_description": "Metaphysical principle stating that identical things are completely indiscernible in their attributes.",
+        "ast_signature": "f4e95a01d4f646fee62c98222d06687a45a2a6209b8f3b8773da9abb100ccd3e"
+    },
+    {
+        "branch": "ontology",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Sortal Identity",
+        "parent_thesis": "Law of identity",
+        "formal_proof": "Identity Theory (SEP): Identity statements are only meaningful relative to a sortal concept that provides criteria of identity and re-identification.",
+        "context_description": "Axiom stating that identity requires sortal classification to be formally evaluated.",
+        "ast_signature": "67060e60ca7dabcf547bd4736dad88bafcc33d45ddbe007f76e2dcba4b0e31d7"
+    }
+]

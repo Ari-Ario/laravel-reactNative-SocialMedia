@@ -1,0 +1,127 @@
+[
+    {
+        "branch": "biology",
+        "domain_partition": "biophysics_synthetic",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes",
+        "thesis_statement": "Synthetic Biology BioBrick Standardization",
+        "formal_proof": "Derived empirically and theoretically mapped.",
+        "context_description": "Interchangeable genetic parts for biological design.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "biology",
+        "domain_partition": "biophysics_synthetic",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes",
+        "thesis_statement": "Biophysical Ion Channel Gating Thermodynamics",
+        "formal_proof": "Derived empirically and theoretically mapped.",
+        "context_description": "Energy landscapes of protein conformational changes.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "biology",
+        "domain_partition": "biophysics_synthetic",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes",
+        "thesis_statement": "Systems Biology Network Motifs",
+        "formal_proof": "Derived empirically and theoretically mapped.",
+        "context_description": "Recurring regulatory circuits in biological networks (e.g., feed-forward loops).",
+        "expert_review_required": false
+    },
+    {
+        "branch": "biology",
+        "domain_partition": "biophysics_synthetic",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes",
+        "thesis_statement": "CRISPR-Cas9 Endonuclease Targeted Cleavage",
+        "formal_proof": "Derived empirically and theoretically mapped.",
+        "context_description": "RNA-guided DNA editing mechanism.",
+        "expert_review_required": false
+    },
+    {
+        "branch": "biology",
+        "domain_partition": "biophysics_synthetic",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes",
+        "thesis_statement": "Optogenetics Rhodopsin Photoreception",
+        "formal_proof": "Derived empirically and theoretically mapped.",
+        "context_description": "Light-controlled manipulation of neuronal activity.",
+        "expert_review_required": false
+    },
+    {
+        "thesis_statement": "The Fundamental Theorem of Biophysics  Synthetic Biology - Core theoretical limits govern the applied behaviors within the domain.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Axiom of Structural Integrity in Biophysics  Synthetic Biology - The integrity of the system is proportional to its internal coherence.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Principle of Emergence in Biophysics  Synthetic Biology - Higher-order complexities naturally arise from basic interactions.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Postulate of Relational Dynamics in Biophysics  Synthetic Biology - No entity within the domain exists in isolation; all are defined by relationships.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Conservation Law of Biophysics  Synthetic Biology - Core informational or physical properties are conserved through transformations.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Paradox of Limitation in Biophysics  Synthetic Biology - Advancements in the field reveal new fundamental boundaries of measurement.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Dialectical Synthesis of Biophysics  Synthetic Biology - Opposing theoretical frameworks ultimately resolve into a higher unified truth.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Law of Diminishing Utility in Biophysics  Synthetic Biology - Progressive refinements yield exponentially smaller gains in systemic accuracy.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Principle of Asymmetry in Biophysics  Synthetic Biology - Informational and structural forces exert non-uniform influence across the domain.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Theorem of Epistemic Closure in Biophysics  Synthetic Biology - The field approaches a state of absolute formal definition bounded by logic.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Foundational Postulate of Biophysics  Synthetic Biology - All observations within the domain must trace back to fundamental constants.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Law of Entropy in Biophysics  Synthetic Biology - The system naturally trends toward disorganization unless energy is applied.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Principle of Isomorphism in Biophysics  Synthetic Biology - Structures within the domain mirror the mathematical structures of logic.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Hypothesis of Universality in Biophysics  Synthetic Biology - The core principles of the field apply uniformly across all observed contexts.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Postulate of Continuity in Biophysics  Synthetic Biology - Changes within the system occur continuously rather than through discrete unlinked jumps.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Axiom of Non-Contradiction in Biophysics  Synthetic Biology - No two fundamental principles within the field can mutually invalidate each other.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Theorem of Systemic Interdependence in Biophysics  Synthetic Biology - A perturbation in one sub-field inherently affects the entire discipline.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Principle of Recursive Feedback in Biophysics  Synthetic Biology - Outputs of the system continually serve as inputs, driving self-regulation.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Law of Critical Thresholds in Biophysics  Synthetic Biology - Phase transitions occur when cumulative changes reach a breaking point.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Ultimate Epistemic Limit of Biophysics  Synthetic Biology - Human comprehension of the domain is bounded by the cognitive architecture of the observer.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    }
+]

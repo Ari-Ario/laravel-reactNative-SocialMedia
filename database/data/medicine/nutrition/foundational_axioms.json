@@ -1,0 +1,14 @@
+[
+    {
+        "thesis_statement": "Energy Balance Equation - Weight change is determined by the net difference between caloric intake and total energy expenditure",
+        "parent_thesis": "First law of thermodynamics energy conservation"
+    },
+    {
+        "thesis_statement": "Essential Nutrients - Certain molecules required for survival cannot be synthesized de novo and must be obtained environmentally",
+        "parent_thesis": "1: Being (True)"
+    },
+    {
+        "thesis_statement": "Thermic Effect of Food (TEF) - The amount of energy expenditure above the resting metabolic rate due to the cost of processing food",
+        "parent_thesis": "First law of thermodynamics energy conservation"
+    }
+]

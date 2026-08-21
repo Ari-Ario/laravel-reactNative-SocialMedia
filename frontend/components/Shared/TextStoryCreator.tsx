@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { View, StyleSheet, TouchableOpacity, Text, SafeAreaView, ScrollView, Dimensions, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { MotiView } from 'moti';
+import { AnimatePresence } from 'moti';
 import { GradientPreset } from './StoryTypes';
 import { createTextShadow } from '@/utils/styles';
 import { useTranslation } from '@/constants/i18n';
@@ -138,12 +140,24 @@ export const TextStoryCreator: React.FC<TextStoryCreatorProps> = React.memo(({
 
   return (
     <View style={[styles.container, !useGradient && { backgroundColor: solidColor }]}>
-      {useGradient && (
-        <LinearGradient
-          colors={GRADIENT_PRESETS[currentGradientIndex].colors as [string, string, ...string[]]}
-          style={StyleSheet.absoluteFill}
-        />
-      )}
+      {/* Animated gradient crossfade — smooth Instagram-like background transition */}
+      <AnimatePresence>
+        {useGradient && (
+          <MotiView
+            key={`gradient-${currentGradientIndex}`}
+            from={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ type: 'timing', duration: 350 }}
+            style={StyleSheet.absoluteFill}
+          >
+            <LinearGradient
+              colors={GRADIENT_PRESETS[currentGradientIndex].colors as [string, string, ...string[]]}
+              style={StyleSheet.absoluteFill}
+            />
+          </MotiView>
+        )}
+      </AnimatePresence>
       
       <SafeAreaView style={styles.overlay}>
         <View style={styles.topControls}>

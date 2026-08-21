@@ -1,0 +1,122 @@
+[
+    {
+        "thesis_statement": "Time Value of Money (TVM) - A sum of money is worth more now than the same sum in the future",
+        "parent_thesis": "1: Being (True)"
+    },
+    {
+        "thesis_statement": "Capital Asset Pricing Model (CAPM) - Expected return is proportional to systematic risk",
+        "parent_thesis": "Time Value of Money (TVM) - A sum of money is worth more now than the same sum in the future"
+    },
+    {
+        "thesis_statement": "Efficient Market Hypothesis (EMH) - Asset prices fully reflect all available information",
+        "parent_thesis": "1: Being (True)"
+    },
+    {
+        "thesis_statement": "Black-Scholes Model - Provides a theoretical estimate of the price of European-style options",
+        "parent_thesis": "1: Being (True)"
+    },
+    {
+        "thesis_statement": "Modigliani-Miller Theorem - Under certain market assumptions, a firm's value is unaffected by how it is financed",
+        "parent_thesis": "1: Being (True)"
+    },
+    {
+        "thesis_statement": "Arbitrage Pricing Theory - The expected return of a financial asset can be modeled as a linear function of various macro-economic factors",
+        "parent_thesis": "Time Value of Money (TVM) - A sum of money is worth more now than the same sum in the future"
+    },
+    {
+        "thesis_statement": "Agency Theory - Explains resolving problems that can exist in agency relationships due to unaligned goals or different risk tolerances",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Portfolio Theory (Markowitz) - An investment framework for the assembly of a portfolio of assets such that expected return is maximized for a given level of risk",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Option Pricing Theory - A mathematical framework for calculating the fair value of an option contract",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Pecking Order Theory - Companies prioritize their sources of financing (from internal financing to equity) according to the cost of financing",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Signaling Theory - One party credibly conveys some information about itself to another party",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Prospect Theory (Kahneman/Tversky) - People value gains and losses differently, placing more weight on perceived gains versus perceived losses",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Tragedy of the Commons (Hardin) - Individuals with access to a shared resource act in their own interest and, in doing so, ultimately deplete the resource",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Pareto Principle (80/20 Rule) - For many outcomes, roughly 80% of consequences come from 20% of the causes",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Law of Diminishing Returns - Adding more of one factor of production will at some point yield lower per-unit returns",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Comparative Advantage (Ricardo) - An agent has a comparative advantage over another in producing a particular good if they can produce that good at a lower relative opportunity cost",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Gresham's Law (Re-anchored) - Bad money drives out good",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Efficient Market Hypothesis (Strong Form) - Asset prices fully reflect all public and private information",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Arbitrage - The simultaneous purchase and sale of an asset to profit from an imbalance in the price",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Sunk Cost Fallacy - The tendency to follow through on an endeavor if we have already invested time, effort, or money into it",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Moral Hazard - Lack of incentive to guard against risk where one is protected from its consequences",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Principal-Agent Problem - Arises when one party agrees to work in favor of another party in return for some incentives",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Coase Theorem - If trade in an externality is possible and there are sufficiently low transaction costs, bargaining will lead to a Pareto efficient outcome",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Keynesian Multiplier - An injection of government spending leads to a proportionately larger increase in national income",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Laffer Curve - Illustrates a theoretical relationship between rates of taxation and the resulting levels of the government's tax revenue",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Phillips Curve - A historical inverse relationship between rates of unemployment and corresponding rates of inflation",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "The Fundamental Theorem of Applied Commerce  Management - Core theoretical limits govern the applied behaviors within the domain.",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "The Axiom of Structural Integrity in Applied Commerce  Management - The integrity of the system is proportional to its internal coherence.",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "The Principle of Emergence in Applied Commerce  Management - Higher-order complexities naturally arise from basic interactions.",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "The Postulate of Relational Dynamics in Applied Commerce  Management - No entity within the domain exists in isolation; all are defined by relationships.",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    }
+]

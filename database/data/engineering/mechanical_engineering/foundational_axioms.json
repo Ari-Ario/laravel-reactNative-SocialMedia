@@ -1,0 +1,63 @@
+[
+    {
+        "branch": "mechanical_engineering",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Von Mises yield criterion",
+        "parent_thesis": "Von Mises Yield Criterion Axiom: Yielding of a ductile material begins when the second invariant of deviatoric stress reaches a critical value",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "e46be2bd6d3e673e67d5c0466dcd5d6e2a6fee5fcdc2b29fadc432b9fc832795"
+    },
+    {
+        "branch": "mechanical_engineering",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Fourier law of heat conduction",
+        "parent_thesis": "Fourier's Law of Heat Conduction: The heat flux density is proportional to the negative temperature gradient, stating that heat transfer occurs from higher to lower temperatures",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "bcf9a9713be7bfa7fefb3c79b3574c1299881d3964792618eaf8a289b1b301ef"
+    },
+    {
+        "branch": "mechanical_engineering",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Kinematic degrees of freedom",
+        "parent_thesis": "Continuum Mechanics Axiom: Materials are modeled as continuous masses rather than discrete particles for macroscopic analysis",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "3d427cd9059f43626a868a5c4d4810c653c2309c7a8419ed5d88ce1e02ee2073"
+    },
+    {
+        "branch": "mechanical_engineering",
+        "domain_partition": "engineering_partition",
+        "thesis_statement": "Continuum Mechanics Axiom: Materials are modeled as continuous masses rather than discrete particles for macroscopic analysis",
+        "parent_thesis": "Navier-Stokes Equations: Describes the motion of viscous fluid substances via momentum conservation",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "7a7505f9e129128eda411fb4961c08f800eb96064a40375865241c03cb5f59ff"
+    },
+    {
+        "branch": "mechanical_engineering",
+        "domain_partition": "engineering_partition",
+        "thesis_statement": "Hooke's Law of Elasticity: The force needed to extend or compress a spring by some distance scales linearly with respect to that distance (F = -kx)",
+        "parent_thesis": "Newton's Third Law of Motion: For every action, there is an equal and opposite reaction",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "4e5aa32c5b03056f536fe47a3cc6bee18be490fff7c0c5b62c0d57b072bfc92e"
+    },
+    {
+        "branch": "mechanical_engineering",
+        "domain_partition": "engineering_partition",
+        "thesis_statement": "Fourier's Law of Heat Conduction: The heat flux density is proportional to the negative temperature gradient, stating that heat transfer occurs from higher to lower temperatures",
+        "parent_thesis": "Second Law of Thermodynamics: Total entropy of an isolated system can never decrease over time (\u0394S \u2265 0)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Governs the rate of heat energy flow through solid materials by conduction, stating that heat flows down temperature gradients."
+    },
+    {
+        "branch": "mechanical_engineering",
+        "domain_partition": "engineering_partition",
+        "thesis_statement": "Von Mises Yield Criterion Axiom: Yielding of a ductile material begins when the second invariant of deviatoric stress reaches a critical value",
+        "parent_thesis": "Hooke's Law of Elasticity: The force needed to extend or compress a spring by some distance scales linearly with respect to that distance (F = -kx)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Predicts yielding of materials under multiaxial stress configurations by computing equivalent distortional energy."
+    }
+]

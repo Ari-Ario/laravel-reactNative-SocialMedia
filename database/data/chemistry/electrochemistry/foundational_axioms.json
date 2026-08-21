@@ -1,0 +1,50 @@
+[
+    {
+        "branch": "electrochemistry",
+        "domain_partition": "chemistry_partition",
+        "thesis_statement": "Redox Reactions: Chemical reactions involving the transfer of electrons between two species",
+        "parent_thesis": "Aufbau Principle / Hund's Rule: Electrons fill lower-energy atomic orbitals before higher-energy ones",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine."
+    },
+    {
+        "branch": "electrochemistry",
+        "domain_partition": "chemistry_partition",
+        "thesis_statement": "Nernst Equation: Relates the reduction potential of an electrochemical reaction to the standard electrode potential, temperature, and activities of the chemical species",
+        "parent_thesis": "Gibbs Free Energy: \u0394G = \u0394H - T\u0394S (Criterion for spontaneity)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine."
+    },
+    {
+        "branch": "electrochemistry",
+        "domain_partition": "chemistry_partition",
+        "thesis_statement": "Butler-Volmer Equation: Describes how the electrical current through an electrode depends on the overpotential, accounting for both anodic and cathodic reaction rates",
+        "parent_thesis": "Chemical Kinetics: The rate of a chemical reaction is proportional to the concentration of the reacting substances",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine."
+    },
+    {
+        "branch": "electrochemistry",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Nernst equation",
+        "parent_thesis": "First law of thermodynamics energy conservation",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine."
+    },
+    {
+        "branch": "electrochemistry",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Faraday laws of electrolysis",
+        "parent_thesis": "First law of thermodynamics energy conservation",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine."
+    },
+    {
+        "branch": "electrochemistry",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Galvanic cell potential",
+        "parent_thesis": "First law of thermodynamics energy conservation",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine."
+    }
+]

@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  Image,
   TextInput,
   Alert,
   Modal,
@@ -16,6 +15,7 @@ import {
   ScrollView,
   FlatList,
 } from 'react-native';
+import { Image as ExpoImage } from 'expo-image';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GlobalStyles } from '@/styles/GlobalStyles';
 import { createShadow, createTextShadow } from '@/utils/styles';
@@ -127,6 +127,8 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
   const [needsTrimming, setNeedsTrimming] = useState(false);
   const [showTrimmer, setShowTrimmer] = useState(false);
   const [videoDuration, setVideoDuration] = useState(0);
+  // Auto-growing editor input height
+  const [editorInputHeight, setEditorInputHeight] = useState(120);
 
   const cameraRef = useRef<{ takePictureAsync: (options: any) => Promise<any>; recordAsync: (options: any) => Promise<any>; stopRecording: () => void }>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -233,27 +235,30 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
   }, [media?.uri, media?.startTime, media?.endTime, showTrimmer, videoPlayer]);
 
   const getVideoDuration = async (uri: string) => {
-    if (Platform.OS !== 'web') return; // For native, duration is usually handled by picker or player events
+    if (Platform.OS !== 'web') return;
 
     try {
-      const video = document.createElement('video');
-      video.playsInline = true;
-      video.muted = true;
-      video.setAttribute('playsinline', '');
-      video.setAttribute('webkit-playsinline', '');
-      video.preload = 'metadata';
-      video.src = uri;
-      video.onloadedmetadata = () => {
-        const duration = video.duration;
-        setVideoDuration(duration);
-        if (duration > MAX_VIDEO_DURATION && media?.startTime === undefined) {
+      // Uses MediaCompressor.getVideoDuration which:
+      //  - calls video.load() (required on iOS Safari)
+      //  - sets muted/playsInline/webkit-playsinline
+      //  - has 8s timeout to prevent hangs on 4G
+      //  - returns Infinity for unseekable streams (camera blobs)
+      const durationSeconds = await MediaCompressor.getVideoDuration(uri);
+
+      // Infinity = unseekable stream (e.g. MediaRecorder blob just created)
+      // Always route to trimmer so user can pick their 10s segment
+      if (!isFinite(durationSeconds) || durationSeconds > MAX_VIDEO_DURATION) {
+        setVideoDuration(isFinite(durationSeconds) ? durationSeconds : 0);
+        if (media?.startTime === undefined) {
           setNeedsTrimming(true);
           setShowTrimmer(true);
-        } else if (media?.startTime !== undefined) {
-          // If already trimmed, ensure warning is off
+        }
+      } else {
+        setVideoDuration(durationSeconds);
+        if (media?.startTime !== undefined) {
           setNeedsTrimming(false);
         }
-      };
+      }
     } catch (error) {
       console.error('Error getting video duration:', error);
     }
@@ -418,13 +423,20 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
         setUploading(true);
         const asset = result.assets[0];
 
-        // 1. Check if it's a long video
-        const duration = asset.duration ? asset.duration / 1000 : 0; // ms to s
-        const isLongVideo = asset.type === 'video' && duration > MAX_VIDEO_DURATION;
+        // expo-image-picker on web returns duration in SECONDS (raw browser value)
+        // but it silently returns 0 when its internal probe fails (large files,
+        // slow connections, Safari). Always re-probe on web to be safe.
+        let durationSeconds = asset.duration ?? 0;
+        if (Platform.OS === 'web' && durationSeconds <= 0) {
+          durationSeconds = await MediaCompressor.getVideoDuration(asset.uri);
+        }
+
+        const isLongVideo = asset.type === 'video' && (
+          !isFinite(durationSeconds) || durationSeconds > MAX_VIDEO_DURATION
+        );
 
         if (isLongVideo) {
-          console.log(`📹 Long video picked from gallery: ${duration}s. Sending to trimmer.`);
-          // Set media with original URI first so trimmer can work
+          console.log(`📹 Long video picked from gallery: ${durationSeconds}s. Sending to trimmer.`);
           setMedia({
             uri: asset.uri,
             type: 'video'
@@ -432,12 +444,16 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
           setNeedsTrimming(true);
           setShowTrimmer(true);
         } else {
-          // 2. Compress normal media immediately
           const compressed = await MediaCompressor.prepareMediaForUpload(
             asset.uri,
             asset.fileName || (asset.type === 'video' ? `gallery-video-${Date.now()}.mp4` : `gallery-photo-${Date.now()}.jpg`),
             asset.type === 'video' ? 'video' : 'photo'
           );
+
+          // Cleanup previous media blob if it was one we created
+          if (media?.uri && media.uri !== asset.uri) {
+            MediaCompressor.cleanupMedia(media.uri);
+          }
 
           setMedia({
             uri: compressed.uri,
@@ -590,7 +606,7 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
   };
 
 
-  const handleTrimComplete = async (trimmedData: { uri: string; duration: number; startTime?: number; endTime?: number }) => {
+  const handleTrimComplete = useCallback(async (trimmedData: { uri: string; duration: number; startTime?: number; endTime?: number }) => {
     try {
       setUploading(true);
 
@@ -623,9 +639,9 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
     } finally {
       setUploading(false);
     }
-  };
+  }, [t, showToast]);
 
-  const handleSave = async () => {
+  const handleSave = useCallback(async () => {
     if (!media?.uri) return;
 
     if (Platform.OS === 'web') {
@@ -649,9 +665,9 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
       console.error('Error saving media:', error);
       showToast(t('failed_save_media'), 'error');
     }
-  };
+  }, [media?.uri, t, showToast]);
 
-  const handleShare = async () => {
+  const handleShare = useCallback(async () => {
     if (!media) return;
 
     try {
@@ -752,7 +768,7 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
       showToast(t('failed_share_story'), 'error');
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     }
-  };
+  }, [media, stickers, location, t, showToast]);
 
   const handleClose = () => {
     setMedia(null);
@@ -808,7 +824,6 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
               onClose={() => {
                 setShowTrimmer(false);
                 setNeedsTrimming(false);
-                setMedia(null);
               }}
             />
           )}
@@ -876,6 +891,22 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
                               transition={{ type: 'timing', duration: 150 }}
                               style={styles.captureInner}
                             />
+                            {/* Pulsing ring during recording — Instagram-style */}
+                            {isRecording && (
+                              <MotiView
+                                from={{ opacity: 0.7, scale: 1 }}
+                                animate={{ opacity: 0, scale: 1.6 }}
+                                transition={{ type: 'timing', duration: 900, loop: true }}
+                                style={[
+                                  StyleSheet.absoluteFill,
+                                  {
+                                    borderRadius: 40,
+                                    borderWidth: 3,
+                                    borderColor: '#FF3B30',
+                                  }
+                                ]}
+                              />
+                            )}
                             {isRecording && (
                               <MotiView
                                 from={{ opacity: 0, scale: 1 }}
@@ -915,21 +946,48 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
               <View style={styles.modeSelector}>
                 <TouchableOpacity
                   onPress={() => setCameraMode('text')}
-                  style={[styles.modeButton, cameraMode === 'text' && styles.activeModeButton]}
+                  style={styles.modeButton}
                 >
-                  <Text style={[styles.modeItem, cameraMode === 'text' && styles.activeMode]}>Aa {t('text_label').toUpperCase()}</Text>
+                  <MotiView
+                    animate={{
+                      opacity: cameraMode === 'text' ? 1 : 0.5,
+                      scale: cameraMode === 'text' ? 1.05 : 1,
+                    }}
+                    transition={{ type: 'timing', duration: 180 }}
+                    style={[styles.modeButtonInner, cameraMode === 'text' && styles.activeModeButton]}
+                  >
+                    <Text style={[styles.modeItem, cameraMode === 'text' && styles.activeMode]}>Aa {t('text_label').toUpperCase()}</Text>
+                  </MotiView>
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() => setCameraMode('picture')}
-                  style={[styles.modeButton, cameraMode === 'picture' && styles.activeModeButton]}
+                  style={styles.modeButton}
                 >
-                  <Text style={[styles.modeItem, cameraMode === 'picture' && styles.activeMode]}>{t('photo_label').toUpperCase()}</Text>
+                  <MotiView
+                    animate={{
+                      opacity: cameraMode === 'picture' ? 1 : 0.5,
+                      scale: cameraMode === 'picture' ? 1.05 : 1,
+                    }}
+                    transition={{ type: 'timing', duration: 180 }}
+                    style={[styles.modeButtonInner, cameraMode === 'picture' && styles.activeModeButton]}
+                  >
+                    <Text style={[styles.modeItem, cameraMode === 'picture' && styles.activeMode]}>{t('photo_label').toUpperCase()}</Text>
+                  </MotiView>
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() => setCameraMode('video')}
-                  style={[styles.modeButton, cameraMode === 'video' && styles.activeModeButton]}
+                  style={styles.modeButton}
                 >
-                  <Text style={[styles.modeItem, cameraMode === 'video' && styles.activeMode]}>{t('video_label').toUpperCase()}</Text>
+                  <MotiView
+                    animate={{
+                      opacity: cameraMode === 'video' ? 1 : 0.5,
+                      scale: cameraMode === 'video' ? 1.05 : 1,
+                    }}
+                    transition={{ type: 'timing', duration: 180 }}
+                    style={[styles.modeButtonInner, cameraMode === 'video' && styles.activeModeButton]}
+                  >
+                    <Text style={[styles.modeItem, cameraMode === 'video' && styles.activeMode]}>{t('video_label').toUpperCase()}</Text>
+                  </MotiView>
                 </TouchableOpacity>
               </View>
             </View>
@@ -949,7 +1007,13 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
                   style={styles.previewMedia}
                 />
               ) : (
-                <Image source={{ uri: media?.uri }} style={styles.previewMedia} resizeMode="cover" />
+                <ExpoImage
+                  source={{ uri: media?.uri }}
+                  style={styles.previewMedia}
+                  contentFit="cover"
+                  cachePolicy="memory-disk"
+                  transition={200}
+                />
               )}
 
 
@@ -960,15 +1024,33 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
                   </TouchableOpacity>
 
                   <View style={styles.topTools}>
-                    <TouchableOpacity onPress={() => setShowTextEditor(true)} style={styles.iconButton}>
-                      <MaterialIcons name="text-fields" size={24} color="white" />
-                    </TouchableOpacity>
-                    <TouchableOpacity onPress={() => setShowLocationSearch(true)} style={styles.iconButton}>
-                      <Ionicons name="location-sharp" size={22} color="white" />
-                    </TouchableOpacity>
-                    <TouchableOpacity onPress={() => setShowEmojiPicker(true)} style={styles.iconButton}>
-                      <Ionicons name="happy-outline" size={24} color="white" />
-                    </TouchableOpacity>
+                    <MotiView
+                      from={{ opacity: 0, translateY: -8 }}
+                      animate={{ opacity: 1, translateY: 0 }}
+                      transition={{ type: 'spring', delay: 80, damping: 18 }}
+                    >
+                      <TouchableOpacity onPress={() => setShowTextEditor(true)} style={styles.iconButton}>
+                        <MaterialIcons name="text-fields" size={24} color="white" />
+                      </TouchableOpacity>
+                    </MotiView>
+                    <MotiView
+                      from={{ opacity: 0, translateY: -8 }}
+                      animate={{ opacity: 1, translateY: 0 }}
+                      transition={{ type: 'spring', delay: 140, damping: 18 }}
+                    >
+                      <TouchableOpacity onPress={() => setShowLocationSearch(true)} style={styles.iconButton}>
+                        <Ionicons name="location-sharp" size={22} color="white" />
+                      </TouchableOpacity>
+                    </MotiView>
+                    <MotiView
+                      from={{ opacity: 0, translateY: -8 }}
+                      animate={{ opacity: 1, translateY: 0 }}
+                      transition={{ type: 'spring', delay: 200, damping: 18 }}
+                    >
+                      <TouchableOpacity onPress={() => setShowEmojiPicker(true)} style={styles.iconButton}>
+                        <Ionicons name="happy-outline" size={24} color="white" />
+                      </TouchableOpacity>
+                    </MotiView>
                   </View>
                 </View>
 
@@ -1014,6 +1096,13 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
                   </TouchableOpacity>
                 </View>
               </SafeAreaView>
+
+              {/* Gradient vignette at the bottom of preview for Instagram-like depth */}
+              <LinearGradient
+                colors={['transparent', 'rgba(0,0,0,0.55)']}
+                style={styles.previewBottomVignette}
+                pointerEvents="none"
+              />
 
               {/* RENDER STICKERS - Move to top of hierarchy for best touch interception */}
               <View style={[StyleSheet.absoluteFill, { pointerEvents: Platform.OS === 'web' ? 'none' : 'box-none' }]}>
@@ -1074,10 +1163,18 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
                       color: currentColor,
                       fontSize: currentFontSize,
                       fontFamily: currentFont,
+                      height: editorInputHeight, // dynamic height driven by onContentSizeChange
                     }
                   ]}
                   value={currentText}
                   onChangeText={setCurrentText}
+                  onContentSizeChange={(e) => {
+                    const newH = e.nativeEvent.contentSize.height;
+                    // Clamp between minHeight and maxHeight so it never covers bottom UI
+                    const minH = 100;
+                    const maxH = height * 0.45;
+                    setEditorInputHeight(Math.min(Math.max(newH, minH), maxH));
+                  }}
                   placeholder={t('type_something_placeholder')}
                   placeholderTextColor="rgba(255,255,255,0.5)"
                   selectionColor="white"
@@ -1394,6 +1491,10 @@ const styles = StyleSheet.create({
     marginBottom: 40, // More space
   },
   modeButton: {
+    paddingHorizontal: 8,
+    paddingVertical: 8,
+  },
+  modeButtonInner: {
     paddingHorizontal: 20,
     paddingVertical: 8,
     borderRadius: 20,
@@ -1428,6 +1529,14 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 80, // Moved up to reveal video controls
+  },
+  previewBottomVignette: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 200,
+    pointerEvents: 'none',
   },
   saveDraft: {
     flexDirection: 'row',
@@ -1557,9 +1666,9 @@ const styles = StyleSheet.create({
     width: '100%',
     paddingHorizontal: 20,
     marginBottom: 30,
-    // ✨ Add these lines:
-    maxHeight: height * 0.7,        // 70% of screen height
-    minHeight: 100,                 // minimum comfortable height
+    // Grows with content up to 45% of screen height, never covers bottom controls
+    minHeight: 100,
+    maxHeight: height * 0.45,
   },
   editorClose: {
     position: 'absolute',

@@ -1,0 +1,74 @@
+[
+    {
+        "branch": "optics",
+        "domain_partition": "physics_partition",
+        "thesis_statement": "Law of Reflection: The angle of incidence equals the angle of reflection",
+        "parent_thesis": "Euclid Postulate 1: A straight line segment can be drawn joining any two points",
+        "formal_proof": "\u03b8_i = \u03b8_r. Derived from Fermat's Principle of least time under static boundary conditions.",
+        "context_description": "Specifies that the direction of incoming light and reflected light make equal angles with the surface normal."
+    },
+    {
+        "branch": "optics",
+        "domain_partition": "physics_partition",
+        "thesis_statement": "Snell's Law of Refraction: n1*sin(\u03b81) = n2*sin(\u03b82)",
+        "parent_thesis": "Law of Reflection: The angle of incidence equals the angle of reflection",
+        "formal_proof": "n1 sin(\u03b81) = n2 sin(\u03b82). Calculated via phase-matching across refractive index boundaries.",
+        "context_description": "A formula used to describe the relationship between the angles of incidence and refraction when light passes through different isotropic media."
+    },
+    {
+        "branch": "optics",
+        "domain_partition": "physics_partition",
+        "thesis_statement": "Fermat's Principle of Least Time: Light travels between two points along the path that minimizes travel time",
+        "parent_thesis": "Snell's Law of Refraction: n1*sin(\u03b81) = n2*sin(\u03b82)",
+        "formal_proof": "\u03b4 \u222b dt = 0. Variational principle showing optical path length is stationary.",
+        "context_description": "States that the path taken by a ray of light between two points is the path that can be traversed in the least time."
+    },
+    {
+        "branch": "optics",
+        "domain_partition": "physics_partition",
+        "thesis_statement": "Huygens-Fresnel Principle: Every point on a wave front acts as a source of secondary spherical wavelets",
+        "parent_thesis": "Snell's Law of Refraction: n1*sin(\u03b81) = n2*sin(\u03b82)",
+        "formal_proof": "U(r) = -i/(2\u03bb) \u222b U(r') * exp(iks)/s * (1 + cos\u03b8) dS. Describes wave propagation using secondary spherical wavelets.",
+        "context_description": "A method of analysis applied to problems of wave propagation both in the far-field limit and near-field diffraction."
+    },
+    {
+        "branch": "optics",
+        "domain_partition": "physics_partition",
+        "thesis_statement": "Diffraction Limit (Rayleigh Criterion): Resolving power is limited by the wavelength of light and aperture diameter",
+        "parent_thesis": "Huygens-Fresnel Principle: Every point on a wave front acts as a source of secondary spherical wavelets",
+        "formal_proof": "sin\u03b8 = 1.22 * \u03bb / D. Derived by finding the first angular minimum of the Airy disk diffraction pattern.",
+        "context_description": "Specifies the minimum angular spread required to resolve two point sources of light through a circular aperture."
+    },
+    {
+        "branch": "optics",
+        "domain_partition": "physics_partition",
+        "thesis_statement": "Snell law of refraction",
+        "parent_thesis": "Snell's Law of Refraction: n1*sin(\u03b81) = n2*sin(\u03b82)",
+        "formal_proof": "Bridge alias.",
+        "context_description": "Bridge alias for Snell's Law."
+    },
+    {
+        "branch": "optics",
+        "domain_partition": "physics_partition",
+        "thesis_statement": "Fermat principle of least time",
+        "parent_thesis": "Fermat's Principle of Least Time: Light travels between two points along the path that minimizes travel time",
+        "formal_proof": "Bridge alias.",
+        "context_description": "Bridge alias for Fermat's Principle."
+    },
+    {
+        "branch": "optics",
+        "domain_partition": "physics_partition",
+        "thesis_statement": "Huygens-Fresnel principle",
+        "parent_thesis": "Huygens-Fresnel Principle: Every point on a wave front acts as a source of secondary spherical wavelets",
+        "formal_proof": "Bridge alias.",
+        "context_description": "Bridge alias for Huygens-Fresnel."
+    },
+    {
+        "branch": "optics",
+        "domain_partition": "physics_partition",
+        "thesis_statement": "Diffraction limits",
+        "parent_thesis": "Diffraction Limit (Rayleigh Criterion): Resolving power is limited by the wavelength of light and aperture diameter",
+        "formal_proof": "Bridge alias.",
+        "context_description": "Bridge alias for Diffraction Limit."
+    }
+]

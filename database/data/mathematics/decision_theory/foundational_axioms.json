@@ -1,0 +1,36 @@
+[
+    {
+        "branch": "decision_theory",
+        "domain_partition": "math_partition",
+        "thesis_statement": "Von Neumann-Morgenstern Utility Theorem: Rational agents act to maximize expected utility",
+        "parent_thesis": "Kolmogorov Axiom 3: Probability of countable disjoint events is the sum of their probabilities",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "30840f6126e89afeb1551496619eff1fdb4f553c9aec7794efd28e5b76a305ff"
+    },
+    {
+        "branch": "decision_theory",
+        "domain_partition": "math_partition",
+        "thesis_statement": "Minimax Theorem: For zero-sum games, max-min strategy equals min-max strategy",
+        "parent_thesis": "Nash Equilibrium Existence Theorem (Every finite game has at least one mixed-strategy Nash equilibrium)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "29bf0c80db2752982c69e79c567dff77b1566335e6e340d5a37cdfc38f7e6bb9"
+    },
+    {
+        "branch": "decision_theory",
+        "domain_partition": "math_partition",
+        "thesis_statement": "Savage's Subjective Expected Utility Axiom: Under uncertainty, a rational agent's preferences over acts satisfy postulates of completeness, transitivity, and independent partition, determining unique subjective probability and utility",
+        "parent_thesis": "Von Neumann-Morgenstern Utility Theorem: Rational agents act to maximize expected utility",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Savage's formulation extends utility theory to subjective probability, allowing expected utility maximization under uncertainty without objective probabilities."
+    },
+    {
+        "branch": "decision_theory",
+        "domain_partition": "math_partition",
+        "thesis_statement": "Bayesian Rational Choice Axiom: Under uncertainty, a rational agent updates beliefs using Bayes' Rule and acts to maximize expected utility",
+        "parent_thesis": "Bayes' Theorem (P(A|B) = [P(B|A)*P(A)]/P(B))",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Combines probability updating and expected utility maximization to guide dynamic decision making under uncertainty."
+    }
+]

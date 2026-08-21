@@ -1,0 +1,92 @@
+[
+    {
+        "branch": "psychology",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Maslow hierarchy of needs",
+        "parent_thesis": "Darwinian Natural Selection: Organisms better adapted to their environment tend to survive and produce more offspring",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "b5cbdc9bf89bc1dc6159a06f668c4a90b7e5c72222827f3d994abb9703fcb2cf"
+    },
+    {
+        "branch": "psychology",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Pavlovian classical conditioning",
+        "parent_thesis": "Behaviorist Conditioning: Organisms learn through interactions with their environment via operant or classical conditioning",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "d929488e23f17e3b2c0c8ff0e35bf4cc2acffa3ed9d4e2b747cfe58d781b9a35"
+    },
+    {
+        "branch": "psychology",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Skinner operant conditioning",
+        "parent_thesis": "Behaviorist Conditioning: Organisms learn through interactions with their environment via operant or classical conditioning",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "a9cc833a57f4ab39ee0c4faa4f2dd0415f077b3a2fe27109d0a719c8512dea9e"
+    },
+    {
+        "branch": "psychology",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Cognitive dissonance theory",
+        "parent_thesis": "Law of non-contradiction",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "56aa3f086dd99f7f9116da3ffdeba8f2e7658f11afef18309ecd1f6c5fe2e87a"
+    },
+    {
+        "branch": "psychology",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Bystander effect diffusion of responsibility",
+        "parent_thesis": "Tragedy of the Commons (Resource Depletion)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "2cb85d6feeb22945cd569fc2dc485963cb7ae0b00a1849345c00753546cafc4f"
+    },
+    {
+        "branch": "psychology",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Piaget stages of cognitive development",
+        "parent_thesis": "Cognitive Schema Theory: The mind organizes knowledge into units called schemas to process incoming information efficiently",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "c097c16026a653a04df8a00b2998b3fba0ea9ec794bf104768683988787d7521"
+    },
+    {
+        "branch": "psychology",
+        "domain_partition": "social_partition",
+        "thesis_statement": "Behaviorist Conditioning: Organisms learn through interactions with their environment via operant or classical conditioning",
+        "parent_thesis": "Synaptic Transmission Axiom: Neurons communicate via the release and binding of neurotransmitters across synaptic clefts",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "fafeb5389697f7fca9295c6d605770c55e52a3912674ce831d40bfeb51f402db"
+    },
+    {
+        "branch": "psychology",
+        "domain_partition": "social_partition",
+        "thesis_statement": "Cognitive Schema Theory: The mind organizes knowledge into units called schemas to process incoming information efficiently",
+        "parent_thesis": "Behaviorist Conditioning: Organisms learn through interactions with their environment via operant or classical conditioning",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "9244275bf7d7634f6eeba4d3266daa25d99147745799a1907559df9bbc87777a"
+    },
+    {
+        "branch": "psychology",
+        "domain_partition": "social_partition",
+        "thesis_statement": "Prospect Theory (Loss Aversion): Humans evaluate potential value of losses and gains rather than final outcomes, exhibiting stronger psychological responses to losses than equal gains",
+        "parent_thesis": "Reward Prediction Error (RPE): Phasic firing of dopaminergic neurons encodes the discrepancy between expected and received rewards",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "a59f4381592d616e331500d113e96ce60fe9c415b1cf90576832383a717ca646"
+    },
+    {
+        "branch": "psychology",
+        "domain_partition": "social_science",
+        "thesis_statement": "Cognitive Load Theory",
+        "parent_thesis": "Shannon-Hartley Theorem (Channel Capacity)",
+        "formal_proof": "Human working memory acts as a strictly bounded information channel (C). If intrinsic + extraneous load exceeds C, information transfer fails.",
+        "context_description": "A psychological framework demonstrating that human short-term memory has a strict capacity limit, affecting how learning and decision-making occurs.",
+        "ast_signature": "74d44edc34d60633c63b25ff7ddf07629a9fd0a9f1eaa744a89ed1d11bb190e5"
+    }
+]

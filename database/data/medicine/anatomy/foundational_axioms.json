@@ -1,0 +1,122 @@
+[
+    {
+        "thesis_statement": "Structural Hierarchy of Life - Cells group into tissues, tissues into organs, and organs into organ systems",
+        "parent_thesis": "1: Being (True)"
+    },
+    {
+        "thesis_statement": "Form follows function in biological structures (Anatomical Adaptation)",
+        "parent_thesis": "Natural selection survival fitness"
+    },
+    {
+        "thesis_statement": "Homeostasis - Biological systems maintain internal stability by self-regulating physiological processes",
+        "parent_thesis": "First law of thermodynamics energy conservation"
+    },
+    {
+        "thesis_statement": "Allostasis - The process of achieving stability, or homeostasis, through physiological or behavioral change",
+        "parent_thesis": "Homeostasis - Biological systems maintain internal stability by self-regulating physiological processes"
+    },
+    {
+        "thesis_statement": "Central Dogma of Molecular Biology - DNA makes RNA, and RNA makes protein",
+        "parent_thesis": "1: Being (True)"
+    },
+    {
+        "thesis_statement": "Germ Theory of Disease - Specific diseases are caused by the invasion of the body by specific microscopic organisms",
+        "parent_thesis": "1: Being (True)"
+    },
+    {
+        "thesis_statement": "Starling's Law of the Heart - The stroke volume of the heart increases in response to an increase in the volume of blood filling the heart",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "Frank-Starling Mechanism - The ability of the heart to change its force of contraction and therefore stroke volume in response to changes in venous return",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "Bohr Effect - Hemoglobin's oxygen binding affinity is inversely related both to acidity and to the concentration of carbon dioxide",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "Haldane Effect - Deoxygenation of the blood increases its ability to carry carbon dioxide",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "Wolff's Law - Bone in a healthy person or animal will adapt to the loads under which it is placed",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "Davis's Law - Soft tissue models along the lines of stress",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "Gate Control Theory of Pain - Non-painful input closes the 'gates' to painful input, which prevents pain sensation from traveling to the central nervous system",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "Sliding Filament Theory - The mechanism of muscle contraction based on muscle proteins that slide past each other to generate movement",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "All-or-None Law - The principle that the strength by which a nerve or muscle fiber responds to a stimulus is independent of the strength of the stimulus",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "Central Dogma of Molecular Biology - Genetic information flows only in one direction, from DNA, to RNA, to protein, or RNA to protein",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "Mendelian Inheritance - Principles relating to the transmission of hereditary characteristics from parent organisms to their offspring",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "Hardy-Weinberg Equilibrium (Re-stated) - Allele and genotype frequencies in a population will remain constant from generation to generation in the absence of other evolutionary influences",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "Competitive Exclusion Principle - Two species competing for the same limiting resource cannot coexist at constant population values",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "Endosymbiotic Theory - Eukaryotic cells originated through a symbiotic relationship between distinct prokaryotic organisms",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "Principle of Allocation - Each organism has a limited amount of energy that can be spent on obtaining food, escaping from predators, coping with environmental fluctuations, growth, and reproduction",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "Red Queen Hypothesis - Species must constantly adapt, evolve, and proliferate in order to survive while pitted against ever-evolving opposing species",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "Island Biogeography - The number of species on any island reflects a balance between the rate at which new species colonize it and the rate at which populations of established species become extinct",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "Optimal Foraging Theory - A model that helps predict how an animal behaves when searching for food",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "Lotka-Volterra Equations - Describes the dynamics of biological systems in which two species interact, one as a predator and the other as prey",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "Hamilton's Rule - Kin selection causes genes to increase in frequency when the genetic relatedness of a recipient to an actor multiplied by the benefit to the recipient is greater than the reproductive cost to the actor",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Fundamental Theorem of Applied Medical  Agronomy - Core theoretical limits govern the applied behaviors within the domain.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Axiom of Structural Integrity in Applied Medical  Agronomy - The integrity of the system is proportional to its internal coherence.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Principle of Emergence in Applied Medical  Agronomy - Higher-order complexities naturally arise from basic interactions.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    },
+    {
+        "thesis_statement": "The Postulate of Relational Dynamics in Applied Medical  Agronomy - No entity within the domain exists in isolation; all are defined by relationships.",
+        "parent_thesis": "Principle of Uniformitarianism - The present is the key to the past in geological processes"
+    }
+]

@@ -1,0 +1,56 @@
+[
+    {
+        "branch": "geometry",
+        "domain_partition": "math_partition",
+        "thesis_statement": "Definition of Hilbert's Axioms: A set of 20 axioms group-classified into incidence, order, congruence, parallels, and continuity",
+        "parent_thesis": "Definition of Point, Line, and Surface",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Hilbert's modern formulation of geometry that resolved implicit assumptions in Euclid's original postulates.",
+        "ast_signature": "5134945334caae5ffad685053c3fefc976d6b89641bea20bd96991f4d41923f7"
+    },
+    {
+        "branch": "geometry",
+        "domain_partition": "math_partition",
+        "thesis_statement": "Gauss-Bonnet Theorem",
+        "parent_thesis": "Pythagorean Theorem (a^2 + b^2 = c^2 for a right-angled triangle)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Gauss-Bonnet Theorem: Connects the total curvature of a surface (differential geometry) to its Euler characteristic (topology).",
+        "ast_signature": "6bc21f957e208c5fbcf2672e51dada0cd2d6e8929b65ab16de80f683caaf7935"
+    },
+    {
+        "branch": "geometry",
+        "domain_partition": "math_partition",
+        "thesis_statement": "Riemann curvature tensor",
+        "parent_thesis": "Definition of Point, Line, and Surface",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Riemann Curvature Tensor: Describes the curvature of Riemannian manifolds, indicating how vector transport deviates in curved spaces.",
+        "ast_signature": "3432dd73703df481ae7065b253cc117f4f67f2c9ffaf354260e7d27c8995fa44"
+    },
+    {
+        "branch": "geometry",
+        "domain_partition": "math_partition",
+        "thesis_statement": "Geodesic equation",
+        "parent_thesis": "Euler-Lagrange Equation (Calculus of Variations): The fundamental equation for finding a function which maximizes or minimizes a definite integral",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Geodesic Equation: Describes the shortest path between points on a curved manifold, matching path minimization.",
+        "ast_signature": "518a998fbbd32e385082150de54090992ffe7f26d53d3a62dcf43487ff7ab1bf"
+    },
+    {
+        "branch": "geometry",
+        "domain_partition": "math_partition",
+        "thesis_statement": "Desargues' Theorem in Projective Geometry",
+        "parent_thesis": "Euclid Postulate 1: A straight line segment can be drawn joining any two points",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Desargues' Theorem: A foundational theorem in projective geometry stating that two triangles are in perspective from a point if and only if they are in perspective from a line.",
+        "ast_signature": "c89fa3b711178e9509b77053666c565fd42e4382685f3f78d9d8244665040a45"
+    },
+    {
+        "branch": "geometry",
+        "domain_partition": "math_partition",
+        "thesis_statement": "Pappus's Hexagon Theorem",
+        "parent_thesis": "Euclid Postulate 1: A straight line segment can be drawn joining any two points",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Pappus's Theorem: A projective geometry theorem stating that if three points lie on one line and three on another, the intersection points of crossing line segments are collinear.",
+        "ast_signature": "c4c42fe68c30647b07e645e0deb4525cf5ba4caf8beeae25cd28a11e33b0f81d"
+    }
+]

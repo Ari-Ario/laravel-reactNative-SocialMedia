@@ -1,0 +1,122 @@
+[
+    {
+        "thesis_statement": "Arbitrariness of the Sign (Saussure) - The link between a linguistic signifier and signified is fundamentally arbitrary",
+        "parent_thesis": "1: Being (True)"
+    },
+    {
+        "thesis_statement": "Universal Grammar (Chomsky) - The ability to learn grammar is hard-wired into the human brain as a biological faculty",
+        "parent_thesis": "Natural selection survival fitness"
+    },
+    {
+        "thesis_statement": "Zipf's Law - The frequency of any word is inversely proportional to its rank in the frequency table",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Grice's Cooperative Principle - Communicators inherently assume the other is trying to be informative, truthful, relevant, and clear",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Sapir-Whorf Hypothesis - The structure of a language influences its speakers' worldview and cognition",
+        "parent_thesis": "1: Being (True)"
+    },
+    {
+        "thesis_statement": "Peirce's Triadic Theory of Signs - Meaning requires a Representamen (sign), an Object, and an Interpretant",
+        "parent_thesis": "1: Being (True)"
+    },
+    {
+        "thesis_statement": "Chomsky Hierarchy - Formal grammars are strictly divided into regular, context-free, context-sensitive, and recursively enumerable subsets",
+        "parent_thesis": "Church-Turing Thesis - A function on the natural numbers is computable if and only if it is computable by a Turing machine"
+    },
+    {
+        "thesis_statement": "Principle of Compositionality (Frege) - The meaning of a complex expression is determined by the meanings of its constituent expressions and the rules used to combine them",
+        "parent_thesis": "1: Being (True)"
+    },
+    {
+        "thesis_statement": "Langue and Parole (Saussure) - Language fundamentally consists of an abstract systematic rule-set (Langue) and individual speech acts (Parole)",
+        "parent_thesis": "1: Being (True)"
+    },
+    {
+        "thesis_statement": "Morphological Integrity - Morphemes act as the irreducible, smallest grammatical units carrying semantic meaning",
+        "parent_thesis": "1: Being (True)"
+    },
+    {
+        "thesis_statement": "The Fundamental Theorem of Linguistics, Semiotics,  Philology - Core theoretical limits govern the applied behaviors within the domain.",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "The Axiom of Structural Integrity in Linguistics, Semiotics,  Philology - The integrity of the system is proportional to its internal coherence.",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "The Principle of Emergence in Linguistics, Semiotics,  Philology - Higher-order complexities naturally arise from basic interactions.",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "The Postulate of Relational Dynamics in Linguistics, Semiotics,  Philology - No entity within the domain exists in isolation; all are defined by relationships.",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "The Conservation Law of Linguistics, Semiotics,  Philology - Core informational or physical properties are conserved through transformations.",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "The Paradox of Limitation in Linguistics, Semiotics,  Philology - Advancements in the field reveal new fundamental boundaries of measurement.",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "The Dialectical Synthesis of Linguistics, Semiotics,  Philology - Opposing theoretical frameworks ultimately resolve into a higher unified truth.",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "The Law of Diminishing Utility in Linguistics, Semiotics,  Philology - Progressive refinements yield exponentially smaller gains in systemic accuracy.",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "The Principle of Asymmetry in Linguistics, Semiotics,  Philology - Informational and structural forces exert non-uniform influence across the domain.",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "The Theorem of Epistemic Closure in Linguistics, Semiotics,  Philology - The field approaches a state of absolute formal definition bounded by logic.",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "The Foundational Postulate of Linguistics, Semiotics,  Philology - All observations within the domain must trace back to fundamental constants.",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "The Law of Entropy in Linguistics, Semiotics,  Philology - The system naturally trends toward disorganization unless energy is applied.",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "The Principle of Isomorphism in Linguistics, Semiotics,  Philology - Structures within the domain mirror the mathematical structures of logic.",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "The Hypothesis of Universality in Linguistics, Semiotics,  Philology - The core principles of the field apply uniformly across all observed contexts.",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "The Postulate of Continuity in Linguistics, Semiotics,  Philology - Changes within the system occur continuously rather than through discrete unlinked jumps.",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "The Axiom of Non-Contradiction in Linguistics, Semiotics,  Philology - No two fundamental principles within the field can mutually invalidate each other.",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "The Theorem of Systemic Interdependence in Linguistics, Semiotics,  Philology - A perturbation in one sub-field inherently affects the entire discipline.",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "The Principle of Recursive Feedback in Linguistics, Semiotics,  Philology - Outputs of the system continually serve as inputs, driving self-regulation.",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "The Law of Critical Thresholds in Linguistics, Semiotics,  Philology - Phase transitions occur when cumulative changes reach a breaking point.",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "The Ultimate Epistemic Limit of Linguistics, Semiotics,  Philology - Human comprehension of the domain is bounded by the cognitive architecture of the observer.",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    }
+]

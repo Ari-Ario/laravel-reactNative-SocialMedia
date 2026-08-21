@@ -142,7 +142,7 @@ export default function CreatePost({ visible, onClose, onPostCreated, initialPar
               const fullPost = await postStore.hydratePost(numericId);
               if (fullPost) {
                 setCaption(fullPost.caption && fullPost.caption !== 'null' ? String(fullPost.caption) : '');
-                
+
                 // Hydrate media with thumbnails for videos
                 const hydratedMedia = await Promise.all((fullPost.media || []).map(async (item: any) => {
                   if (item.type === 'video' && !item.thumbnailUri) {
@@ -152,7 +152,7 @@ export default function CreatePost({ visible, onClose, onPostCreated, initialPar
                   }
                   return item;
                 }));
-                
+
                 setMedia(hydratedMedia);
                 if (fullPost.location) {
                   const loc = typeof fullPost.location === 'string' ? JSON.parse(fullPost.location) : fullPost.location;
@@ -224,25 +224,11 @@ export default function CreatePost({ visible, onClose, onPostCreated, initialPar
     setLocation(null);
   };
 
-  const getVideoDuration = (uri: string): Promise<number> => {
-    return new Promise((resolve) => {
-      if (Platform.OS !== 'web') {
-        // Native duration is usually provided by picker, fallback to 0
-        resolve(0);
-        return;
-      }
-      const video = document.createElement('video');
-      video.preload = 'metadata';
-      video.playsInline = true;
-      video.muted = true;
-      video.setAttribute('playsinline', '');
-      video.setAttribute('webkit-playsinline', '');
-      video.onloadedmetadata = () => {
-        resolve(video.duration * 1000); // convert to ms
-      };
-      video.onerror = () => resolve(0);
-      video.src = uri;
-    });
+  const getVideoDuration = async (uri: string): Promise<number> => {
+    if (Platform.OS !== 'web') return 0;
+    // MediaCompressor.getVideoDuration: includes video.load(), muted/playsInline,
+    // 8s timeout, and Infinity handling for unseekable streams (camera blobs)
+    return await MediaCompressor.getVideoDuration(uri);
   };
 
   const generateVideoThumbnail = (uri: string): Promise<string | null> => {
@@ -261,7 +247,7 @@ export default function CreatePost({ visible, onClose, onPostCreated, initialPar
           const baseUrl = uri.split('/storage/')[0];
           const filePath = uri.split('/storage/')[1];
           const proxyUrl = `${baseUrl}/media-proxy?path=${filePath}`;
-          
+
           const response = await fetch(proxyUrl, { mode: 'cors' });
           if (response.ok) {
             const blob = await response.blob();
@@ -280,7 +266,7 @@ export default function CreatePost({ visible, onClose, onPostCreated, initialPar
             blobUrl = URL.createObjectURL(blob);
             sourceUri = blobUrl;
           }
-        } catch (e) {}
+        } catch (e) { }
       }
 
       const video = document.createElement('video');
@@ -334,20 +320,28 @@ export default function CreatePost({ visible, onClose, onPostCreated, initialPar
       let longVideosCount = 0;
 
       for (const asset of result.assets) {
-        let duration = asset.duration || 0;
-        
-        // Robust check for web duration if picker returns 0 or small value
-        if (Platform.OS === 'web' && duration < 2000) {
+        // On web, expo-image-picker returns duration in SECONDS (raw browser value).
+        // It silently returns 0 when its internal probe fails (large files / Safari).
+        // Re-probe via MediaCompressor when needed.
+        let duration = asset.duration ?? 0;
+
+        if (Platform.OS === 'web' && (duration <= 0 || duration < 2)) {
           try {
-            const probedDuration = await getVideoDuration(asset.uri);
-            if (probedDuration > 0) duration = probedDuration;
+            const probed = await getVideoDuration(asset.uri);
+            if (probed > 0) duration = probed;
           } catch (e) {
             console.warn('Failed to probe duration for', asset.uri);
           }
+        } else if (Platform.OS !== 'web' && duration > 0) {
+          // Native: expo-image-picker returns ms — convert to seconds
+          duration = duration / 1000;
         }
 
-        const isLong = asset.type === 'video' && duration > 120000;
-        
+        // duration is now in SECONDS. Threshold = 120s.
+        const isLong = asset.type === 'video' && (
+          !isFinite(duration) || duration > 120
+        );
+
         if (isLong) {
           longVideosCount++;
           // For long videos, add with needsTrimming flag
@@ -357,7 +351,7 @@ export default function CreatePost({ visible, onClose, onPostCreated, initialPar
             type: asset.type,
             needsTrimming: true,
             isLong: true,
-            duration: duration
+            duration: duration * 1000, // store as ms internally for compatibility
           });
         } else {
           // Compress normal media
@@ -407,7 +401,7 @@ export default function CreatePost({ visible, onClose, onPostCreated, initialPar
             setVideoToTrimIndex(firstUntrimmedIndex);
             setTrimmerVisible(true);
           }, 500);
-          
+
           if (longVideosCount > 0) {
             showToast(t('long_videos_detected'), 'info');
           }
@@ -470,7 +464,7 @@ export default function CreatePost({ visible, onClose, onPostCreated, initialPar
           // Process video
           const videoUri = video.uri;
           const thumbnailUri = await generateVideoThumbnail(videoUri);
-          
+
           const videoAsset = {
             uri: videoUri,
             thumbnailUri,
@@ -585,7 +579,7 @@ export default function CreatePost({ visible, onClose, onPostCreated, initialPar
       const hasMoreLongVideos = newMedia.some(
         (item) => item.type === 'video' && item.isLong && !item.startTime
       );
-      
+
       if (hasMoreLongVideos) {
         showToast(t('trim_one_more'), 'info');
       } else {
@@ -676,8 +670,8 @@ export default function CreatePost({ visible, onClose, onPostCreated, initialPar
       Alert.alert(
         t('long_videos_detected'),
         t('trim_videos_warning'),
-        [{ 
-          text: t('trim_now'), 
+        [{
+          text: t('trim_now'),
           onPress: () => {
             const firstIdx = media.findIndex(item => item.type === 'video' && item.duration > 120000 && !item.startTime);
             if (firstIdx !== -1) {

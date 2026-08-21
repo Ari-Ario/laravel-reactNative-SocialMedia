@@ -1,0 +1,30 @@
+[
+    {
+        "thesis_statement": "Historical Materialism (Marx) - The ultimate cause of historical events is the economic development of society and modes of production",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Law of Accelerating Returns (Kurzweil) - The rate of change in evolutionary systems tends to increase exponentially",
+        "parent_thesis": "1: Being (True)"
+    },
+    {
+        "thesis_statement": "Historicism - The belief that historical events are determined by laws and trajectory, rather than randomness",
+        "parent_thesis": "1: Being (True)"
+    },
+    {
+        "thesis_statement": "Thucydides Trap - When a rising power threatens to displace a ruling power, structural stress makes violent conflict highly likely",
+        "parent_thesis": "Rational Choice Theory Axiom: Agents perform cost-benefit analysis based on transitive preferences to maximize expected utility under constraints"
+    },
+    {
+        "thesis_statement": "Toynbee's Challenge and Response - Civilizations rise by successfully responding to challenges and fall when their creative minorities fail",
+        "parent_thesis": "1: Being (True)"
+    },
+    {
+        "thesis_statement": "Braudel's Longue Duree - Historical time must be understood in geographical and structural long-term cycles, not just immediate events",
+        "parent_thesis": "1: Being (True)"
+    },
+    {
+        "thesis_statement": "Great Man Theory vs Social History - Historical outcomes are a dialectic between individual agency and macroscopic structural forces",
+        "parent_thesis": "1: Being (True)"
+    }
+]

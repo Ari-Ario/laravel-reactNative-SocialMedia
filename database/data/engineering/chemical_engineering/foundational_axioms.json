@@ -1,0 +1,54 @@
+[
+    {
+        "branch": "chemical_engineering",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "McCabe-Thiele method for distillation",
+        "parent_thesis": "McCabe-Thiele Distillation Axiom: The composition of liquid and vapor phases in a distillation column is determined by mass balances and equilibrium stages under constant molal overflow",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "d76dc19ee4f9923b8c12824d76202be44fd957cda950e1456ca9a98de2f16f0a"
+    },
+    {
+        "branch": "chemical_engineering",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Damk\u00f6hler number reaction rates",
+        "parent_thesis": "Damk\u00f6hler Number Axiom: The ratio of chemical reaction rate to transport/diffusion rate determines the regime of mass transport-dominated versus kinetics-dominated processes",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "9e78e2e11f4c7d95eb0bf6b5ed67c19290d1b96ac8ad57c65e3f6a29542034f6"
+    },
+    {
+        "branch": "chemical_engineering",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Mass transfer convection",
+        "parent_thesis": "Mass Transfer Axiom: The net movement of mass from one location to another occurs due to gradients in concentration (Fick's Laws)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "52e7f40bcaf7ebc0a4ec7f207ba5382a5038fd6076cfdb25ec89c431928a60d8"
+    },
+    {
+        "branch": "chemical_engineering",
+        "domain_partition": "engineering_partition",
+        "thesis_statement": "Mass Transfer Axiom: The net movement of mass from one location to another occurs due to gradients in concentration (Fick's Laws)",
+        "parent_thesis": "Chemical Kinetics: The rate of a chemical reaction is proportional to the concentration of the reacting substances",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "4da99a17376d2e8a4fcee81f33d976d1601fb550b0fca14b6f407ef7cead59f2"
+    },
+    {
+        "branch": "chemical_engineering",
+        "domain_partition": "engineering_partition",
+        "thesis_statement": "McCabe-Thiele Distillation Axiom: The composition of liquid and vapor phases in a distillation column is determined by mass balances and equilibrium stages under constant molal overflow",
+        "parent_thesis": "Mass Transfer Axiom: The net movement of mass from one location to another occurs due to gradients in concentration (Fick's Laws)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Graphical analysis method for binary distillation feed streams, calculating the number of theoretical stages required."
+    },
+    {
+        "branch": "chemical_engineering",
+        "domain_partition": "engineering_partition",
+        "thesis_statement": "Damk\u00f6hler Number Axiom: The ratio of chemical reaction rate to transport/diffusion rate determines the regime of mass transport-dominated versus kinetics-dominated processes",
+        "parent_thesis": "Mass Transfer Axiom: The net movement of mass from one location to another occurs due to gradients in concentration (Fick's Laws)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Dimensionless quantity in chemical engineering linking chemical kinetics timescale to fluid transport timescale."
+    }
+]

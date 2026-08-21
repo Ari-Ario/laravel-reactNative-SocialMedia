@@ -1,0 +1,92 @@
+[
+    {
+        "branch": "intuitionistic_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Intuitionistic Logic rejects Law of Excluded Middle as axiom",
+        "parent_thesis": "Boolean Axiom: Law of Excluded Middle: (P OR NOT P)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "9370be2a52036342bc2b2bd88196fb1a6b307396cde148d8eddc3fe00a6f3952"
+    },
+    {
+        "branch": "intuitionistic_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "BHK Interpretation \u2014 proof of P\u2192Q is a function from proofs of P to proofs of Q",
+        "parent_thesis": "Intuitionistic Logic rejects Law of Excluded Middle as axiom",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "346f7f43bf5ed637e0d65b3efaf475c9c68b59de5c6808ee268a478175950c00"
+    },
+    {
+        "branch": "intuitionistic_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Heyting Algebra \u2014 algebraic semantics of intuitionistic logic",
+        "parent_thesis": "Intuitionistic Logic rejects Law of Excluded Middle as axiom",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "9b66d4bdae1755d47dc074c129fa832e703187185db55b446d98c99e4ce338cf"
+    },
+    {
+        "branch": "intuitionistic_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Curry-Howard Correspondence \u2014 propositions as types, proofs as programs",
+        "parent_thesis": "BHK Interpretation \u2014 proof of P\u2192Q is a function from proofs of P to proofs of Q",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "8868a171588b719c717593c3bdb97a6abcaab3cd1a2eed29b56fdb1cc805c346"
+    },
+    {
+        "branch": "intuitionistic_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Brouwer-Heyting-Kolmogorov Interpretation of Conjunction (proof of P\u2227Q is pair (p,q))",
+        "parent_thesis": "BHK Interpretation \u2014 proof of P\u2192Q is a function from proofs of P to proofs of Q",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "9231ca04fb4122b9de0a5e15563e0cd9f5a8236fce562baa6c03ea6e86f974ae"
+    },
+    {
+        "branch": "intuitionistic_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Intuitionistic Negation \u2014 \u00acP \u2261 P\u2192\u22a5 (P implies absurdity)",
+        "parent_thesis": "Intuitionistic Logic rejects Law of Excluded Middle as axiom",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "3e6ccb2aa600e0f130378a8fe2ae286ba05ef103d47824ece6489db03a63cc76"
+    },
+    {
+        "branch": "intuitionistic_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Double Negation in Intuitionistic Logic \u2014 \u00ac\u00acP \u22ac P (non-constructive)",
+        "parent_thesis": "Intuitionistic Negation \u2014 \u00acP \u2261 P\u2192\u22a5 (P implies absurdity)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "872e84279bec8c41b9f5bb4c7443b1e1b57daac1aff0eb87ca7bd7c968b04a3f"
+    },
+    {
+        "branch": "intuitionistic_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Glivenko Theorem \u2014 classical tautologies map to \u00ac\u00ac intuitionistic tautologies",
+        "parent_thesis": "Double Negation in Intuitionistic Logic \u2014 \u00ac\u00acP \u22ac P (non-constructive)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "e5e0516d4a5f54b65964d211093d9c8cca130e8fd7d084d7b23b7e068f56e683"
+    },
+    {
+        "branch": "intuitionistic_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Markov Principle \u2014 if \u00ac\u00ac\u2203n P(n) then \u2203n P(n) (constructive arithmetic)",
+        "parent_thesis": "Double Negation in Intuitionistic Logic \u2014 \u00ac\u00acP \u22ac P (non-constructive)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "0668fa8838c5f9d6f51eb5e048c69f96a408477cd8ce6dcb1b6a805110bb77fb"
+    },
+    {
+        "branch": "intuitionistic_logic",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Intuitionistic Arithmetic (HA) \u2014 Heyting Arithmetic",
+        "parent_thesis": "Peano Axiom \u2014 Mathematical Induction Schema",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "606270305fbab9e8e8df503cd7da7e4ce91f7734031093d9fe137725dd788f2f"
+    }
+]

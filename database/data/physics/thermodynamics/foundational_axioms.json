@@ -1,0 +1,106 @@
+[
+    {
+        "branch": "thermodynamics",
+        "domain_partition": "physics_partition",
+        "thesis_statement": "Zeroth Law of Thermodynamics: If A is in thermal equilibrium with B, and B with C, then A is in thermal equilibrium with C",
+        "parent_thesis": "Newton's Third Law of Motion: For every action, there is an equal and opposite reaction",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine."
+    },
+    {
+        "branch": "thermodynamics",
+        "domain_partition": "physics_partition",
+        "thesis_statement": "First Law of Thermodynamics (Conservation of Energy): \u0394U = Q - W",
+        "parent_thesis": "Zeroth Law of Thermodynamics: If A is in thermal equilibrium with B, and B with C, then A is in thermal equilibrium with C",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine."
+    },
+    {
+        "branch": "thermodynamics",
+        "domain_partition": "physics_partition",
+        "thesis_statement": "Second Law of Thermodynamics: Total entropy of an isolated system can never decrease over time (\u0394S \u2265 0)",
+        "parent_thesis": "First Law of Thermodynamics (Conservation of Energy): \u0394U = Q - W",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine."
+    },
+    {
+        "branch": "thermodynamics",
+        "domain_partition": "physics_partition",
+        "thesis_statement": "Third Law of Thermodynamics: The entropy of a perfect crystal approaches zero as temperature approaches absolute zero",
+        "parent_thesis": "Second Law of Thermodynamics: Total entropy of an isolated system can never decrease over time (\u0394S \u2265 0)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine."
+    },
+    {
+        "branch": "thermodynamics",
+        "domain_partition": "physics_partition",
+        "thesis_statement": "Boltzmann Entropy Axiom: S = k_B ln W (Entropy is proportional to the logarithm of the number of microstates)",
+        "parent_thesis": "Kolmogorov Axiom 3: Probability of countable disjoint events is the sum of their probabilities",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine."
+    },
+    {
+        "branch": "thermodynamics",
+        "domain_partition": "physics_partition",
+        "thesis_statement": "Maxwell-Boltzmann Distribution: Describes the distribution of speeds of particles in an idealized gas under thermal equilibrium",
+        "parent_thesis": "Boltzmann Entropy Axiom: S = k_B ln W (Entropy is proportional to the logarithm of the number of microstates)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine."
+    },
+    {
+        "branch": "thermodynamics",
+        "domain_partition": "physics_partition",
+        "thesis_statement": "Landauer's Principle: Logically irreversible computation, such as erasing a bit of information, dissipates a minimum amount of heat E = kT ln(2)",
+        "parent_thesis": "Boltzmann Entropy Axiom: S = k_B ln W (Entropy is proportional to the logarithm of the number of microstates)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine."
+    },
+    {
+        "branch": "thermodynamics",
+        "domain_partition": "physics_partition",
+        "thesis_statement": "Clausius-Clapeyron Relation: dP/dT = L / (T \u0394V) (Relates the vapor pressure of a substance to its temperature)",
+        "parent_thesis": "Gibbs Free Energy: \u0394G = \u0394H - T\u0394S (Criterion for spontaneity)",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine."
+    },
+    {
+        "branch": "thermodynamics",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "First law of thermodynamics energy conservation",
+        "parent_thesis": "Conservation of linear momentum",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine."
+    },
+    {
+        "branch": "thermodynamics",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Second law of thermodynamics entropy increase",
+        "parent_thesis": "First law of thermodynamics energy conservation",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine."
+    },
+    {
+        "branch": "thermodynamics",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Third law of thermodynamics absolute zero",
+        "parent_thesis": "Second law of thermodynamics entropy increase",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine."
+    },
+    {
+        "branch": "thermodynamics",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Carnot cycle efficiency",
+        "parent_thesis": "Second law of thermodynamics entropy increase",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine."
+    },
+    {
+        "branch": "thermodynamics",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Boltzmann entropy microstates",
+        "parent_thesis": "Second law of thermodynamics entropy increase",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine."
+    }
+]

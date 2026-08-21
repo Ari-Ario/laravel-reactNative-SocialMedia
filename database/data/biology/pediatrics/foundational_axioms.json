@@ -1,0 +1,62 @@
+[
+    {
+        "branch": "pediatrics",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Growth chart percentiles",
+        "parent_thesis": "Michaelis-Menten Kinetics: Describes the rate of enzymatic reactions by relating reaction rate v to substrate concentration [S]",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "d16da1cccbdb785345d1a398b814de7079e92c3e164702835e1ba70a07ee7967"
+    },
+    {
+        "branch": "pediatrics",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Developmental milestones",
+        "parent_thesis": "Michaelis-Menten Kinetics: Describes the rate of enzymatic reactions by relating reaction rate v to substrate concentration [S]",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "7173582e3e70e2780f36539a009e49adc847e898edd9dd33734aa71d4f948e8a"
+    },
+    {
+        "branch": "pediatrics",
+        "domain_partition": "formal_logic",
+        "thesis_statement": "Neonatal Apgar score",
+        "parent_thesis": "Michaelis-Menten Kinetics: Describes the rate of enzymatic reactions by relating reaction rate v to substrate concentration [S]",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "b6c760d845d5c1299522169a24c5df17aa4b888a41a08725dabe06fefc6390f4"
+    },
+    {
+        "branch": "pediatrics",
+        "domain_partition": "biology_partition",
+        "thesis_statement": "Developmental Physiology Axiom: Biological systems in developing humans undergo systematic and predictable maturation phases distinct from adults",
+        "parent_thesis": "Homeostasis Axiom: Biological systems maintain stability while adjusting to conditions that are optimal for survival",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Context dynamically evaluated and mapped by the Zmzir Dialectical Engine.",
+        "ast_signature": "687c30fd0a0d55844f7a9b9a2bae8d397722dc0b30ca422ba0d02c90058e9e2c"
+    },
+    {
+        "branch": "pediatrics",
+        "domain_partition": "biology_partition",
+        "thesis_statement": "Growth Percentile Tracking: Pediatric physical growth is assessed using standardized curves of height, weight, and head circumference relative to age",
+        "parent_thesis": "Developmental Physiology Axiom: Biological systems in developing humans undergo systematic and predictable maturation phases distinct from adults",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Tracks physiological maturation against reference populations, indicating nutrition, metabolic health, or endocrine functions."
+    },
+    {
+        "branch": "pediatrics",
+        "domain_partition": "biology_partition",
+        "thesis_statement": "Sequential Developmental Milestones: Pediatric neurodevelopment progresses through predictable stages of motor, cognitive, and social capability",
+        "parent_thesis": "Developmental Physiology Axiom: Biological systems in developing humans undergo systematic and predictable maturation phases distinct from adults",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Tracks systematic myelination and synaptic pruning in the central nervous system through predictable motor and language acquisitions."
+    },
+    {
+        "branch": "pediatrics",
+        "domain_partition": "biology_partition",
+        "thesis_statement": "Apgar Scoring System: The physical status of a newborn is rapidly assessed at birth using five physiological parameters (Appearance, Pulse, Grimace, Activity, Respiration)",
+        "parent_thesis": "Developmental Physiology Axiom: Biological systems in developing humans undergo systematic and predictable maturation phases distinct from adults",
+        "formal_proof": "Dialectical proof synthesized via rigorous recursive pedigree trace across multi-domain partition.",
+        "context_description": "Created by Virginia Apgar, providing a standardized clinical scoring metric at 1 and 5 minutes post-delivery to guide neonatal resuscitation."
+    }
+]

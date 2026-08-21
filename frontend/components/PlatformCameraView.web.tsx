@@ -92,8 +92,14 @@ export default function PlatformCameraView({
                     return new Promise((resolve, reject) => {
                         chunksRef.current = [];
                         
-                        // Try to find supported mime type
-                        const types = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'];
+                        // Prefer MP4 (Safari iOS only supports mp4, not webm)
+                        const types = [
+                            'video/mp4;codecs=avc1',
+                            'video/mp4',
+                            'video/webm;codecs=vp9',
+                            'video/webm;codecs=vp8',
+                            'video/webm',
+                        ];
                         const mimeType = types.find(t => MediaRecorder.isTypeSupported(t)) || '';
                         
                         const stream = streamRef.current;
@@ -119,7 +125,8 @@ export default function PlatformCameraView({
                             reject(err);
                         };
 
-                        recorder.start();
+                        // timeslice=1000ms: collect data every second (needed for Safari)
+                        recorder.start(1000);
                     });
                 },
                 stopRecording: () => {
