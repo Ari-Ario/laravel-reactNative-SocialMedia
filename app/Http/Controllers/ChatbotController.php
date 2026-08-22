@@ -48,12 +48,12 @@ class ChatbotController extends Controller
             }
 
             $ticket = ChatbotTraining::create([
-                'trigger'          => mb_substr($trigger, 0, 500),
-                'response'         => mb_substr($response, 0, 2000),
-                'category'         => $category ?? $branch ?? 'general',
-                'branch'           => $branch,
-                'needs_review'     => true,
-                'is_active'        => false,
+                'trigger' => mb_substr($trigger, 0, 500),
+                'response' => mb_substr($response, 0, 2000),
+                'category' => $category ?? $branch ?? 'general',
+                'branch' => $branch,
+                'needs_review' => true,
+                'is_active' => false,
                 'confidence_score' => $confidence,
             ]);
 
@@ -417,7 +417,7 @@ class ChatbotController extends Controller
                 $knownDomain = $knownDomainArr ? ($knownDomainArr['key'] ?? null) : null;
             }
             if (!$knownDomain && $resolvedBranch && $resolvedBranch !== 'general') {
-                $knownDomain = match(strtolower($resolvedBranch)) {
+                $knownDomain = match (strtolower($resolvedBranch)) {
                     'math' => 'math_partition',
                     'logic' => 'formal_logic',
                     'physics' => 'physics_partition',
@@ -443,18 +443,18 @@ class ChatbotController extends Controller
 
             if ($dynamicSolver) {
                 $phase1 = $dynamicSolver->executePhase1Trial($cleanThesis, $astMatrix);
-                
+
                 if (!empty($phase1['abort_dynamic_solver'])) {
                     $isProofRequest = false;
                     goto skip_proof_request;
                 }
-                
+
                 $phase2 = $dynamicSolver->executePhase2Deduction($phase1);
                 $proof = $dynamicSolver->executePhase3Induction($phase2);
-                
+
                 $isAxiom = $phase2['is_valid'] ?? false;
                 $confidence = $isAxiom ? 1.0 : 0.0;
-                
+
                 $status = $isAxiom ? 'global_axiom' : 'expert_review';
                 if (!empty($phase2['is_soft_axiom'])) {
                     $status = 'soft_axiom';
@@ -468,7 +468,7 @@ class ChatbotController extends Controller
                 $parentAxiomsChain = [];
                 $axId = $phase2['axiom_id'] ?? null;
                 $axBranch = $resolvedBranch ?? ($knownDomain ?? null);
-                
+
                 $foundAxiom = null;
                 if ($axId) {
                     $foundAxiom = \App\Models\KnowledgeAxiom::find($axId);
@@ -476,10 +476,10 @@ class ChatbotController extends Controller
                 if (!$foundAxiom && $axBranch) {
                     // Try to find the root axiom for this branch/domain to build the pedigree
                     $foundAxiom = \App\Models\KnowledgeAxiom::where('status', 'global_axiom')
-                        ->where(function($q) use ($axBranch) {
+                        ->where(function ($q) use ($axBranch) {
                             $q->where('branch', $axBranch)
-                              ->orWhere('domain_partition', $axBranch)
-                              ->orWhere('thesis_statement', 'like', "%{$axBranch}%");
+                                ->orWhere('domain_partition', $axBranch)
+                                ->orWhere('thesis_statement', 'like', "%{$axBranch}%");
                         })->orderBy('id', 'asc')->first();
                 }
 
@@ -492,15 +492,16 @@ class ChatbotController extends Controller
                         // The found axiom is the current axiom, so its parent is the actual first parent
                         $p = $foundAxiom->parent_axiom_id ? \App\Models\KnowledgeAxiom::find($foundAxiom->parent_axiom_id) : null;
                     }
-                    
+
                     while ($p) {
                         array_unshift($parentAxiomsChain, [
-                            'id'               => $p->id,
+                            'id' => $p->id,
                             'thesis_statement' => $p->thesis_statement,
-                            'branch'           => $p->branch,
+                            'branch' => $p->branch,
                         ]);
                         $p = $p->parent_axiom_id ? \App\Models\KnowledgeAxiom::find($p->parent_axiom_id) : null;
-                        if (count($parentAxiomsChain) >= 8) break;
+                        if (count($parentAxiomsChain) >= 8)
+                            break;
                     }
                 }
 
@@ -516,17 +517,17 @@ class ChatbotController extends Controller
                         $confidence
                     );
                 }
-                
+
                 return response()->json([
-                    'response'           => $proof,
-                    'conversation_id'    => $conversationId,
-                    'is_axiom'           => $isAxiom,
-                    'status'             => $status,
-                    'confidence_score'   => $confidence,
-                    'axiom_id'           => $axId,
-                    'branch'             => $axBranch,
-                    'parent_axioms'      => $parentAxiomsChain,
-                    'is_fallback'        => $isFallback,
+                    'response' => $proof,
+                    'conversation_id' => $conversationId,
+                    'is_axiom' => $isAxiom,
+                    'status' => $status,
+                    'confidence_score' => $confidence,
+                    'axiom_id' => $axId,
+                    'branch' => $axBranch,
+                    'parent_axioms' => $parentAxiomsChain,
+                    'is_fallback' => $isFallback,
                     'training_ticket_id' => $ticketId,
                 ]);
             }
@@ -579,25 +580,26 @@ class ChatbotController extends Controller
                     : null;
                 while ($p) {
                     array_unshift($parentAxiomsChain, [
-                        'id'               => $p->id,
+                        'id' => $p->id,
                         'thesis_statement' => $p->thesis_statement,
-                        'branch'           => $p->branch,
+                        'branch' => $p->branch,
                     ]);
                     $p = $p->parent_axiom_id ? \App\Models\KnowledgeAxiom::find($p->parent_axiom_id) : null;
-                    if (count($parentAxiomsChain) >= 8) break; // safety guard
+                    if (count($parentAxiomsChain) >= 8)
+                        break; // safety guard
                 }
 
                 return response()->json([
-                    'response'         => $response,
-                    'conversation_id'  => $conversationId,
-                    'is_axiom'         => true,
-                    'status'           => 'global_axiom',
+                    'response' => $response,
+                    'conversation_id' => $conversationId,
+                    'is_axiom' => true,
+                    'status' => 'global_axiom',
                     'confidence_score' => 1.0,
-                    'axiom_id'         => $existingAxiom->id,
-                    'branch'           => $existingAxiom->branch,
+                    'axiom_id' => $existingAxiom->id,
+                    'branch' => $existingAxiom->branch,
                     'domain_partition' => $existingAxiom->domain_partition,
-                    'parent_axioms'    => $parentAxiomsChain,
-                    'is_fallback'      => false,
+                    'parent_axioms' => $parentAxiomsChain,
+                    'is_fallback' => false,
                 ]);
             }
             // ========================================================================
@@ -615,7 +617,7 @@ class ChatbotController extends Controller
                 $knownDomain = $oracle->classifyDomain($cleanThesis);
             }
             if (!$knownDomain && $resolvedBranch && $resolvedBranch !== 'general') {
-                $partition = match(strtolower($resolvedBranch)) {
+                $partition = match (strtolower($resolvedBranch)) {
                     'math' => 'math_partition',
                     'logic' => 'formal_logic',
                     'physics' => 'physics_partition',
@@ -824,7 +826,8 @@ class ChatbotController extends Controller
                                     }
                                 }
                                 return array_filter($result, function ($t) {
-                                    return abs($t['coeff']) > 0.000001; });
+                                    return abs($t['coeff']) > 0.000001;
+                                });
                             };
 
                             $expandedPoly = [['coeff' => 1.0, 'vars' => []]];
@@ -947,9 +950,11 @@ class ChatbotController extends Controller
                         };
 
                         $gcd = function ($a, $b) use (&$gcd) {
-                            return $b == 0 ? abs($a) : $gcd($b, $a % $b); };
+                            return $b == 0 ? abs($a) : $gcd($b, $a % $b);
+                        };
                         $lcm = function ($a, $b) use (&$gcd) {
-                            return ($a * $b) / $gcd($a, $b); };
+                            return ($a * $b) / $gcd($a, $b);
+                        };
 
                         $foundFormula = null;
                         for ($d = 1; $d <= $maxDegree; $d++) {
@@ -1067,7 +1072,8 @@ class ChatbotController extends Controller
 
                             if ($valid) {
                                 $gcd = function ($a, $b) use (&$gcd) {
-                                    return $b == 0 ? abs($a) : $gcd($b, $a % $b); };
+                                    return $b == 0 ? abs($a) : $gcd($b, $a % $b);
+                                };
                                 $commonGcd = abs($vals[0]);
                                 for ($i = 1; $i < 5; $i++) {
                                     $commonGcd = $gcd($commonGcd, abs($vals[$i]));
@@ -1323,9 +1329,9 @@ class ChatbotController extends Controller
                 if (!$axiom && is_object($evalRes->axiom)) {
                     $axiom = $evalRes->axiom;
                 } elseif (!$axiom) {
-                    $axiom = (object)$evalRes->axiom;
+                    $axiom = (object) $evalRes->axiom;
                 }
-                
+
                 $statusLabel = ($axiom->status ?? '') === 'global_axiom' ? '*(Dialectically Proven)*' : '*(Synthesized Thesis)*';
 
                 $parentAxiomLabel = 'Foundational Void';
@@ -1377,11 +1383,11 @@ class ChatbotController extends Controller
                     'success' => true
                 ]);
 
-                $axStatus    = $axiom->status ?? 'synthesized_thesis';
-                $axConf      = (float)($axiom->confidence_score ?? 0.5);
-                $axId        = $axiom->id ?? null;
-                $axBranch    = $axiom->branch ?? ($resolvedBranch ?? null);
-                $axDomain    = $axiom->domain_partition ?? null;
+                $axStatus = $axiom->status ?? 'synthesized_thesis';
+                $axConf = (float) ($axiom->confidence_score ?? 0.5);
+                $axId = $axiom->id ?? null;
+                $axBranch = $axiom->branch ?? ($resolvedBranch ?? null);
+                $axDomain = $axiom->domain_partition ?? null;
 
                 // Build parent chain for the frontend pedigree tree
                 $parentAxiomsChain = [];
@@ -1389,17 +1395,18 @@ class ChatbotController extends Controller
                     $p = $axiom->parent_axiom_id ? \App\Models\KnowledgeAxiom::find($axiom->parent_axiom_id) : null;
                     while ($p) {
                         array_unshift($parentAxiomsChain, [
-                            'id'               => $p->id,
+                            'id' => $p->id,
                             'thesis_statement' => $p->thesis_statement,
-                            'branch'           => $p->branch,
+                            'branch' => $p->branch,
                         ]);
                         $p = $p->parent_axiom_id ? \App\Models\KnowledgeAxiom::find($p->parent_axiom_id) : null;
-                        if (count($parentAxiomsChain) >= 8) break;
+                        if (count($parentAxiomsChain) >= 8)
+                            break;
                     }
                 }
 
                 // Auto-create fallback ticket when synthesized_thesis AND low confidence
-                $ticketId  = null;
+                $ticketId = null;
                 $isFallback = ($axStatus === 'synthesized_thesis' && $axConf < 0.5);
                 if ($isFallback) {
                     $ticketId = $this->autoFallbackTicket(
@@ -1412,17 +1419,17 @@ class ChatbotController extends Controller
                 }
 
                 return response()->json([
-                    'response'           => $response,
-                    'conversation_id'    => $conversationId,
-                    'is_axiom'           => true,
-                    'status'             => $axStatus,
-                    'confidence_score'   => $axConf,
-                    'axiom_id'           => $axId,
-                    'thesis'             => $cleanThesis,
-                    'branch'             => $axBranch,
-                    'domain_partition'   => $axDomain,
-                    'parent_axioms'      => $parentAxiomsChain,
-                    'is_fallback'        => $isFallback,
+                    'response' => $response,
+                    'conversation_id' => $conversationId,
+                    'is_axiom' => true,
+                    'status' => $axStatus,
+                    'confidence_score' => $axConf,
+                    'axiom_id' => $axId,
+                    'thesis' => $cleanThesis,
+                    'branch' => $axBranch,
+                    'domain_partition' => $axDomain,
+                    'parent_axioms' => $parentAxiomsChain,
+                    'is_fallback' => $isFallback,
                     'training_ticket_id' => $ticketId,
                 ]);
             }
@@ -1505,30 +1512,31 @@ class ChatbotController extends Controller
                     $p = $axiom->parent_axiom_id ? \App\Models\KnowledgeAxiom::find($axiom->parent_axiom_id) : null;
                     while ($p) {
                         array_unshift($parentAxiomsChain, [
-                            'id'               => $p->id,
+                            'id' => $p->id,
                             'thesis_statement' => $p->thesis_statement,
-                            'branch'           => $p->branch,
+                            'branch' => $p->branch,
                         ]);
                         $p = $p->parent_axiom_id ? \App\Models\KnowledgeAxiom::find($p->parent_axiom_id) : null;
-                        if (count($parentAxiomsChain) >= 8) break;
+                        if (count($parentAxiomsChain) >= 8)
+                            break;
                     }
 
                     return response()->json([
-                        'response'         => $response,
-                        'conversation_id'  => $conversationId,
-                        'is_axiom'         => true,
-                        'status'           => $axiom->status,
+                        'response' => $response,
+                        'conversation_id' => $conversationId,
+                        'is_axiom' => true,
+                        'status' => $axiom->status,
                         'confidence_score' => $axiom->confidence_score,
-                        'axiom_id'         => $axiom->id,
-                        'branch'           => $axiom->branch,
+                        'axiom_id' => $axiom->id,
+                        'branch' => $axiom->branch,
                         'domain_partition' => $axiom->domain_partition,
-                        'parent_axioms'    => $parentAxiomsChain,
-                        'is_fallback'      => false,
+                        'parent_axioms' => $parentAxiomsChain,
+                        'is_fallback' => false,
                     ]);
                 }
             }
         }
-        
+
         skip_proof_request:
 
         // Main response engine
@@ -1542,22 +1550,22 @@ class ChatbotController extends Controller
         ]);
 
         return response()->json([
-            'response'      => $response,
+            'response' => $response,
             'conversation_id' => $conversationId,
-            'is_axiom'      => false,
-            'is_fallback'   => false,
+            'is_axiom' => false,
+            'is_fallback' => false,
         ]);
     }
 
     public function submitFeedback(Request $request)
     {
         $request->validate([
-            'query'              => 'required|string',
-            'response'           => 'required|string',
-            'type'               => 'required|in:save,discard',
-            'axiom_id'           => 'nullable|integer',
-            'branch'             => 'nullable|string|max:100',
-            'domain_partition'   => 'nullable|string|max:100',
+            'query' => 'required|string',
+            'response' => 'required|string',
+            'type' => 'required|in:save,discard',
+            'axiom_id' => 'nullable|integer',
+            'branch' => 'nullable|string|max:100',
+            'domain_partition' => 'nullable|string|max:100',
             'training_ticket_id' => 'nullable|integer',
         ]);
 
@@ -1592,18 +1600,18 @@ class ChatbotController extends Controller
                     $ticketId = $existing->id;
                 } else {
                     $ticket = ChatbotTraining::create([
-                        'trigger'          => mb_substr($request->input('query'), 0, 500),
-                        'response'         => mb_substr($request->input('response'), 0, 2000),
-                        'category'         => $request->input('branch') ?? 'general',
-                        'branch'           => $request->input('branch'),
+                        'trigger' => mb_substr($request->input('query'), 0, 500),
+                        'response' => mb_substr($request->input('response'), 0, 2000),
+                        'category' => $request->input('branch') ?? 'general',
+                        'branch' => $request->input('branch'),
                         'domain_partition' => $request->input('domain_partition'),
-                        'needs_review'     => true,
-                        'is_active'        => false,
+                        'needs_review' => true,
+                        'is_active' => false,
                         'confidence_score' => 0.3,
-                        'context'          => json_encode([
-                            'weight'           => 0.3,
+                        'context' => json_encode([
+                            'weight' => 0.3,
                             'user_contradiction' => true,
-                            'reported_at'      => now()->toISOString(),
+                            'reported_at' => now()->toISOString(),
                         ]),
                     ]);
                     $ticketId = $ticket->id;
@@ -1624,7 +1632,7 @@ class ChatbotController extends Controller
             ->first();
 
         $weightChange = $isPositive ? 0.1 : -0.2;
-        $newWeight    = 1.0;
+        $newWeight = 1.0;
 
         if ($rule) {
             $context = json_decode($rule->context ?? '{}', true) ?: [];
@@ -1644,23 +1652,23 @@ class ChatbotController extends Controller
         // ── Dispatch Phase 3 learning job with enriched payload ───────────────────
         // The 'feedback' type handler in ProcessAILearning now correctly processes this.
         ProcessAILearning::dispatch('feedback', [
-            'trigger'            => $request->input('query'),
-            'response'           => $request->input('response'),
-            'type'               => $request->input('type'),
-            'category'           => $request->input('branch') ?? 'general',
-            'branch'             => $request->input('branch'),
-            'domain_partition'   => $request->input('domain_partition'),
-            'axiom_id'           => $request->input('axiom_id'),
+            'trigger' => $request->input('query'),
+            'response' => $request->input('response'),
+            'type' => $request->input('type'),
+            'category' => $request->input('branch') ?? 'general',
+            'branch' => $request->input('branch'),
+            'domain_partition' => $request->input('domain_partition'),
+            'axiom_id' => $request->input('axiom_id'),
             'training_ticket_id' => $ticketId,
         ]);
 
         return response()->json([
-            'success'        => true,
-            'message'        => $isPositive
+            'success' => true,
+            'message' => $isPositive
                 ? 'Thank you! The engine has reinforced this knowledge.'
                 : 'Contradiction registered. An expert will review this response.',
-            'new_weight'     => $newWeight,
-            'ticket_id'      => $ticketId,
+            'new_weight' => $newWeight,
+            'ticket_id' => $ticketId,
             'learning_state' => $isPositive ? 'reinforced' : 'queued_for_review',
         ]);
     }
@@ -1805,8 +1813,8 @@ class ChatbotController extends Controller
             $existingAxiom = \App\Models\KnowledgeAxiom::where('status', 'global_axiom')
                 ->where(function ($query) use ($cleanForAxiom) {
                     $query->where('ast_signature', hash('sha256', $cleanForAxiom))
-                          ->orWhere('thesis_statement', $cleanForAxiom)
-                          ->orWhere('thesis_statement', 'like', $cleanForAxiom . '%');
+                        ->orWhere('thesis_statement', $cleanForAxiom)
+                        ->orWhere('thesis_statement', 'like', $cleanForAxiom . '%');
                 })
                 ->first();
 
@@ -2877,10 +2885,11 @@ class ChatbotController extends Controller
     {
         // tokenizer + DialecticalKeywordBank stopword removal + sentiment detection
         $words = preg_split('/\s+/', strtolower($message));
-        
-        $filtered = array_values(array_filter($words, function($word) {
+
+        $filtered = array_values(array_filter($words, function ($word) {
             $w = trim(preg_replace('/[^a-z0-9]/', '', $word));
-            if (strlen($w) < 2) return false;
+            if (strlen($w) < 2)
+                return false;
             return !\App\Services\DialecticalKeywordBank::isStopWord($w);
         }));
 
@@ -2889,8 +2898,10 @@ class ChatbotController extends Controller
 
         $sentiment = 'neutral';
         foreach ($filtered as $word) {
-            if (in_array($word, $positive)) $sentiment = 'positive';
-            if (in_array($word, $negative)) $sentiment = 'negative';
+            if (in_array($word, $positive))
+                $sentiment = 'positive';
+            if (in_array($word, $negative))
+                $sentiment = 'negative';
         }
 
         return [
@@ -2904,12 +2915,13 @@ class ChatbotController extends Controller
         // light tokenizer + DialecticalKeywordBank stopword removal for training matching
         $message = strtolower(preg_replace('/[^a-z0-9\s]/', '', $message));
         $words = preg_split('/\s+/', trim($message));
-        
-        $filtered = array_filter($words, function($w) {
-            if (strlen($w) < 2) return false;
+
+        $filtered = array_filter($words, function ($w) {
+            if (strlen($w) < 2)
+                return false;
             return !\App\Services\DialecticalKeywordBank::isStopWord($w);
         });
-        
+
         return array_values(array_unique($filtered));
     }
 
@@ -2923,7 +2935,8 @@ class ChatbotController extends Controller
         // 1. O(1) Check against the Master Dialectical Keyword Bank
         $bank = \App\Services\DialecticalKeywordBank::get();
         foreach ($bank as $branch => $triggers) {
-            if ($branch === 'intent_verbs') continue;
+            if ($branch === 'intent_verbs')
+                continue;
             foreach ($triggers as $trigger) {
                 // Exact word boundary match or array intersection
                 if (in_array($trigger, $words) || preg_match('/\b' . preg_quote($trigger, '/') . '\b/i', $message)) {
@@ -2936,7 +2949,7 @@ class ChatbotController extends Controller
         // 2. Fallback to ExpertScienceCategorizer for complex structural matches
         $categorizer = app(\App\Services\ExpertScienceCategorizer::class);
         $expertBranch = $categorizer->classify($message);
-        
+
         if ($expertBranch && $expertBranch !== 'general') {
             $detected[] = $expertBranch;
         }
