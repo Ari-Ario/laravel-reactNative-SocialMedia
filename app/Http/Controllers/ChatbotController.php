@@ -1275,8 +1275,8 @@ class ChatbotController extends Controller
                 $query = \App\Models\KnowledgeAxiom::where('status', 'global_axiom')
                     ->whereIn('branch', $matchingBranches)
                     ->where(function ($q) use ($keywords) {
-                        foreach ($keywords as $kw) {
-                            $q->orWhere('thesis_statement', 'REGEXP', '\\b' . preg_quote($kw) . '\\b');
+                        foreach (array_slice($keywords, 0, 5) as $kw) {
+                            $q->orWhere('thesis_statement', 'LIKE', '%' . $kw . '%');
                         }
                     });
                 $parentAxiom = $query->first();
@@ -1464,7 +1464,7 @@ class ChatbotController extends Controller
                 }
             });
 
-            $axioms = $axiomQuery->orderByDesc('confidence_score')->get();
+            $axioms = $axiomQuery->orderByDesc('confidence_score')->take(30)->get();
 
             foreach ($axioms as $axiom) {
                 if ($axiom->confidence_score < 0.3)
