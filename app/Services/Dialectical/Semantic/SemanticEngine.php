@@ -107,6 +107,9 @@ class SemanticEngine
         echo "Training complete! Saved " . count($vectors) . " vectors.\n";
     }
 
+    private static ?array $cachedVectorsData = null;
+    private static ?array $cachedMetadata = null;
+
     /**
      * Query the vector space to find the closest axiom
      */
@@ -116,8 +119,13 @@ class SemanticEngine
             throw new \Exception("Semantic Engine not trained. Run php artisan dialectical:train-ontology");
         }
 
-        $vectorsData = json_decode(file_get_contents($this->vectorsFile), true);
-        $metadata = json_decode(file_get_contents($this->metaFile), true);
+        if (self::$cachedVectorsData === null) {
+            self::$cachedVectorsData = json_decode(file_get_contents($this->vectorsFile), true);
+            self::$cachedMetadata = json_decode(file_get_contents($this->metaFile), true);
+        }
+
+        $vectorsData = self::$cachedVectorsData;
+        $metadata = self::$cachedMetadata;
 
         $idf = $vectorsData['idf'];
         $matrix = $vectorsData['matrix'];
