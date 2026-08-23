@@ -1850,16 +1850,31 @@ class ChatbotController extends Controller
 
             if (!$isFallback && $confidence >= 0.6) {
                 // Good match - return answer
-                return $answer . " (powered by AI)";
+                return response()->json([
+                    'response' => $answer . " (powered by AI)",
+                    'conversation_id' => $conversationId,
+                    'is_axiom' => false,
+                    'is_fallback' => false,
+                ]);
             } else {
                 // Low confidence or fallback - trigger learning
                 $this->learnResponse($message, '', $category);
-                return "I'm still learning about $category questions...";
+                return response()->json([
+                    'response' => "I'm still learning about $category questions...",
+                    'conversation_id' => $conversationId,
+                    'is_axiom' => false,
+                    'is_fallback' => true,
+                ]);
             }
         } else {
             // RAG failed - trigger learning
             $this->learnResponse($message, '', $category);
-            return "(GPT) I'm still learning about $category questions...";
+            return response()->json([
+                'response' => "(GPT) I'm still learning about $category questions...",
+                'conversation_id' => $conversationId,
+                'is_axiom' => false,
+                'is_fallback' => true,
+            ]);
         }
 
         // ————————————————————————————————————
@@ -1868,7 +1883,12 @@ class ChatbotController extends Controller
         $this->learnResponse($message, '', $category);
         $this->updateKnowledgeBase();
 
-        return "I'm still learning about $category questions. Our team will review this shortly.";
+        return response()->json([
+            'response' => "I'm still learning about $category questions. Our team will review this shortly.",
+            'conversation_id' => $conversationId,
+            'is_axiom' => false,
+            'is_fallback' => true,
+        ]);
     }
 
     // ========================================================================
