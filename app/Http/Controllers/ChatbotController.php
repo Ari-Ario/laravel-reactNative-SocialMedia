@@ -1850,31 +1850,16 @@ class ChatbotController extends Controller
 
             if (!$isFallback && $confidence >= 0.6) {
                 // Good match - return answer
-                return response()->json([
-                    'response' => $answer . " (powered by AI)",
-                    'conversation_id' => $conversationId,
-                    'is_axiom' => false,
-                    'is_fallback' => false,
-                ]);
+                return $answer . " (powered by AI)";
             } else {
                 // Low confidence or fallback - trigger learning
                 $this->learnResponse($message, '', $category);
-                return response()->json([
-                    'response' => "I'm still learning about $category questions...",
-                    'conversation_id' => $conversationId,
-                    'is_axiom' => false,
-                    'is_fallback' => true,
-                ]);
+                return "I'm still learning about $category questions...";
             }
         } else {
             // RAG failed - trigger learning
             $this->learnResponse($message, '', $category);
-            return response()->json([
-                'response' => "(GPT) I'm still learning about $category questions...",
-                'conversation_id' => $conversationId,
-                'is_axiom' => false,
-                'is_fallback' => true,
-            ]);
+            return "(GPT) I'm still learning about $category questions...";
         }
 
         // ————————————————————————————————————
@@ -1883,12 +1868,7 @@ class ChatbotController extends Controller
         $this->learnResponse($message, '', $category);
         $this->updateKnowledgeBase();
 
-        return response()->json([
-            'response' => "I'm still learning about $category questions. Our team will review this shortly.",
-            'conversation_id' => $conversationId,
-            'is_axiom' => false,
-            'is_fallback' => true,
-        ]);
+        return "I'm still learning about $category questions. Our team will review this shortly.";
     }
 
     // ========================================================================
