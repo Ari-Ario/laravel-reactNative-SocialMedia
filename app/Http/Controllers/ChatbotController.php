@@ -3075,16 +3075,13 @@ class ChatbotController extends Controller
     // ========================================================================
     private function askRAGMicroservice(string $message, string $model = 'phi-3', string $contextString = ""): array
     {
-        // Add a strict 1-second TCP check to prevent Swoole/Guzzle from hanging if iptables drops packets
-        $fp = @fsockopen("127.0.0.1", 8001, $errno, $errstr, 1);
-        if (!$fp) {
-            return [
-                'answer' => null,
-                'confidence' => 0,
-                'success' => false
-            ];
-        }
-        fclose($fp);
+        // Bypass completely since the Python AI service is not deployed on Forge yet.
+        // This prevents any possibility of network hangs or timeouts.
+        return [
+            'answer' => null,
+            'confidence' => 0,
+            'success' => false
+        ];
 
         $maxRetries = 2;
         $retryDelay = 1000;
