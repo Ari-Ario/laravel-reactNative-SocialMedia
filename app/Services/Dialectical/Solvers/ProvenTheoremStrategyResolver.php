@@ -18,14 +18,17 @@ class ProvenTheoremStrategyResolver
 {
     /**
      * Structural keyword signatures per proof strategy.
-     * These are DERIVED from the proven axioms, not hardcoded proofs.
+     * Static so the array is allocated once per worker, not per instantiation.
      */
-    private array $strategyKeywords = [
+    private static array $strategyKeywords = [
         'parity_subset_mapping'    => ['goldbach', 'sum of two primes', 'p + q', 'n = p + q', 'sum of primes', 'even integer', 'every even'],
         '2adic_convergence'        => ['collatz', 'divide by 2', '3n+1', '3n + 1', 'collatz sequence', 'reaches 1', 'halving'],
         'modular_sieve_crt'        => ['twin prime', 'twin primes', 'p + 2', 'p+2', 'primes differing by 2', '6k ± 1', '6k±1'],
         'eratosthenes_separation'  => ['eratosthenes', 'sieve of eratosthenes', 'all primes greater', 'primes mod 6', 'prime sieve'],
     ];
+
+    /** Shared MathematicalASTParser (19ms construct cost, reused across calls). */
+    private static ?\App\Services\Dialectical\MathematicalASTParser $astParser = null;
 
     /**
      * Attempt to resolve a thesis to a proven global_axiom in the DB.
@@ -87,7 +90,7 @@ class ProvenTheoremStrategyResolver
     private function detectStrategy(string $lower): ?string
     {
         $scores = [];
-        foreach ($this->strategyKeywords as $strategy => $keywords) {
+        foreach (self::$strategyKeywords as $strategy => $keywords) {
             $hits = 0;
             foreach ($keywords as $kw) {
                 if (str_contains($lower, $kw)) {
@@ -142,20 +145,16 @@ class ProvenTheoremStrategyResolver
             }
         }
 
-        // For all cases (raw thesis text or failed hardcoded lookup), perform a dynamic semantic match
-        // using the SemanticEngine with cosine similarity. The strategy here is the raw thesis text
-        // or the hardcoded strategy string — both are valid query inputs.
+        // For all cases (raw thesis text or failed hardcoded lookup), perform a dynamic semantic match.
         try {
-            $semanticEngine = new \App\Services\Dialectical\Semantic\SemanticEngine();
-            // Limit query to first 300 chars to avoid over-long queries to the semantic engine
             $queryText = substr($strategy, 0, 300);
-            $matches = $semanticEngine->query($queryText, null);
+            $matches = \App\Services\DialecticalOracleService::semanticEngine()->query($queryText, null);
 
             if (!empty($matches) && $matches[0]['similarity'] > 0.65) {
                 return KnowledgeAxiom::where('status', 'global_axiom')->find($matches[0]['id']);
             }
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::warning("ProvenTheoremStrategyResolver semantic query failed: " . $e->getMessage());
+            \Illuminate\Support\Facades\Log::warning('ProvenTheoremStrategyResolver semantic query failed: ' . $e->getMessage());
         }
 
         return null;
@@ -211,14 +210,13 @@ class ProvenTheoremStrategyResolver
      */
     private function buildPhase3(KnowledgeAxiom $axiom, string $strategy): string
     {
-        $astParser = new \App\Services\Dialectical\MathematicalASTParser();
-        $domainStr = $axiom->branch ?? 'logic';
+        // MathematicalASTParser costs ~19ms to construct; reuse the static instance.
+        if (self::$astParser === null) {
+            self::$astParser = new \App\Services\Dialectical\MathematicalASTParser();
+        }
+        $domainStr    = $axiom->branch ?? 'logic';
         $partitionStr = $axiom->domain_partition ?? 'logic_partition';
-        
-        $astMock = [
-            'proof_key' => $strategy,
-            'domain' => $domainStr
-        ];
-        return $astParser->proveInductiveScaling($astMock, $partitionStr);
+        $astMock = ['proof_key' => $strategy, 'domain' => $domainStr];
+        return self::$astParser->proveInductiveScaling($astMock, $partitionStr);
     }
 }

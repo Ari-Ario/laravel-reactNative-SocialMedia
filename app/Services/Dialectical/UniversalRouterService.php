@@ -29,15 +29,35 @@ class UniversalRouterService
 {
     private DynamicSyntaxGenerator $syntax;
     private SymbolicMathSolverService $cas;
-    private SemanticRouterService $semantic;
     private \App\Services\DialecticalOracleService $oracle;
+
+    /**
+     * Static lazy singleton for SemanticRouterService.
+     * The 372MB NaiveBayes model is loaded at most ONCE per Octane worker.
+     * Subsequent requests in the same worker reuse the static instance.
+     */
+    private static ?SemanticRouterService $semantic = null;
 
     public function __construct(DynamicSyntaxGenerator $syntax, SymbolicMathSolverService $cas)
     {
-        $this->syntax = $syntax;
-        $this->cas = $cas;
-        $this->semantic = new SemanticRouterService();
-        $this->oracle = new \App\Services\DialecticalOracleService();
+        $this->syntax  = $syntax;
+        $this->cas     = $cas;
+        $this->oracle  = new \App\Services\DialecticalOracleService();
+        // Note: SemanticRouterService is NOT instantiated here.
+        // It is lazily created only if Layer 19 is reached (see getSemanticRouter()).
+    }
+
+    /**
+     * Returns the shared SemanticRouterService singleton.
+     * Creating it here (not in __construct) means it only loads the
+     * 372MB model when it is actually needed.
+     */
+    private function getSemanticRouter(): SemanticRouterService
+    {
+        if (self::$semantic === null) {
+            self::$semantic = new SemanticRouterService();
+        }
+        return self::$semantic;
     }
 
     /**
@@ -676,7 +696,7 @@ class UniversalRouterService
         // ═══════════════════════════════════════════════════════════════════
         // LAYER 19 – PHP-ML Semantic Routing Fallback
         // ═══════════════════════════════════════════════════════════════════
-        $semanticDomain = $knownDomain ?: $this->semantic->classify($thesis);
+        $semanticDomain = $knownDomain ?: $this->getSemanticRouter()->classify($thesis);
         if ($semanticDomain) {
             $solverClass = \App\Services\Dialectical\Semantic\ScientificTaxonomyService::resolveSolverClass($semanticDomain);
             $mlMap = [

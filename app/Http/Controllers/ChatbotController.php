@@ -1250,8 +1250,7 @@ class ChatbotController extends Controller
             // High-Fidelity Semantic Vector matching fallback
             if (!$parentAxiom) {
                 try {
-                    $semanticEngine = new \App\Services\Dialectical\Semantic\SemanticEngine();
-                    $matches = $semanticEngine->query($cleanThesis);
+                    $matches = \App\Services\DialecticalOracleService::semanticEngine()->query($cleanThesis);
                     if (!empty($matches)) {
                         $matchingBranches = \App\Services\DialecticalOracleService::getMatchingBranchesForDomain($resolvedBranch ?? 'math');
                         foreach ($matches as $match) {

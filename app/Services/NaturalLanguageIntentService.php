@@ -22,14 +22,29 @@ class NaturalLanguageIntentService
     const INTENT_SOCIAL      = 'social_question';
     const INTENT_GENERAL     = 'general_chat';
 
-    const CACHE_TTL = 60;
+    const CACHE_TTL = 3600; // 1 hour — intent resolution is fully deterministic
+
+    /**
+     * In-process request cache keyed by sha256(rawInput).
+     * In Octane, this persists for the worker lifetime — repeated identical
+     * queries (burst retries, popular queries) are answered at zero cost.
+     */
+    private static array $requestCache = [];
 
     public function resolve(string $rawInput): array
     {
         $cacheKey = 'dire:ast:v3:' . hash('sha256', $rawInput);
+
+        // Layer 0: in-process static cache (zero latency)
+        if (isset(self::$requestCache[$cacheKey])) {
+            return self::$requestCache[$cacheKey];
+        }
+
+        // Layer 1: Redis/DB distributed cache
         $cached = Cache::get($cacheKey);
         if ($cached !== null) {
             $cached['cache_hit'] = true;
+            self::$requestCache[$cacheKey] = $cached;
             return $cached;
         }
 
@@ -63,6 +78,7 @@ class NaturalLanguageIntentService
         ];
 
         Cache::put($cacheKey, $result, self::CACHE_TTL);
+        self::$requestCache[$cacheKey] = $result; // populate in-process cache too
         return $result;
     }
 

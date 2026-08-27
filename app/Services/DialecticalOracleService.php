@@ -4,6 +4,37 @@ namespace App\Services;
 
 class DialecticalOracleService
 {
+    // =========================================================================
+    // STATIC IN-PROCESS CACHES (persist for the lifetime of an Octane worker)
+    // This eliminates repeated Redis/DB round-trips for pure-read hot paths.
+    // =========================================================================
+
+    /** Compiled knowledge graph — loaded once per worker from Redis/DB cache. */
+    private static ?array $staticGraph = null;
+
+    /** Knowledge graph keys pre-sorted longest-first — computed once per worker. */
+    private static ?array $staticSortedKeys = null;
+
+    /** isUnsolvedProblem() result cache keyed by sha256(thesis). */
+    private static array $unsolvedCache = [];
+
+    /** Shared SemanticEngine singleton — avoids 7× re-instantiation per request. */
+    private static ?\App\Services\Dialectical\Semantic\SemanticEngine $seInstance = null;
+
+    /**
+     * Returns the shared SemanticEngine instance.
+     * The static vectors are already cached inside SemanticEngine;
+     * this method additionally avoids repeatedly calling `new SemanticEngine()`
+     * across the 7 call sites scattered throughout this service and its dependants.
+     */
+    public static function semanticEngine(): \App\Services\Dialectical\Semantic\SemanticEngine
+    {
+        if (self::$seInstance === null) {
+            self::$seInstance = new \App\Services\Dialectical\Semantic\SemanticEngine();
+        }
+        return self::$seInstance;
+    }
+
     /**
      * Millennium / unsolved problems are now dynamically resolved via SemanticEngine and DB expert_review_required flags.
      */
@@ -94,13 +125,12 @@ class DialecticalOracleService
     private function resolveDynamicAncestry(string $thesis, array $domain): ?array
     {
         try {
-            $semanticEngine = new \App\Services\Dialectical\Semantic\SemanticEngine();
             $partition = $domain['domain_partition'] ?? null;
 
-            // Level 1: Find the direct domain parent
-            $matches = $semanticEngine->query($thesis, $partition);
+            // Level 1: Find the direct domain parent (shared SemanticEngine singleton)
+            $matches = self::semanticEngine()->query($thesis, $partition);
             if (empty($matches)) {
-                $matches = $semanticEngine->query($thesis); // Fallback to all
+                $matches = self::semanticEngine()->query($thesis); // Fallback to all
             }
 
             if (empty($matches)) {
@@ -181,53 +211,61 @@ class DialecticalOracleService
      */
     public function isUnsolvedProblem(string $thesis): bool
     {
+        // Static per-worker result cache: the same thesis string always yields the same answer.
+        $cacheKey = hash('sha256', strtolower(trim($thesis)));
+        if (array_key_exists($cacheKey, self::$unsolvedCache)) {
+            return self::$unsolvedCache[$cacheKey];
+        }
+
+        $result = $this->computeIsUnsolvedProblem($thesis);
+        self::$unsolvedCache[$cacheKey] = $result;
+        return $result;
+    }
+
+    /**
+     * Internal implementation — called at most once per (worker, thesis) pair.
+     */
+    private function computeIsUnsolvedProblem(string $thesis): bool
+    {
         try {
-            $semanticEngine = new \App\Services\Dialectical\Semantic\SemanticEngine();
-            // Perform a semantic query without partition filter
-            $matches = $semanticEngine->query($thesis, null);
+            // Use the shared SemanticEngine singleton (vectors already in static memory).
+            $matches = self::semanticEngine()->query($thesis, null);
 
             if (!empty($matches) && $matches[0]['similarity'] > 0.65) {
                 $axiom = \Illuminate\Support\Facades\DB::table('knowledge_axioms')->find($matches[0]['id']);
-                // Check the DB flag
                 if ($axiom && $axiom->expert_review_required) {
                     return true;
                 }
             }
 
-            // Fallback for strict database check on exact string keywords
+            // Hardcoded aliases for famous unsolved problems (O(n) on a tiny fixed list — fast).
             $cleanThesis = trim(str_ireplace('prove: ', '', strtolower($thesis)));
-            if (strlen($cleanThesis) > 3) {
-                $dbAxiom = \Illuminate\Support\Facades\DB::table('knowledge_axioms')
-                    ->where('expert_review_required', true)
-                    ->where('thesis_statement', 'like', "%{$cleanThesis}%")
-                    ->first();
-
-                if ($dbAxiom) {
-                    return true;
-                }
-            }
-
-            // Hardcoded fallback for famous unsolved problems not in DB
-            $unsolvedAliases = ['yang-mills', 'yang mills', 'mass gap', 'hodge conjecture', 'birch and swinnerton-dyer', 'birch and swinnerton dyer', 'poincare conjecture', 'goldbach', 'collatz', 'twin prime', 'navier-stokes', 'navier stokes', 'riemann hypothesis', 'riemann zeta', 'p vs np', 'p=np'];
+            $unsolvedAliases = [
+                'yang-mills', 'yang mills', 'mass gap', 'hodge conjecture',
+                'birch and swinnerton-dyer', 'birch and swinnerton dyer',
+                'poincare conjecture', 'goldbach', 'collatz', 'twin prime',
+                'navier-stokes', 'navier stokes', 'riemann hypothesis', 'riemann zeta',
+                'p vs np', 'p=np',
+            ];
             foreach ($unsolvedAliases as $alias) {
-                if (strpos(strtolower($thesis), $alias) !== false) {
+                if (strpos($cleanThesis, $alias) !== false) {
                     return true;
                 }
             }
 
-            // Further fallback checking against the memory graph
-            $graph = self::getCompiledGraph();
-            foreach ($graph as $key => $data) {
+            // Graph iteration for the 'unsolved' flag on compiled graph entries.
+            // The graph is already in static memory after the first classifyDomain call.
+            foreach (self::getCompiledGraph() as $data) {
                 if (!empty($data['unsolved'])) {
                     foreach ($data['aliases'] as $alias) {
-                        if (strpos(strtolower($thesis), strtolower($alias)) !== false) {
+                        if (strpos($cleanThesis, strtolower($alias)) !== false) {
                             return true;
                         }
                     }
                 }
             }
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::warning("Dynamic Unsolved check failed: " . $e->getMessage());
+            \Illuminate\Support\Facades\Log::warning('Dynamic Unsolved check failed: ' . $e->getMessage());
         }
 
         return false;
@@ -239,7 +277,13 @@ class DialecticalOracleService
      */
     private static function getCompiledGraph(): array
     {
-        return \Illuminate\Support\Facades\Cache::rememberForever('dialectical_oracle_graph', function () {
+        // Layer 1: in-process static cache — zero latency after first call per worker.
+        if (self::$staticGraph !== null) {
+            return self::$staticGraph;
+        }
+
+        // Layer 2: Redis/DB distributed cache — shared across workers but still a network call.
+        self::$staticGraph = \Illuminate\Support\Facades\Cache::rememberForever('dialectical_oracle_graph', function () {
             $knowledgeGraph = [
                 // =========================================================================================
                 // 🔢 PHASE 1: FOUNDATIONAL MATHEMATICS & LOGIC (NO PREREQUISITES OR SELF-EVIDENT)
@@ -840,6 +884,8 @@ class DialecticalOracleService
 
             return $knowledgeGraph;
         });
+
+        return self::$staticGraph;
     }
 
     /**
@@ -885,14 +931,14 @@ class DialecticalOracleService
         $knowledgeGraph = self::getCompiledGraph();
         // ===========================================================
         // PRIORITY-ORDERED MATCHING: longest key first, then by alias length
-        // This prevents 'peano' matching inside 'neapolitan' etc.
+        // Pre-sorted keys are cached statically so usort() runs at most ONCE per worker.
         // ===========================================================
+        if (self::$staticSortedKeys === null) {
+            self::$staticSortedKeys = array_keys($knowledgeGraph);
+            usort(self::$staticSortedKeys, fn($a, $b) => strlen($b) - strlen($a));
+        }
 
-        // Sort keys by length descending (most specific first)
-        $sortedKeys = array_keys($knowledgeGraph);
-        usort($sortedKeys, fn($a, $b) => strlen($b) - strlen($a));
-
-        foreach ($sortedKeys as $key) {
+        foreach (self::$staticSortedKeys as $key) {
             $data = $knowledgeGraph[$key];
             if (
                 strpos($thesis_lower, $key) !== false ||
@@ -951,8 +997,7 @@ class DialecticalOracleService
         // Semantic vector space fallback query for variations/similarities
         if (!$axiom) {
             try {
-                $semanticEngine = new \App\Services\Dialectical\Semantic\SemanticEngine();
-                $matches = $semanticEngine->query($cleanThesis);
+                $matches = self::semanticEngine()->query($cleanThesis);
                 if (!empty($matches) && $matches[0]['similarity'] >= 0.55) {
                     $potAxiom = \Illuminate\Support\Facades\DB::table('knowledge_axioms')
                         ->where('id', $matches[0]['id'])

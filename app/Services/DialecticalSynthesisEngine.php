@@ -32,10 +32,9 @@ class DialecticalSynthesisEngine
         // --- DIRECT PARADOX INTERCEPTION (DYNAMIC ORACLE RESOLUTION) ---
         // Dynamically fetch from the Oracle instead of hardcoding 'heterological', 'grain of sand', etc.
         $oracle = app(\App\Services\DialecticalOracleService::class);
-        $semanticEngine = new \App\Services\Dialectical\Semantic\SemanticEngine();
-        
-        // 1. We query the DB dynamically for Paradoxes
-        $paradoxMatches = $semanticEngine->query($thesis, 'formal_logic');
+
+        // 1. We query the DB dynamically for Paradoxes (shared SemanticEngine singleton)
+        $paradoxMatches = \App\Services\DialecticalOracleService::semanticEngine()->query($thesis, 'formal_logic');
         $bestParadoxAxiom = null;
         
         // Fuzzy threshold for paradox matches or explicit keyword match in the thesis

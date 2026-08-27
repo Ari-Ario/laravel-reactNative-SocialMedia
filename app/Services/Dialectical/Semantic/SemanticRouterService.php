@@ -5,101 +5,161 @@ namespace App\Services\Dialectical\Semantic;
 use Phpml\Classification\NaiveBayes;
 use Phpml\FeatureExtraction\TokenCountVectorizer;
 use Phpml\Tokenization\WordTokenizer;
-use App\Services\Dialectical\Semantic\NGramTokenizer;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
 
 class SemanticRouterService
 {
-    private $classifier;
-    private $vectorizer;
-    private $tfIdfTransformer;
-    private $modelPath;
+    /**
+     * Static singleton state — loaded ONCE per Octane worker process.
+     * In Swoole/Octane, static properties persist across requests within the
+     * same worker, so the 372MB model is deserialized only on the FIRST
+     * request that hits this worker. All subsequent requests reuse the
+     * in-memory state at near-zero cost.
+     */
+    private static bool  $loaded    = false;
+    private static bool  $available = false;
+    private static mixed $classifier       = null;
+    private static mixed $vectorizer       = null;
+    private static mixed $tfIdfTransformer = null;
+
+    private string $modelPath;
 
     public function __construct()
     {
-        ini_set('memory_limit', '-1'); // Unlimited memory required for large vocabulary sparse matrix
         $this->modelPath = storage_path('app/dialectical_semantic_model.bin');
-        $this->loadOrTrainModel();
+
+        if (!self::$loaded) {
+            $this->bootStaticModel();
+        }
     }
 
-    private function loadOrTrainModel()
+    /**
+     * Load the serialized NaiveBayes model into static memory.
+     * Called only once per worker. If the model file does not exist or
+     * unserializing fails, we mark the service as unavailable and continue
+     * without crashing — classify() will return null and the router falls
+     * through to Layer 20.
+     */
+    private function bootStaticModel(): void
     {
-        if (file_exists($this->modelPath)) {
-            try {
-                $savedState = unserialize(file_get_contents($this->modelPath));
-                $this->classifier = $savedState['classifier'];
-                $this->vectorizer = $savedState['vectorizer'];
-                $this->tfIdfTransformer = $savedState['tfIdfTransformer'];
-                return;
-            } catch (\Exception $e) {
-                Log::warning("Failed to load semantic model: " . $e->getMessage() . ". Retraining...");
-            }
+        self::$loaded = true; // Mark as attempted even if it fails
+
+        if (!file_exists($this->modelPath)) {
+            Log::warning('SemanticRouterService: model file not found at ' . $this->modelPath . '. Layer 19 ML routing disabled. Run php artisan dialectical:train-semantics to build it.');
+            self::$available = false;
+            return;
         }
 
-        $this->trainModel();
+        try {
+            // Raise memory limit for the deserialization — needed only once.
+            ini_set('memory_limit', '-1');
+
+            $savedState = unserialize(file_get_contents($this->modelPath));
+
+            if (!isset($savedState['classifier'], $savedState['vectorizer'])) {
+                throw new \RuntimeException('Serialized model file is corrupt or missing keys.');
+            }
+
+            self::$classifier       = $savedState['classifier'];
+            self::$vectorizer       = $savedState['vectorizer'];
+            self::$tfIdfTransformer = $savedState['tfIdfTransformer'] ?? null;
+            self::$available        = true;
+
+            Log::info('SemanticRouterService: NaiveBayes model loaded into static worker memory successfully.');
+        } catch (\Throwable $e) {
+            self::$available = false;
+            Log::error('SemanticRouterService: Failed to load model — ' . $e->getMessage() . '. Layer 19 ML routing disabled.');
+        }
     }
 
-    public function trainModel()
+    /**
+     * Train and persist the NaiveBayes model to disk.
+     * Only called explicitly via artisan command — NEVER during an HTTP request.
+     */
+    public function trainModel(): void
     {
-        $corpus = SemanticDatasetManager::getTrainingCorpus();
-        
+        $corpus  = SemanticDatasetManager::getTrainingCorpus();
         $samples = [];
-        $labels = [];
+        $labels  = [];
 
         foreach ($corpus as $row) {
             $samples[] = strtolower($row[0]);
-            $labels[] = $row[1];
+            $labels[]  = $row[1];
         }
 
         $this->trainModelWithData($samples, $labels);
     }
 
     /**
-     * Train the model dynamically from an advanced script (avoids fetching all at once in one heavy array).
+     * Train the model with the provided data and save to disk.
+     * After training, reset the static state so the next request reloads it.
      */
-    public function trainModelWithData(array $samples, array $labels)
+    public function trainModelWithData(array $samples, array $labels): void
     {
-        // 1. Vectorize (Using MathAwareTokenizer to preserve equations and scientific symbols)
-        $this->vectorizer = new TokenCountVectorizer(new \App\Services\Dialectical\Semantic\MathAwareTokenizer());
-        $this->vectorizer->fit($samples);
-        $this->vectorizer->transform($samples);
+        ini_set('memory_limit', '-1');
 
-        // 2. Apply TF-IDF Transformer to weight rare scientific terms heavily
-        $this->tfIdfTransformer = new \Phpml\FeatureExtraction\TfIdfTransformer($samples);
-        $this->tfIdfTransformer->fit($samples);
-        $this->tfIdfTransformer->transform($samples);
+        $vectorizer = new TokenCountVectorizer(new MathAwareTokenizer());
+        $vectorizer->fit($samples);
+        $vectorizer->transform($samples);
 
-        // 3. Train Classifier
-        $this->classifier = new NaiveBayes();
-        $this->classifier->train($samples, $labels);
+        $tfIdf = new \Phpml\FeatureExtraction\TfIdfTransformer($samples);
+        $tfIdf->fit($samples);
+        $tfIdf->transform($samples);
 
-        // Save for instant loading (2GB RAM optimization)
+        $classifier = new NaiveBayes();
+        $classifier->train($samples, $labels);
+
         file_put_contents($this->modelPath, serialize([
-            'classifier' => $this->classifier,
-            'vectorizer' => $this->vectorizer,
-            'tfIdfTransformer' => $this->tfIdfTransformer
+            'classifier'       => $classifier,
+            'vectorizer'       => $vectorizer,
+            'tfIdfTransformer' => $tfIdf,
         ]));
-        
-        Log::info("Semantic Engine Retrained and Cached successfully.");
+
+        // Reset static cache so next request reloads from disk
+        self::$loaded    = false;
+        self::$available = false;
+        self::$classifier       = null;
+        self::$vectorizer       = null;
+        self::$tfIdfTransformer = null;
+
+        Log::info('SemanticRouterService: Model retrained and saved. Static cache reset.');
     }
 
     /**
-     * Classifies a natural language query into a scientific domain.
+     * Classify a query into a scientific domain.
+     *
+     * Returns null (not empty string) when the ML model is unavailable,
+     * so the router can safely fall through to Layer 20 without errors.
      */
-    public function classify(string $query): string
+    public function classify(string $query): ?string
     {
-        $query = strtolower($query);
-        $samples = [$query];
-
-        $this->vectorizer->transform($samples);
-        
-        if ($this->tfIdfTransformer) {
-            $this->tfIdfTransformer->transform($samples);
+        if (!self::$available || self::$classifier === null || self::$vectorizer === null) {
+            return null;
         }
 
-        $prediction = $this->classifier->predict($samples);
+        try {
+            $query   = strtolower($query);
+            $samples = [$query];
 
-        return $prediction[0] ?? 'general';
+            self::$vectorizer->transform($samples);
+
+            if (self::$tfIdfTransformer !== null) {
+                self::$tfIdfTransformer->transform($samples);
+            }
+
+            $prediction = self::$classifier->predict($samples);
+            return $prediction[0] ?? null;
+        } catch (\Throwable $e) {
+            Log::warning('SemanticRouterService::classify error — ' . $e->getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Check if the ML model is available in this worker.
+     */
+    public function isAvailable(): bool
+    {
+        return self::$available;
     }
 }
