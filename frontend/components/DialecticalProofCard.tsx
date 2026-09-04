@@ -36,7 +36,7 @@ interface DialecticalSection {
 
 function parseDialecticalProof(text: string): DialecticalSection | null {
   // Must contain at least one dialectical marker to parse
-  if (!text.includes('1️⃣') && !text.includes('Phase 1') && !text.includes('Trial') && !text.includes('MATHEMATICAL PROOF')) {
+  if (!text.includes('1️⃣') && !text.includes('Phase 1') && !text.includes('MATHEMATICAL PROOF')) {
     return null;
   }
 
@@ -214,7 +214,7 @@ export default function DialecticalProofCard({
 
   const contentMaxH = collapseAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [0, 340],
+    outputRange: [0, 2000],
   });
 
   const numTabs = Math.max(1, availableTabs.length);
@@ -256,6 +256,8 @@ export default function DialecticalProofCard({
       backgroundColor: activeScheme === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)',
       color: activeConfig.color,
       paddingHorizontal: 4,
+      paddingVertical: 0,
+      margin: 0,
       borderRadius: 4,
       fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
       fontSize: 12,
@@ -583,7 +585,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   content: {
-    maxHeight: 340,
+    maxHeight: 600,
   },
   contentScroll: {
     flex: 1,

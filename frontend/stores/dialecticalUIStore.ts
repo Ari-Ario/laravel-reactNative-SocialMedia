@@ -16,14 +16,18 @@ import { create } from 'zustand';
 interface DialecticalUIState {
   /** Axiom pedigree tree expansion per message id */
   expandedAxiomTrees: Record<string, boolean>;
-  /** Bot message body expansion per message id */
+  /** Bot message reasoning expansion per message id */
   expandedMessages: Record<string, boolean>;
   /** User message body expansion per message id */
   expandedUserMessages: Record<string, boolean>;
+  /** Currently expanded user message id (single-selection for show more/less) */
+  expandedUserMessageId: string | null;
 
   toggleAxiomTree: (id: string) => void;
   toggleMessage: (id: string) => void;
   toggleUserMessage: (id: string) => void;
+  /** Set a specific user message as expanded (or null to collapse all) */
+  setExpandedUserMessageId: (id: string | null) => void;
   resetAll: () => void;
 }
 
@@ -31,6 +35,7 @@ export const useDialecticalUIStore = create<DialecticalUIState>()((set) => ({
   expandedAxiomTrees: {},
   expandedMessages: {},
   expandedUserMessages: {},
+  expandedUserMessageId: null,
 
   toggleAxiomTree: (id) =>
     set((s) => ({
@@ -49,17 +54,37 @@ export const useDialecticalUIStore = create<DialecticalUIState>()((set) => ({
     })),
 
   toggleUserMessage: (id) =>
-    set((s) => ({
-      expandedUserMessages: {
-        ...s.expandedUserMessages,
-        [id]: !s.expandedUserMessages[id],
-      },
-    })),
+    set((s) => {
+      const current = s.expandedUserMessages[id] ?? false;
+      return {
+        expandedUserMessages: {
+          ...s.expandedUserMessages,
+          [id]: !current,
+        },
+        // Also sync the single-selection id field
+        expandedUserMessageId: !current ? id : null,
+      };
+    }),
+
+  setExpandedUserMessageId: (id) =>
+    set((s) => {
+      // Toggle the record map to match the single-selection id
+      const newMap = { ...s.expandedUserMessages };
+      // Collapse previous if any
+      if (s.expandedUserMessageId && s.expandedUserMessageId !== id) {
+        newMap[s.expandedUserMessageId] = false;
+      }
+      if (id !== null) {
+        newMap[id] = true;
+      }
+      return { expandedUserMessageId: id, expandedUserMessages: newMap };
+    }),
 
   resetAll: () =>
     set({
       expandedAxiomTrees: {},
       expandedMessages: {},
       expandedUserMessages: {},
+      expandedUserMessageId: null,
     }),
 }));

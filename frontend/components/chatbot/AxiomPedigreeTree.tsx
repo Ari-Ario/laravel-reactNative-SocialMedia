@@ -18,7 +18,7 @@ interface Props {
   branch?: string;
   colors: Record<string, string>;
   activeScheme?: string;
-  onAxiomClick?: (axiomId: number) => void;
+  onAxiomClick?: (axiomId: number, thesis?: string) => void;
 }
 
 /** Branch → icon mapping (aligned to 6 dialectical phases) */
@@ -77,9 +77,14 @@ const AxiomPedigreeTree = memo(({
   const isAxiom = status === 'global_axiom';
   const isSynthesized = status === 'synthesized_thesis';
 
-  const confidencePct = useMemo(() => Math.round((confidenceScore ?? 0) * 100), [confidenceScore]);
+  const confidencePct = useMemo(() => {
+    if (confidenceScore == null) return 0;
+    return Math.round(confidenceScore * 100);
+  }, [confidenceScore]);
 
-  if (!isAxiom && !isSynthesized) return null;
+  // Show pedigree for any message that has an axiomId OR parentAxioms chain OR is a proven status
+  const hasContent = axiomId != null || (parentAxioms && parentAxioms.length > 0) || isAxiom || isSynthesized;
+  if (!hasContent) return null;
 
   return (
     <View style={styles.container}>
@@ -92,7 +97,7 @@ const AxiomPedigreeTree = memo(({
         <View style={[styles.statusDot, { backgroundColor: isAxiom ? '#10B981' : '#F59E0B' }]} />
         <Ionicons name={iconName} size={13} color={phaseColor} style={{ marginRight: 4 }} />
         <Text style={[styles.headerTitle, { color: phaseColor }]}>
-          {isAxiom ? '✓ Global Axiom' : '⚗ Synthesized Thesis'}
+          {isAxiom ? '✓ Global Axiom' : isSynthesized ? '⚗ Synthesized Thesis' : '📐 Proven Axiom'}
         </Text>
         {branch && (
           <View style={[styles.branchPill, { backgroundColor: phaseColor + '20' }]}>
@@ -147,7 +152,7 @@ const AxiomPedigreeTree = memo(({
                 <TouchableOpacity
                   style={[styles.parentNode, { borderColor: pColor + '60', backgroundColor: pColor + '10' }]}
                   activeOpacity={0.75}
-                  onPress={() => onAxiomClick?.(p.id)}
+                  onPress={() => onAxiomClick?.(p.id, p.thesis_statement)}
                 >
                   <Ionicons name={pIcon} size={11} color={pColor} style={{ marginRight: 4 }} />
                   <Text style={[styles.parentText, { color: isDark ? '#ddd' : '#333' }]}>
@@ -168,7 +173,7 @@ const AxiomPedigreeTree = memo(({
               <TouchableOpacity
                 style={[styles.currentNode, { borderColor: phaseColor, backgroundColor: phaseColor + '18' }]}
                 activeOpacity={0.75}
-                onPress={() => axiomId && onAxiomClick?.(axiomId)}
+                onPress={() => axiomId != null && onAxiomClick?.(axiomId)}
               >
                 <Ionicons name={iconName} size={12} color={phaseColor} style={{ marginRight: 5 }} />
                 <Text style={[styles.currentText, { color: phaseColor }]}>

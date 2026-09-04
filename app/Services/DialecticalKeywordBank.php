@@ -206,6 +206,9 @@ final class DialecticalKeywordBank
 
             // ── LOGIC ────────────────────────────────────────────────────
             'logic' => [
+                // DYNAMICALLY INJECTED CONCEPTS
+                'gödel', 'incompleteness', 'löwenheim', 'skolem', 'compactness theorem', 'tarski', 'undefinability', 'church', 'turing', 'halting', 'lambda calculus', 'combinatory logic', 'curry-howard', 'intuitionistic', 'kripke', 'modal logic', 'temporal logic', 'epistemic logic', 'doxastic logic', 'deontic logic', 'fuzzy logic', 'paraconsistent logic', 'relevance logic', 'linear logic', 'boolean satisfiability', 'resolution', 'unification', 'herbrand', 'skolemization', 'prenex', 'zermelo', 'fraenkel', 'axiom of choice', 'continuum hypothesis', 'banach-tarski', 'russell\'s paradox', 'cantor\'s theorem', 'diagonal argument', 'ordinal', 'cardinal', 'transfinite', 'well-ordering', 'zorn\'s lemma', 'burali-forti', 'richard\'s paradox', 'berry paradox', 'liar paradox', 'sorites paradox', 'newcomb\'s paradox', 'prisoner\'s dilemma',
+
                 // Proof methods
                 'modus ponens', 'modus tollens', 'contraposition', 'contrapositive',
                 'syllogism', 'disjunctive syllogism', 'hypothetical syllogism',
@@ -232,6 +235,10 @@ final class DialecticalKeywordBank
 
             // ── MATHEMATICS ──────────────────────────────────────────────
             'math' => [
+                // DYNAMICALLY INJECTED CONCEPTS
+                'riemann hypothesis', 'poincare conjecture', 'fermat\'s last theorem', 'four color theorem', 'navier-stokes', 'p vs np', 'hodge conjecture', 'birch and swinnerton-dyer', 'yang-mills', 'abc conjecture', 'twin prime conjecture', 'goldbach\'s conjecture', 'collatz conjecture', 'catalan\'s conjecture', 'euler\'s identity', 'fundamental theorem of algebra', 'fundamental theorem of calculus', 'fundamental theorem of arithmetic', 'pythagorean theorem', 'stokes\' theorem', 'divergence theorem', 'green\'s theorem', 'cauchy\'s integral theorem', 'residue theorem', 'taylor\'s theorem', 'mean value theorem', 'intermediate value theorem', 'rolle\'s theorem', 'bolzano-weierstrass', 'heine-borel', 'picard\'s theorem', 'liouville\'s theorem', 'riemann-roch', 'atiyah-singer', 'gauss-bonnet', 'euler characteristic', 'betti number', 'homology', 'cohomology', 'homotopy', 'fundamental group', 'manifold', 'tensor', 'spinor', 'lie group', 'lie algebra', 'representation theory', 'galois theory', 'ring theory', 'field theory', 'module', 'vector space', 'hilbert space', 'banach space', 'metric space', 'topological space', 'measure theory', 'lebesgue integration', 'probability space', 'martingale', 'brownian motion', 'ito calculus', 'stochastic differential equation', 'markov chain', 'ergodic theory', 'dynamical system', 'chaos theory', 'fractal', 'mandelbrot set', 'julia set', 'cellular automaton', 'graph theory', 'eulerian path', 'hamiltonian cycle', 'traveling salesman problem', 'max-flow min-cut', 'linear programming', 'simplex method', 'duality', 'game theory', 'nash equilibrium',
+
+                'math', 'mathematics', 'maths', 'mathematician',
                 // Trigonometry & Calculus
                 'sin', 'cos', 'tan', 'sinh', 'cosh', 'tanh', 'asin', 'acos', 'atan',
                 'trigonometry', 'trigonometric', 'pythagorean identity',
@@ -281,6 +288,10 @@ final class DialecticalKeywordBank
 
             // ── PHYSICS ──────────────────────────────────────────────────
             'physics' => [
+                // DYNAMICALLY INJECTED CONCEPTS
+                'newton\'s laws', 'maxwell\'s equations', 'schrödinger equation', 'dirac equation', 'klein-gordon equation', 'einstein field equations', 'lorentz transformation', 'galilean transformation', 'hamiltonian', 'lagrangian', 'action principle', 'noether\'s theorem', 'heisenberg uncertainty principle', 'pauli exclusion principle', 'fermi-dirac statistics', 'bose-einstein statistics', 'planck\'s law', 'stefan-boltzmann law', 'wien\'s displacement law', 'rayleigh-jeans law', 'bohr model', 'rutherford scattering', 'compton effect', 'photoelectric effect', 'zeeman effect', 'stark effect', 'casimir effect', 'aharonov-bohm effect', 'hall effect', 'quantum hall effect', 'superconductivity', 'meissner effect', 'bcs theory', 'josephson effect', 'superfluidity', 'standard model', 'higgs boson', 'quark', 'lepton', 'gluon', 'w and z bosons', 'neutrino', 'antimatter', 'feynman diagram', 'quantum electrodynamics', 'quantum chromodynamics', 'electroweak theory', 'grand unified theory', 'string theory', 'm-theory', 'loop quantum gravity', 'black hole', 'event horizon', 'hawking radiation', 'bekenstein-hawking entropy', 'penrose process', 'cosmic microwave background', 'hubble\'s law', 'dark matter', 'dark energy', 'inflationary epoch', 'big bang', 'relativity', 'general relativity', 'special relativity', 'time dilation', 'length contraction', 'mass-energy equivalence', 'equivalence principle', 'mach\'s principle', 'copernican principle', 'anthropic principle', 'thermodynamics', 'laws of thermodynamics', 'entropy', 'enthalpy', 'gibbs free energy', 'helmholtz free energy', 'carnot cycle', 'ideal gas law', 'van der waals equation', 'navier-stokes equations', 'bernoulli\'s principle', 'archimedes\' principle', 'pascal\'s principle', 'stokes\' law', 'poiseuille\'s law', 'reynolds number', 'froude number', 'mach number', 'prandtl number',
+
+                'physics', 'physicist', 'physical',
                 // Classical mechanics
                 'force', 'mass', 'acceleration', 'velocity', 'momentum',
                 'kinetic energy', 'potential energy', 'work', 'power',
@@ -311,10 +322,17 @@ final class DialecticalKeywordBank
                 // Nuclear
                 'nuclear', 'radioactive', 'half life', 'fission', 'fusion',
                 'alpha decay', 'beta decay', 'gamma ray', 'neutrino',
+                // Earth & Space Sciences
+                'astrophysics', 'geology', 'seismology', 'vulcanology', 'climatology',
+                'volcanology', 'oceanography', 'meteorology', 'astronomy', 'cosmology',
             ],
 
             // ── CHEMISTRY ────────────────────────────────────────────────
             'chemistry' => [
+                // DYNAMICALLY INJECTED CONCEPTS
+                'avogadro\'s law', 'boyle\'s law', 'charles\'s law', 'gay-lussac\'s law', 'dalton\'s law', 'graham\'s law', 'henry\'s law', 'raoult\'s law', 'le chatelier\'s principle', 'hess\'s law', 'born-haber cycle', 'nernst equation', 'arrhenius equation', 'michaelis-menten kinetics', 'eyring equation', 'schrödinger equation', 'pauli exclusion principle', 'hund\'s rule', 'aufbau principle', 'octet rule', 'vsepr theory', 'molecular orbital theory', 'valence bond theory', 'crystal field theory', 'ligand field theory', 'hard and soft acids and bases', 'brønsted-lowry', 'lewis acid and base', 'electronegativity', 'ionization energy', 'electron affinity', 'atomic radius', 'ionic radius', 'lattice energy', 'hydration energy', 'enthalpy of formation', 'entropy of vaporization', 'gibbs free energy of reaction', 'activation energy', 'catalysis', 'reaction mechanism', 'transition state', 'intermediate', 'nucleophile', 'electrophile', 'sn1 reaction', 'sn2 reaction', 'e1 reaction', 'e2 reaction', 'addition reaction', 'elimination reaction', 'substitution reaction', 'redox reaction', 'oxidation state', 'half-reaction', 'galvanic cell', 'electrolytic cell', 'faraday\'s laws of electrolysis', 'periodic table', 'alkali metal', 'alkaline earth metal', 'transition metal', 'halogen', 'noble gas', 'lanthanide', 'actinide', 'isotope', 'allotrope', 'isomer', 'stereoisomer', 'enantiomer', 'diastereomer', 'meso compound', 'chirality', 'optical activity', 'racemic mixture', 'polymer', 'monomer', 'copolymer', 'protein', 'carbohydrate', 'lipid', 'nucleic acid', 'dna', 'rna', 'enzyme', 'hormone', 'vitamin', 'alkaloid', 'terpene', 'steroid',
+
+                'chemistry', 'chemist', 'chemical',
                 // Fundamentals
                 'element', 'compound', 'mixture', 'atom', 'molecule', 'ion',
                 'electron', 'proton', 'neutron', 'atomic number', 'mass number',
@@ -343,6 +361,9 @@ final class DialecticalKeywordBank
 
             // ── COMPUTER SCIENCE ─────────────────────────────────────────
             'computer_science' => [
+                // DYNAMICALLY INJECTED CONCEPTS
+                'turing machine', 'church-turing thesis', 'halting problem', 'p vs np', 'np-complete', 'np-hard', 'time complexity', 'space complexity', 'big o notation', 'omega notation', 'theta notation', 'master theorem', 'algorithm', 'data structure', 'array', 'linked list', 'stack', 'queue', 'hash table', 'binary search tree', 'avl tree', 'red-black tree', 'b-tree', 'heap', 'graph', 'directed acyclic graph', 'spanning tree', 'kruskal\'s algorithm', 'prim\'s algorithm', 'dijkstra\'s algorithm', 'bellman-ford algorithm', 'floyd-warshall algorithm', 'a* search', 'depth-first search', 'breadth-first search', 'sorting', 'quicksort', 'mergesort', 'heapsort', 'dynamic programming', 'greedy algorithm', 'divide and conquer', 'backtracking', 'memoization', 'automata theory', 'finite state machine', 'pushdown automaton', 'regular expression', 'context-free grammar', 'chomsky hierarchy', 'compilers', 'lexical analysis', 'parsing', 'abstract syntax tree', 'semantic analysis', 'code generation', 'optimization', 'operating system', 'process', 'thread', 'concurrency', 'deadlock', 'mutex', 'semaphore', 'monitor', 'virtual memory', 'paging', 'segmentation', 'file system', 'networking', 'osi model', 'tcp/ip', 'http', 'dns', 'cryptography', 'symmetric encryption', 'asymmetric encryption', 'rsa', 'aes', 'hash function', 'sha-256', 'digital signature', 'public key infrastructure', 'blockchain', 'proof of work', 'proof of stake', 'smart contract', 'artificial intelligence', 'machine learning', 'deep learning', 'neural network', 'convolutional neural network', 'recurrent neural network', 'transformer', 'gradient descent', 'backpropagation', 'reinforcement learning', 'markov decision process',
+
                 // Algorithms & Complexity
                 'algorithm', 'complexity', 'big-o', 'time complexity',
                 'space complexity', 'p vs np', 'np complete', 'np hard',
@@ -374,6 +395,10 @@ final class DialecticalKeywordBank
 
             // ── ENGINEERING ──────────────────────────────────────────────
             'engineering' => [
+                // DYNAMICALLY INJECTED CONCEPTS
+                'navier-stokes equations', 'euler equations', 'bernoulli\'s principle', 'continuity equation', 'fourier\'s law', 'newton\'s law of cooling', 'stefan-boltzmann law', 'fick\'s laws of diffusion', 'hooke\'s law', 'young\'s modulus', 'shear modulus', 'bulk modulus', 'poisson\'s ratio', 'stress tensor', 'strain tensor', 'mohr\'s circle', 'yield strength', 'ultimate tensile strength', 'fatigue limit', 'fracture mechanics', 'stress intensity factor', 'j-integral', 'finite element method', 'computational fluid dynamics', 'control theory', 'pid controller', 'root locus', 'bode plot', 'nyquist stability criterion', 'state space', 'observability', 'controllability', 'kalman filter', 'signal processing', 'fourier transform', 'laplace transform', 'z-transform', 'nyquist-shannon sampling theorem', 'aliasing', 'filter design', 'fir filter', 'iir filter', 'modulation', 'amplitud modulation', 'frequency modulation', 'phase modulation', 'information theory', 'shannon capacity', 'entropy', 'error correcting code', 'hamming code', 'reed-solomon code', 'thermodynamics', 'carnot efficiency', 'rankine cycle', 'otto cycle', 'diesel cycle', 'brayton cycle', 'refrigeration cycle', 'heat exchanger', 'log mean temperature difference', 'ntu method', 'fluid mechanics', 'reynolds number', 'mach number', 'froude number', 'prandtl number', 'nusselt number', 'boundary layer', 'turbulence', 'drag coefficient', 'lift coefficient', 'aerodynamics', 'structural analysis', 'bending moment', 'shear force', 'deflection', 'euler buckling', 'truss', 'frame', 'finite element analysis', 'geotechnical engineering', 'soil mechanics', 'terzaghi\'s bearing capacity', 'consolidation', 'slope stability', 'retaining wall', 'civil engineering', 'mechanical engineering', 'electrical engineering', 'chemical engineering', 'aerospace engineering', 'industrial engineering', 'materials science', 'metallurgy', 'polymer science',
+
+                'engineering', 'engineer', 'civil', 'mechanical', 'aerospace', 'industrial',
                 // Electrical
                 'kirchhoff', 'thevenin', 'norton', 'superposition theorem',
                 'maximum power transfer', 'ohm law', 'voltage divider',
@@ -402,6 +427,9 @@ final class DialecticalKeywordBank
 
             // ── BIOLOGY ──────────────────────────────────────────────────
             'biology' => [
+                // DYNAMICALLY INJECTED CONCEPTS
+                'central dogma', 'dna replication', 'transcription', 'translation', 'genetic code', 'codon', 'anticodon', 'ribosome', 'tRNA', 'mRNA', 'rRNA', 'gene expression', 'operon', 'promoter', 'enhancer', 'silencer', 'transcription factor', 'epigenetics', 'dna methylation', 'histone modification', 'mutation', 'point mutation', 'frameshift mutation', 'chromosomal aberration', 'aneuploidy', 'polyploidy', 'meiosis', 'mitosis', 'cell cycle', 'apoptosis', 'necrosis', 'autophagy', 'signal transduction', 'g protein-coupled receptor', 'receptor tyrosine kinase', 'second messenger', 'cAMP', 'IP3', 'calcium signaling', 'kinase', 'phosphatase', 'metabolism', 'catabolism', 'anabolism', 'glycolysis', 'krebs cycle', 'citric acid cycle', 'oxidative phosphorylation', 'electron transport chain', 'atp synthase', 'photosynthesis', 'light reactions', 'calvin cycle', 'c3 carbon fixation', 'c4 carbon fixation', 'cam photosynthesis', 'enzymology', 'michaelis-menten', 'allosteric regulation', 'competitive inhibition', 'non-competitive inhibition', 'uncompetitive inhibition', 'mendelian inheritance', 'law of segregation', 'law of independent assortment', 'linkage', 'crossing over', 'recombination', 'genetic mapping', 'quantitative genetics', 'population genetics', 'hardy-weinberg equilibrium', 'genetic drift', 'gene flow', 'natural selection', 'sexual selection', 'kin selection', 'inclusive fitness', 'speciation', 'allopatric speciation', 'sympatric speciation', 'phylogenetics', 'cladistics', 'convergent evolution', 'divergent evolution', 'homology', 'analogy', 'ecology', 'ecosystem', 'biome', 'biosphere', 'population dynamics', 'carrying capacity', 'lotka-volterra equations', 'predator-prey model', 'competitive exclusion principle', 'niche', 'succession', 'primary production', 'secondary production', 'biogeochemical cycle', 'carbon cycle', 'nitrogen cycle', 'water cycle', 'phosphorus cycle', 'virology', 'epidemiology', 'sir model',
+
                 // Cell & Molecular
                 'cell', 'nucleus', 'dna', 'rna', 'protein', 'gene',
                 'chromosome', 'mutation', 'transcription', 'translation',
@@ -422,10 +450,17 @@ final class DialecticalKeywordBank
                 'homeostasis', 'osmosis', 'diffusion', 'membrane potential',
                 'action potential', 'neurotransmitter', 'hormone',
                 'immune system', 'antibody', 'antigen',
+                // Medical & Sub-disciplines
+                'virology', 'epidemiology', 'immunology', 'endocrinology',
+                'neuroscience', 'botany', 'zoology', 'anatomy', 'pharmacology',
+                'pharmacokinetics', 'toxicology', 'pathology', 'etiology',
             ],
 
             // ── SOCIAL SCIENCE ───────────────────────────────────────────
             'social' => [
+                // DYNAMICALLY INJECTED CONCEPTS
+                'social contract', 'state of nature', 'veil of ignorance', 'utilitarianism', 'deontology', 'virtue ethics', 'categorical imperative', 'dialectical materialism', 'historical materialism', 'base and superstructure', 'alienation', 'commodity fetishism', 'labor theory of value', 'surplus value', 'class struggle', 'hegemony', 'ideology', 'false consciousness', 'panopticon', 'biopower', 'disciplinary society', 'structuralism', 'post-structuralism', 'deconstruction', 'symbolic interactionism', 'dramaturgy', 'ethnomethodology', 'functionalism', 'conflict theory', 'social constructionism', 'critical theory', 'feminist theory', 'intersectionality', 'queer theory', 'post-colonialism', 'orientalism', 'microeconomics', 'macroeconomics', 'supply and demand', 'elasticity', 'opportunity cost', 'comparative advantage', 'marginal utility', 'indifference curve', 'general equilibrium', 'pareto efficiency', 'market failure', 'externality', 'public good', 'asymmetric information', 'moral hazard', 'adverse selection', 'game theory', 'nash equilibrium', 'prisoner\'s dilemma', 'dominant strategy', 'subgame perfect equilibrium', 'keynesian economics', 'monetarism', 'austrian school', 'neoclassical synthesis', 'is-lm model', 'phillips curve', 'solow growth model', 'endogenous growth theory', 'rational expectations', 'efficient market hypothesis', 'behavioral economics', 'prospect theory', 'loss aversion', 'cognitive bias', 'heuristics', 'bounded rationality', 'nudge theory', 'psychology', 'psychoanalysis', 'behaviorism', 'cognitive psychology', 'humanistic psychology', 'classical conditioning', 'operant conditioning', 'cognitive dissonance', 'maslow\'s hierarchy of needs', 'milgram experiment', 'stanford prison experiment', 'bystander effect', 'asch conformity experiments',
+
                 // Sociology & Philosophy
                 'sociology', 'social', 'society', 'culture', 'norms', 'values',
                 'institution', 'stratification', 'class', 'power', 'authority',

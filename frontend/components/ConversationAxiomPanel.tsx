@@ -1,8 +1,3 @@
-// components/ConversationAxiomPanel.tsx
-// Aggregates all axioms referenced across the current conversation and exposes
-// them in a collapsible panel between the message list and the input bar.
-// No popups — fully inline, mobile-web compatible.
-
 import React, { useState, useMemo, useRef } from 'react';
 import {
   View,
@@ -12,10 +7,14 @@ import {
   ScrollView,
   Animated,
   Platform,
+  Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Message } from '@/stores/chatbotStore';
 import { useTranslation } from '@/constants/i18n';
+
+const { height: SCREEN_H } = Dimensions.get('window');
+const PANEL_MAX_H = Math.min(300, SCREEN_H * 0.35);
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -63,7 +62,8 @@ function extractAxiomsFromMessages(messages: Message[]): AxiomEntry[] {
     }
 
     // Pattern 3: message's own axiomId (the theorem that was just promoted)
-    if (msg.axiomId && !axiomsMap.has(msg.axiomId)) {
+    // FIX: use != null so axiomId=0 (root) is also handled correctly
+    if (msg.axiomId != null && !axiomsMap.has(msg.axiomId)) {
       // Extract a clean thesis from the response text
       const bypassMatch = msg.text.match(/AXIOMATIC BYPASS ACTIVATED/i);
       let thesis = `Axiom #${msg.axiomId}`;
@@ -88,9 +88,21 @@ function extractAxiomsFromMessages(messages: Message[]): AxiomEntry[] {
         source: 'proven',
       });
     }
+
+    // Pattern 4: direct parentAxioms array from backend
+    if (msg.parentAxioms && msg.parentAxioms.length > 0) {
+      for (const p of msg.parentAxioms) {
+        if (!axiomsMap.has(p.id)) {
+          axiomsMap.set(p.id, { id: p.id, thesis: p.thesis_statement, source: 'dependency' });
+        }
+      }
+    }
   }
 
-  return Array.from(axiomsMap.values()).sort((a, b) => a.id - b.id);
+  // Filter out absolute root axioms (ID 1=Being, ID 2=Nothing) from the dependency list
+  // as they appear in every single proof and clutter the panel. They are always implied.
+  const filtered = Array.from(axiomsMap.values()).filter(a => a.id > 2 || a.source === 'proven');
+  return filtered.sort((a, b) => a.id - b.id);
 }
 
 // ─── Status config ───────────────────────────────────────────────────────────
@@ -131,7 +143,7 @@ export default function ConversationAxiomPanel({ messages, colors, activeScheme,
 
   const panelMaxHeight = animHeight.interpolate({
     inputRange: [0, 1],
-    outputRange: [0, 260],
+    outputRange: [0, PANEL_MAX_H],
   });
 
   const isDark = activeScheme === 'dark';
@@ -152,7 +164,7 @@ export default function ConversationAxiomPanel({ messages, colors, activeScheme,
         <View style={styles.toggleLeft}>
           <Ionicons name="library-outline" size={15} color={colors.textSecondary} />
           <Text style={[styles.toggleLabel, { color: colors.text }]}>
-            {t('axioms_referenced_in_conversation', 'Axioms Referenced in this Conversation')}
+            {t('axioms_referenced_in_conversation') || 'Axioms Referenced in this Conversation'}
           </Text>
           <View style={styles.countBadge}>
             <Text style={styles.countText}>{axioms.length}</Text>
@@ -228,7 +240,7 @@ export default function ConversationAxiomPanel({ messages, colors, activeScheme,
                         <Text style={styles.depText}>dependency</Text>
                       </View>
                     )}
-                    {axiom.confidenceScore !== undefined && (
+                    {axiom.confidenceScore != null && (
                       <Text style={[styles.confText, { color: colors.textSecondary }]}>
                         {Math.round(axiom.confidenceScore * 100)}% confidence
                       </Text>
@@ -243,7 +255,7 @@ export default function ConversationAxiomPanel({ messages, colors, activeScheme,
           <View style={styles.panelFooter}>
             <Ionicons name="information-circle-outline" size={11} color={colors.textSecondary} />
             <Text style={[styles.footerNote, { color: colors.textSecondary }]}>
-              {t('these_axioms_form_foundation', "These axioms form the logical foundation for this conversation's proofs.")}
+              {t('these_axioms_form_foundation') || "These axioms form the logical foundation for this conversation's proofs."}
             </Text>
           </View>
         </ScrollView>
@@ -293,7 +305,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   listScroll: {
-    maxHeight: 260,
+    maxHeight: PANEL_MAX_H,
     paddingBottom: 4,
   },
   axiomRow: {

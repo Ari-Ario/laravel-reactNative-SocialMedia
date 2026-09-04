@@ -82,6 +82,8 @@ class ExpertScienceCategorizer
                 continue;
             }
 
+            if (DialecticalKeywordBank::isStopWord($word)) continue;
+
             $abbreviations = DialecticalKeywordBank::abbreviations();
             $expandedWord = $abbreviations[$word] ?? $word;
 
@@ -99,8 +101,13 @@ class ExpertScienceCategorizer
                     continue;
                 }
 
+                if (DialecticalKeywordBank::isStopWord($word)) continue;
+
                 $abbreviations = DialecticalKeywordBank::abbreviations();
                 $expandedWord = $abbreviations[$word] ?? $word;
+
+                // Skip fuzzy matching for bigrams or structural relation tokens
+                if (str_contains($expandedWord, '_')) continue;
 
                 foreach ($invertedIndex as $indexedKey => $branch) {
                     $len1 = strlen($expandedWord);

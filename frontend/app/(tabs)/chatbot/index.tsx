@@ -32,12 +32,8 @@ import { createShadow } from '@/utils/styles';
 import { useChatbotStore, Message, Conversation } from '@/stores/chatbotStore';
 import { useDialecticalUIStore } from '@/stores/dialecticalUIStore';
 import { useModal } from '@/context/ModalContext';
-import DialecticalProofCard from '@/components/DialecticalProofCard';
 import ConversationAxiomPanel from '@/components/ConversationAxiomPanel';
-import FallbackTrainingCard from '@/components/chatbot/FallbackTrainingCard';
-import AxiomPedigreeTree from '@/components/chatbot/AxiomPedigreeTree';
 import { MessageItem } from '@/components/chatbot/MessageItem';
-import Markdown from 'react-native-markdown-display';
 import { useToastStore } from '@/stores/toastStore';
 
 
@@ -80,34 +76,6 @@ const formatTimestamp = (dateInput: Date | string) => {
   return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
 };
 
-const classifyScientificDomain = (text: string) => {
-  const tLower = text.toLowerCase();
-  if (tLower.includes('peano') || tLower.includes('gauss') || tLower.includes('binomial') || tLower.includes('summation') || tLower.includes('divisibility') || tLower.includes('polynomial') || tLower.includes('divides') || tLower.includes('algebraic') || tLower.includes('identity')) {
-    return { label: 'Pure Mathematics', icon: 'calculator-outline', color: '#10B981' }; // Emerald
-  }
-  if (tLower.includes('relativity') || tLower.includes('thermodynamics') || tLower.includes('quantum') || tLower.includes('speed of light') || tLower.includes('lagrangian') || tLower.includes('noether')) {
-    return { label: 'Theoretical Physics', icon: 'planet-outline', color: '#6366F1' }; // Indigo
-  }
-  if (tLower.includes('stoichiometric') || tLower.includes('chemical') || tLower.includes('titration') || tLower.includes('reaction') || tLower.includes('lavoisier') || tLower.includes('chemistry')) {
-    return { label: 'Chemical Synthesis', icon: 'flask-outline', color: '#EC4899' }; // Pink
-  }
-  if (tLower.includes('hardy-weinberg') || tLower.includes('genetic') || tLower.includes('dna') || tLower.includes('allele') || tLower.includes('biological') || tLower.includes('biology')) {
-    return { label: 'Molecular Biology', icon: 'git-branch-outline', color: '#84CC16' }; // Lime
-  }
-  if (tLower.includes('modus ponens') || tLower.includes('de morgan') || tLower.includes('excluded middle') || tLower.includes('non-contradiction') || tLower.includes('propositional') || tLower.includes('boolean') || tLower.includes('syllogism') || tLower.includes('aristotelian') || tLower.includes('heyting')) {
-    return { label: 'Formal Logic', icon: 'shield-outline', color: '#F59E0B' }; // Amber
-  }
-  if (tLower.includes('turing') || tLower.includes('halting') || tLower.includes('byzantine') || tLower.includes('dijkstra') || tLower.includes('amdahl') || tLower.includes('algorithm') || tLower.includes('computer science')) {
-    return { label: 'Computer Science', icon: 'code-working-outline', color: '#06B6D4' }; // Cyan
-  }
-  if (tLower.includes('stress') || tLower.includes('strain') || tLower.includes('bending') || tLower.includes('solid media') || tLower.includes('equilibrium force') || tLower.includes('civil engineering')) {
-    return { label: 'Structural Engineering', icon: 'business-outline', color: '#8B5CF6' }; // Violet
-  }
-  if (tLower.includes('nash equilibrium') || tLower.includes('supply and demand') || tLower.includes('pareto') || tLower.includes('coase') || tLower.includes('sociological') || tLower.includes('game theory') || tLower.includes('economics')) {
-    return { label: 'Pancratic Social Science', icon: 'people-outline', color: '#3B82F6' }; // Blue
-  }
-  return null;
-};
 
 
 export default function ChatbotScreen() {
@@ -143,17 +111,11 @@ export default function ChatbotScreen() {
   const [showSidebar, setShowSidebar] = useState(false);
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
 
-  // ── Expansion states moved to dialecticalUIStore for O(1) targeted re-renders ──
+  // ── Expansion states — live in dialecticalUIStore for per-item targeted re-renders ──
   const toggleMessage = useDialecticalUIStore((s) => s.toggleMessage);
   const toggleUserMessage = useDialecticalUIStore((s) => s.toggleUserMessage);
   const toggleAxiomTree = useDialecticalUIStore((s) => s.toggleAxiomTree);
-  // Keep local aliases for backward compat with inline renderMessage until full extraction
-  const expandedMessageId = null; // now per-item in store
-  const expandedUserMessageId = null; // now per-item in store
-  const expandedAxiomTreeId = null; // now per-item in store
-  const setExpandedMessageId = toggleMessage;
-  const setExpandedUserMessageId = toggleUserMessage;
-  const setExpandedAxiomTreeId = toggleAxiomTree;
+  const setExpandedUserMessageId = useDialecticalUIStore((s) => s.setExpandedUserMessageId);
 
   // Model selection animation
   const selectorAnim = useRef(new Animated.Value(0)).current;
@@ -184,13 +146,13 @@ export default function ChatbotScreen() {
     }
   }, [messages.length, isTyping, currentConversationId]);
 
-  // Model selection animation sync
+  // Model selection animation — useNativeDriver: false to avoid web warnings
   useEffect(() => {
     const index = availableModels.findIndex(m => m.id === currentModel);
     if (index !== -1) {
       Animated.spring(selectorAnim, {
         toValue: index,
-        useNativeDriver: true,
+        useNativeDriver: Platform.OS !== 'web',
         tension: 50,
         friction: 8,
       }).start();
@@ -375,12 +337,20 @@ export default function ChatbotScreen() {
   };
 
   const handleCopyMessage = async (text: string) => {
-    Clipboard.setString(text);
-    if (Platform.OS !== 'web') {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert(t('copy'), t('copied_to_clipboard'));
-    } else {
-      window.alert(t('copied_to_clipboard'));
+    try {
+      if (Platform.OS === 'web') {
+        await navigator.clipboard.writeText(text);
+        window.alert(t('copied_to_clipboard'));
+      } else {
+        Clipboard.setString(text);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        Alert.alert(t('copy'), t('copied_to_clipboard'));
+      }
+    } catch {
+      // Fallback for browsers that block clipboard access
+      if (Platform.OS === 'web') {
+        window.alert(t('copied_to_clipboard'));
+      }
     }
   };
 
@@ -412,12 +382,36 @@ export default function ChatbotScreen() {
     if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   };
 
-  const handleFeedback = async (message: Message, feedback: 'up' | 'down' | null) => {
+  const handleFeedback = async (message: Message, feedback: 'up' | 'down' | 'expert_review' | null) => {
     if (!currentConversationId) return;
+    if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+    // Expert review is an escalation — keep local feedback as 'down', just send to backend
+    if (feedback === 'expert_review') {
+      try {
+        const conv = conversations.find(c => c.id === currentConversationId);
+        const msgIndex = conv?.messages.findIndex(m => m.id === message.id) ?? -1;
+        const userQuery = msgIndex > 0 ? conv?.messages[msgIndex - 1]?.text : '';
+        await axios.post('/ai/submit-feedback', {
+          query: userQuery || message.text,
+          response: message.text,
+          type: 'expert_review',
+          mode: currentModel,
+          axiom_id: (message as any).axiomId,
+          branch: message.branch,
+          domain_partition: message.domainPartition,
+          training_ticket_id: message.trainingTicketId,
+        });
+        showToast('🔬 Escalated to Expert Pancracy Review.', 'success');
+      } catch (error) {
+        console.error('Error submitting expert review:', error);
+        showToast('Failed to escalate for expert review.', 'error');
+      }
+      return;
+    }
 
     // 1. Update local state immediately for UI responsiveness
-    setMessageFeedback(currentConversationId, message.id, feedback);
-    if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setMessageFeedback(currentConversationId, message.id, feedback as 'up' | 'down' | null);
 
     // 2. Sync to backend to reinforce Inductive Logic
     if (feedback) {
@@ -437,16 +431,16 @@ export default function ChatbotScreen() {
           training_ticket_id: message.trainingTicketId,
         };
 
-        const res = await axios.post('/ai/submit-feedback', payload);
+        await axios.post('/ai/submit-feedback', payload);
         
         if (feedback === 'up') {
-          showToast('success', '✅ Engine learned from your vote. Logic reinforced.');
+          showToast('✅ Engine learned from your vote. Logic reinforced.', 'success');
         } else {
-          showToast('warning', '⚠️ Contradiction logged. Queued for Expert Review.');
+          showToast('⚠️ Contradiction logged. Queued for Expert Review.', 'error');
         }
       } catch (error) {
         console.error("Error submitting feedback to backend:", error);
-        showToast('error', 'Failed to submit feedback.');
+        showToast('Failed to submit feedback.', 'error');
       }
     }
   };
@@ -587,25 +581,41 @@ export default function ChatbotScreen() {
     };
   }, [currentModel]);
 
-  // Model Switcher Component (DeepSeek Style)
+  // Model Switcher — uses onLayout for dynamic width (fixed hardcoded 220 bug)
+  const [segmentWidth, setSegmentWidth] = useState(220);
   const ModelSwitcher = () => {
     const selectorX = selectorAnim.interpolate({
       inputRange: [0, 1, 2],
-      outputRange: [2, (styles.segmentedControl.width - 4) / 3 + 2, ((styles.segmentedControl.width - 4) / 3) * 2 + 2],
+      outputRange: [
+        2,
+        (segmentWidth - 4) / 3 + 2,
+        ((segmentWidth - 4) / 3) * 2 + 2
+      ],
     });
 
+    // Short labels for the 3 phases in the segmented control
+    const segLabels: Record<string, string> = {
+      'phi-3':    '🔬 P1',
+      'mistral':  '⚙️ P2',
+      'llama-3':  '⚖️ P3',
+    };
+
     return (
-      <View style={[styles.segmentedControl, { backgroundColor: activeScheme === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }]}>
+      <View
+        style={[styles.segmentedControl, { backgroundColor: activeScheme === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }]}
+        onLayout={(e) => setSegmentWidth(e.nativeEvent.layout.width)}
+      >
         <Animated.View
           style={[
             styles.segmentIndicator,
             {
+              width: Math.max(1, (segmentWidth - 4) / 3),
               transform: [{ translateX: selectorX }],
               backgroundColor: activeScheme === 'dark' ? '#333' : '#fff'
             }
           ]}
         />
-        {availableModels.map((model, index) => (
+        {availableModels.map((model) => (
           <TouchableOpacity
             key={model.id}
             style={styles.segment}
@@ -624,7 +634,7 @@ export default function ChatbotScreen() {
               ]}
               numberOfLines={1}
             >
-              {model.name.split(' ')[0]}
+              {segLabels[model.id] ?? model.name.split(' ')[0]}
             </Text>
           </TouchableOpacity>
         ))}
@@ -635,8 +645,8 @@ export default function ChatbotScreen() {
   return (
     <KeyboardAvoidingView
       style={[styles.container, { backgroundColor: colors.background }]}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+      behavior='padding'
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : Platform.OS === 'android' ? 60 : 0}
     >
       <Sidebar
         visible={showSidebar}
@@ -708,14 +718,14 @@ export default function ChatbotScreen() {
                   <Ionicons name="sparkles" size={16} color="#fff" />
                 </LinearGradient>
               </View>
-              <View style={styles.typingBubble}>
+              <View style={[styles.typingBubble, { backgroundColor: activeScheme === 'dark' ? '#1E1E2E' : '#F5F5F5' }]}>
                 <View style={styles.typingDots}>
                   <View style={styles.typingDot} />
-                  <View style={[styles.typingDot, { animationDelay: '0.2s' }]} />
-                  <View style={[styles.typingDot, { animationDelay: '0.4s' }]} />
+                  <View style={styles.typingDot} />
+                  <View style={styles.typingDot} />
                 </View>
                 <Text style={[styles.typingText, { color: colors.textSecondary }]}>
-                  {availableModels.find(m => m.id === currentModel)?.name ?? 'AI'} · {t('ai_thinking')}
+                  {availableModels.find(m => m.id === currentModel)?.name ?? 'Zmzir AI'} · {t('ai_thinking') || 'Thinking...'}
                 </Text>
               </View>
             </View>
@@ -1794,5 +1804,3 @@ const styles = StyleSheet.create({
     letterSpacing: 0.2,
   },
 });
-
-// export default ChatbotScreen;

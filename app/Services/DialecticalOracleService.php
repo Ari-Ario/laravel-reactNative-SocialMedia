@@ -151,6 +151,17 @@ class DialecticalOracleService
 
             $bestMatch = $matches[0];
             $primaryParent = \Illuminate\Support\Facades\DB::table('knowledge_axioms')->find($bestMatch['id']);
+            
+            if (!$primaryParent) {
+                $primaryParent = (object) [
+                    'id' => 0,
+                    'thesis_statement' => $bestMatch['thesis'] ?? 'Principle of Relational Isomorphism (Dynamic Fallback)',
+                    'branch' => 'mathematical_logic',
+                    'parent_axiom_id' => null,
+                    'domain_partition' => 'formal_logic',
+                    'status' => 'global_axiom'
+                ];
+            }
 
             $trace = [];
             $trace[] = "Found Empirical/Domain Parent: *" . $primaryParent->thesis_statement . "* (Similarity: " . number_format($bestMatch['similarity'] * 100, 2) . "%)";
@@ -165,7 +176,7 @@ class DialecticalOracleService
 
             if (strpos($currentPartition, 'formal_logic') === false && strpos($currentPartition, 'math_partition') === false) {
                 // It is a science/empirical axiom. Find its Math parent.
-                $mathMatches = $semanticEngine->query($currentThesis, 'math_partition');
+                $mathMatches = self::semanticEngine()->query($currentThesis, 'math_partition');
                 if (!empty($mathMatches)) {
                     $mathParent = \Illuminate\Support\Facades\DB::table('knowledge_axioms')->find($mathMatches[0]['id']);
                     $trace[] = "Dynamically resolved Math Parent: *" . $mathParent->thesis_statement . "*";
@@ -176,7 +187,7 @@ class DialecticalOracleService
 
             if (strpos($currentPartition, 'formal_logic') === false) {
                 // Find its Formal Logic parent.
-                $logicMatches = $semanticEngine->query($currentThesis, 'formal_logic');
+                $logicMatches = self::semanticEngine()->query($currentThesis, 'formal_logic');
                 if (!empty($logicMatches)) {
                     $logicParent = \Illuminate\Support\Facades\DB::table('knowledge_axioms')->find($logicMatches[0]['id']);
                     $trace[] = "Dynamically resolved Formal Logic Parent: *" . $logicParent->thesis_statement . "*";
@@ -824,6 +835,295 @@ class DialecticalOracleService
                     'deductive_axiom' => 'A civilization scaling to Type III must engineer absolute thermodynamic capture of galactic energy gradients.',
                     'inductive_limit' => 'Expansion is strictly bound by the relativistic speed of light limit and the inverse-square law of energy propagation.',
                     'synthesis_note' => 'The Kardashev scale marries macroeconomics with relativistic astrophysics.',
+                ],
+
+                // ══════════════════════════════════════════════════════════
+                // BIOLOGY CLUSTER — Phase 20 Universal Scientific Coverage
+                // ══════════════════════════════════════════════════════════
+                'photosynthesis' => [
+                    'name'            => 'Photosynthesis & Light-Driven Biochemistry',
+                    'aliases'         => ['photosynthesis', 'chlorophyll', 'chloroplast', 'light reaction', 'dark reaction', 'calvin cycle', 'carbon fixation', 'rubisco', 'photosystem', 'thylakoid', 'stroma', 'photosynthetic'],
+                    'prerequisites'   => ['biochemistry', 'thermodynamics', 'cellular_biology'],
+                    'unsolved'        => false,
+                    'branch_icon'     => '🌿',
+                    'academic_ref'    => 'Calvin, Benson & Bassham (1950) · van Niel',
+                    'trial'           => 'Observation: 6CO₂ + 6H₂O + light energy → C₆H₁₂O₆ + 6O₂ (verified in all photosynthetic organisms, from cyanobacteria to angiosperms).',
+                    'deductive_axiom' => 'Conservation of mass and energy governs every step: light reactions split H₂O (photolysis) producing O₂, ATP, and NADPH; Calvin cycle consumes 9 ATP and 6 NADPH to fix 3 CO₂ into G3P.',
+                    'inductive_limit' => 'All 400,000+ photosynthetic species obey the same light-driven proton gradient (chemiosmosis) and carbon fixation mechanism, establishing photosynthesis as a universal biological axiom.',
+                    'domain_partition' => 'biology',
+                ],
+                'molecular_biology' => [
+                    'name'            => 'Molecular Biology & Genetic Mechanisms',
+                    'aliases'         => ['dna replication', 'rna polymerase', 'helicase', 'ligase', 'primase', 'okazaki fragment', 'lagging strand', 'leading strand', 'pcr', 'crispr', 'cas9', 'gene editing', 'genome editing', 'central dogma', 'transcription', 'translation', 'codon', 'ribosome', 'mrna', 'trna', 'exon', 'intron', 'splicing', 'epigenetics', 'methylation', 'histone'],
+                    'prerequisites'   => ['genetics', 'biochemistry', 'cellular_biology'],
+                    'unsolved'        => false,
+                    'branch_icon'     => '🧬',
+                    'academic_ref'    => 'Watson & Crick (1953) · Doudna & Charpentier (2012)',
+                    'trial'           => 'DNA replication: Helicase unwinds the double helix, primase lays RNA primers, DNA polymerase III synthesizes new strands 5\'→3\' (continuous leading, discontinuous lagging via Okazaki fragments).',
+                    'deductive_axiom' => 'Central Dogma: DNA → mRNA (transcription) → Protein (translation). CRISPR-Cas9 uses guide RNA to direct Cas9 endonuclease for sequence-specific DSBs, then HDR or NHEJ repairs.',
+                    'inductive_limit' => 'All known cellular life uses the same genetic code (with minor exceptions), the same replication machinery, and the same codon-amino acid mapping, verifying universality across 4 billion years.',
+                    'domain_partition' => 'biology',
+                ],
+                'cell_division' => [
+                    'name'            => 'Cell Division: Mitosis & Meiosis',
+                    'aliases'         => ['mitosis', 'meiosis', 'cell cycle', 'cytokinesis', 'spindle', 'centromere', 'chromosome segregation', 'prophase', 'metaphase', 'anaphase', 'telophase', 'interphase', 's phase', 'g1', 'g2', 'checkpoints', 'cdk', 'cyclin'],
+                    'prerequisites'   => ['genetics', 'cellular_biology'],
+                    'unsolved'        => false,
+                    'branch_icon'     => '🔬',
+                    'academic_ref'    => 'Fleming (1879) · Nurse & Hunt (2001 Nobel)',
+                    'trial'           => 'Mitosis: G1 (cell growth) → S (DNA replication, 2n→4n) → G2 (preparation) → M (prophase→metaphase→anaphase→telophase) → Cytokinesis → 2 diploid daughters. Meiosis: 2 divisions → 4 haploid gametes.',
+                    'deductive_axiom' => 'CDK-Cyclin complexes drive each checkpoint. DNA integrity gates (p53, Rb) prevent premature progression. Sister chromatids held by cohesin; separated by separase at anaphase onset.',
+                    'inductive_limit' => 'The eukaryotic cell cycle mechanism is conserved from yeast to humans (>1.5 billion years), proving it is a universal life axiom.',
+                    'domain_partition' => 'biology',
+                ],
+                'natural_selection' => [
+                    'name'            => 'Natural Selection & Evolutionary Mechanisms',
+                    'aliases'         => ['natural selection', 'survival of the fittest', 'adaptation', 'fitness', 'selective pressure', 'genetic fitness', 'sexual selection', 'artificial selection', 'directional selection', 'stabilizing selection', 'speciation', 'reproductive isolation', 'evolution'],
+                    'prerequisites'   => ['evolutionary_biology', 'genetics'],
+                    'unsolved'        => false,
+                    'branch_icon'     => '🦎',
+                    'academic_ref'    => 'Darwin (1859) On the Origin of Species · Fisher (1930)',
+                    'trial'           => 'Observation: Heritable variation exists in populations. Individuals with advantageous traits survive and reproduce more (differential fitness). Traits accumulate over generations.',
+                    'deductive_axiom' => 'Allele frequency change: Δp ≈ p·q·s·(p − q) per generation (s = selection coefficient). Fisher\'s fundamental theorem: rate of increase in mean fitness = additive genetic variance in fitness.',
+                    'inductive_limit' => 'Verified across millions of species, fossil record, antibiotic resistance, peppered moth, Darwin\'s finches, and laboratory evolution experiments (Lenski E. coli, 70,000+ generations).',
+                    'domain_partition' => 'biology',
+                ],
+                'immunology' => [
+                    'name'            => 'Immunology & Immune Defence',
+                    'aliases'         => ['immune system', 'antibody', 'antigen', 'lymphocyte', 'macrophage', 't cell', 'b cell', 'nk cell', 'cytokine', 'mhc', 'major histocompatibility', 'vaccine', 'immunity', 'innate immunity', 'adaptive immunity', 'inflammation', 'phagocytosis', 'interferon', 'complement system', 'autoimmune'],
+                    'prerequisites'   => ['cellular_biology', 'molecular_biology'],
+                    'unsolved'        => false,
+                    'branch_icon'     => '🛡️',
+                    'academic_ref'    => 'Metchnikoff (1882) · Burnet (1959 Nobel) · Tonegawa (1987 Nobel)',
+                    'trial'           => 'Innate: Macrophages & neutrophils phagocytose pathogens; pattern recognition via TLRs. Adaptive: B-cells produce antibodies (IgG, IgM, IgA); cytotoxic T-cells (CD8+) kill infected cells via MHC-I.',
+                    'deductive_axiom' => 'Clonal selection: each B/T-cell has unique receptor; antigen binds → clonal expansion → memory cells persist for decades. Affinity maturation in germinal centres via somatic hypermutation.',
+                    'inductive_limit' => 'Jerne\'s network theory and the mathematical epidemiology of vaccines (herd immunity threshold p_c = 1 − 1/R₀) are universal across all vertebrate immune systems.',
+                    'domain_partition' => 'biology',
+                ],
+                'ecology' => [
+                    'name'            => 'Ecology & Ecosystem Dynamics',
+                    'aliases'         => ['ecology', 'food chain', 'food web', 'trophic level', 'biomass', 'carbon cycle', 'nitrogen cycle', 'ecosystem', 'biome', 'habitat', 'niche', 'population dynamics', 'predator prey', 'carrying capacity', 'biodiversity', 'keystone species', 'biogeography'],
+                    'prerequisites'   => ['evolutionary_biology', 'thermodynamics'],
+                    'unsolved'        => false,
+                    'branch_icon'     => '🌍',
+                    'academic_ref'    => 'Lotka-Volterra (1925) · Odum (1953)',
+                    'trial'           => 'Lotka-Volterra: dN_prey/dt = αN − βNP; dN_pred/dt = δNP − γP. At equilibrium: N* = γ/δ, P* = α/β. Trophic efficiency ≈ 10% per level (90% energy lost as heat).',
+                    'deductive_axiom' => '10% trophic efficiency: thermodynamically governed by the 2nd law. Biomass pyramid: producers (10⁶ kg) → herbivores (10⁵) → carnivores (10⁴). Carbon cycle: GPP − Ra = NPP (net primary productivity).',
+                    'inductive_limit' => 'Verified in marine, terrestrial and freshwater ecosystems worldwide. Island biogeography theory (MacArthur-Wilson) predicts species richness as S = cA^z, validated on thousands of islands.',
+                    'domain_partition' => 'biology',
+                ],
+                'endocrinology' => [
+                    'name'            => 'Endocrinology & Hormonal Regulation',
+                    'aliases'         => ['hormone', 'insulin', 'cortisol', 'testosterone', 'estrogen', 'adrenaline', 'epinephrine', 'thyroid', 'endocrine', 'glucagon', 'growth hormone', 'oxytocin', 'serotonin', 'dopamine', 'melatonin', 'feedback loop', 'homeostasis', 'pituitary', 'hypothalamus', 'adrenal gland', 'pancreas'],
+                    'prerequisites'   => ['cellular_biology', 'molecular_biology'],
+                    'unsolved'        => false,
+                    'branch_icon'     => '⚗️',
+                    'academic_ref'    => 'Banting & Best (1921 Insulin) · Guillemin & Schally (1977 Nobel)',
+                    'trial'           => 'Insulin/Glucagon axis: Blood glucose ↑ → β-cells release insulin → GLUT4 translocation → glucose uptake in muscle/fat. Blood glucose ↓ → α-cells release glucagon → hepatic glycogenolysis.',
+                    'deductive_axiom' => 'Negative feedback: HPG/HPA axes maintain homeostasis. Hill equation for hormone-receptor binding: θ = [H]^n / (K_d^n + [H]^n). Dose-response follows sigmoidal kinetics.',
+                    'inductive_limit' => 'Hormonal feedback mechanisms are conserved across all vertebrates. Insulin structure is >90% conserved between mammals, verifying evolutionary universality.',
+                    'domain_partition' => 'biology',
+                ],
+                'microbiology' => [
+                    'name'            => 'Microbiology & Virology',
+                    'aliases'         => ['virus', 'bacteria', 'pathogen', 'bacterium', 'microbe', 'prion', 'fungus', 'parasite', 'infection', 'antibiotic', 'antibiotic resistance', 'mrsa', 'viral replication', 'lytic cycle', 'lysogenic', 'bacteriophage', 'gram positive', 'gram negative', 'prokaryote', 'plasmid', 'conjugation', 'transformation', 'transduction'],
+                    'prerequisites'   => ['molecular_biology', 'immunology'],
+                    'unsolved'        => false,
+                    'branch_icon'     => '🦠',
+                    'academic_ref'    => 'Pasteur (1864) · Koch (1884) · Fleming (1928 Penicillin)',
+                    'trial'           => 'Viral replication: attachment → penetration → uncoating → replication (RNA/DNA) → assembly → lysis (lytic) or integration (lysogenic). R₀ governs spread: if R₀ > 1, epidemic grows.',
+                    'deductive_axiom' => 'Antibiotic resistance via selection pressure on fitness (MIC, MBC). Exponential bacterial growth: N(t) = N₀·2^(t/T_d); T_d(E.coli) ≈ 20 min. Mutation rate μ ≈ 10⁻⁸–10⁻⁶ per bp per replication.',
+                    'inductive_limit' => 'Koch\'s postulates and germ theory verified for 1000+ pathogens. Antibiotic resistance verified in all sampled bacterial populations under selective pressure.',
+                    'domain_partition' => 'biology',
+                ],
+                'biochemistry' => [
+                    'name'            => 'Biochemistry & Enzymatic Catalysis',
+                    'aliases'         => ['enzyme', 'substrate', 'active site', 'catalyst', 'michaelis menten', 'km', 'vmax', 'kcat', 'inhibitor', 'competitive inhibition', 'allosteric', 'protein folding', 'amino acid', 'peptide bond', 'primary structure', 'secondary structure', 'tertiary structure', 'quaternary structure', 'disulfide bond', 'hydrophobic', 'metabolism', 'anabolism', 'catabolism', 'atp hydrolysis', 'krebs cycle', 'acetyl coa', 'nadh', 'fadh2'],
+                    'prerequisites'   => ['chemistry', 'cellular_biology', 'molecular_biology'],
+                    'unsolved'        => false,
+                    'branch_icon'     => '🔬',
+                    'academic_ref'    => 'Michaelis & Menten (1913) · Anfinsen (1972 Nobel)',
+                    'trial'           => 'Michaelis-Menten kinetics: v = Vmax·[S]/(Km + [S]). At [S] = Km, v = Vmax/2. Catalytic efficiency = kcat/Km. Enzyme lowers activation energy Ea without changing ΔG of reaction.',
+                    'deductive_axiom' => 'Transition state theory: k = (k_B·T/h)·e^(−ΔG‡/RT). Protein folding: thermodynamically driven by hydrophobic collapse + H-bonds + ΔG_fold < 0. Levinthal\'s paradox resolved by folding funnels.',
+                    'inductive_limit' => 'All 7 enzyme classes (EC 1-7) follow Michaelis-Menten kinetics. Protein structure-function relationship verified across 200,000+ structures in PDB.',
+                    'domain_partition' => 'biology',
+                ],
+                'osmosis' => [
+                    'name'            => 'Osmosis, Diffusion & Membrane Transport',
+                    'aliases'         => ['osmosis', 'diffusion', 'active transport', 'membrane permeability', 'osmotic pressure', 'tonicity', 'hypotonic', 'hypertonic', 'isotonic', 'concentration gradient', 'facilitated diffusion', 'ion channel', 'sodium potassium pump', 'endocytosis', 'exocytosis'],
+                    'prerequisites'   => ['cellular_biology', 'chemistry'],
+                    'unsolved'        => false,
+                    'branch_icon'     => '💧',
+                    'academic_ref'    => 'van\'t Hoff (1886) · Donnan (1911)',
+                    'trial'           => 'Osmotic pressure: π = iMRT (van\'t Hoff equation). Water moves from low solute (high water potential) to high solute across semi-permeable membrane. Turgor pressure in plant cells = π_internal − π_external.',
+                    'deductive_axiom' => 'Fick\'s First Law: J = −D·(dC/dx). Active transport (Na⁺/K⁺-ATPase) pumps 3 Na⁺ out, 2 K⁺ in per ATP hydrolysis, maintaining −70mV resting potential.',
+                    'inductive_limit' => 'Osmosis governs kidney function, plant water transport, and IV fluid therapy. Universal across all cell membranes (verified in 10⁶+ cell types).',
+                    'domain_partition' => 'biology',
+                ],
+
+                'kinesiology' => [
+                    'name'            => 'Kinesiology & Sports Science',
+                    'aliases'         => ['kinesiology', 'biomechanic', 'sports science', 'muscle contraction', 'vo2 max', 'lactate threshold', 'atp.pcr', 'hypertrophy', 'motor unit', 'kinematics of sport', 'proprioception', 'plyometric', 'sprinting velocity'],
+                    'prerequisites'   => ['biochemistry', 'physics'],
+                    'unsolved'        => false,
+                    'branch_icon'     => '🏃',
+                    'academic_ref'    => 'Hill (1938) · Margaria (1966)',
+                    'trial'           => 'Hill\'s Muscle Model: (F + a)(v + b) = b(F_0 + a) (Force-velocity tradeoff). Fick Equation: VO₂ = HR × SV × (a-v)O₂.',
+                    'deductive_axiom' => 'Muscle force scales with cross-sectional area; energy pathways (ATP-PCr, glycolytic, oxidative) strictly bound power output over time.',
+                    'inductive_limit' => 'Athletic performance is mathematically bounded by VO2 max, lactate threshold, and mechanical efficiency.',
+                    'domain_partition' => 'biology',
+                ],
+
+                // ══════════════════════════════════════════════════════════
+                // ASTROPHYSICS / COSMOLOGY CLUSTER
+                // ══════════════════════════════════════════════════════════
+                'black_holes' => [
+                    'name'            => 'Black Holes & Gravitational Singularities',
+                    'aliases'         => ['black hole', 'event horizon', 'hawking radiation', 'singularity', 'schwarzschild', 'kerr black hole', 'stellar mass black hole', 'supermassive black hole', 'accretion disk', 'gravitational lensing', 'spaghettification', 'information paradox', 'penrose', 'hawking', 'eht', 'M87'],
+                    'prerequisites'   => ['general_relativity', 'quantum_mechanics', 'astrophysics'],
+                    'unsolved'        => false,
+                    'branch_icon'     => '🕳️',
+                    'academic_ref'    => 'Schwarzschild (1916) · Hawking (1974) · EHT (2019)',
+                    'trial'           => 'Schwarzschild radius: r_s = 2GM/c². For Sun: r_s ≈ 2.95 km. For Earth: r_s ≈ 8.87 mm. M87* imaged by Event Horizon Telescope (2019): M ≈ 6.5×10⁹ M☉, r_s ≈ 19 billion km.',
+                    'deductive_axiom' => 'Escape velocity v_escape = √(2GM/r). At r = r_s: v = c → nothing (not even light) can escape. Hawking temperature: T_H = ℏc³/(8πGMk_B). Tidal force ∝ M/r³.',
+                    'inductive_limit' => 'Black holes verified via: gravitational waves (LIGO 2015, GW150914), stellar orbits at Sgr A* (Nobel 2020, Ghez & Genzel), and direct imaging (EHT 2019 M87*, 2022 Sgr A*).',
+                    'domain_partition' => 'astrophysics',
+                ],
+                'cosmology' => [
+                    'name'            => 'Cosmology: Big Bang, Dark Matter & Dark Energy',
+                    'aliases'         => ['big bang', 'dark matter', 'dark energy', 'cosmological constant', 'hubble', 'redshift', 'cosmic microwave background', 'cmb', 'inflation', 'nucleosynthesis', 'lambda cdm', 'accelerating expansion', 'age of the universe', 'planck epoch', 'quark epoch', 'baryogenesis'],
+                    'prerequisites'   => ['general_relativity', 'particle_physics', 'thermodynamics'],
+                    'unsolved'        => false,
+                    'branch_icon'     => '🌌',
+                    'academic_ref'    => 'Hubble (1929) · Penzias & Wilson (1965 CMB) · Riess & Perlmutter (1998)',
+                    'trial'           => 'Hubble law: v = H₀·d (H₀ ≈ 67.4 km/s/Mpc). CMB temperature 2.725 K — relic radiation from 380,000 years post-Big Bang. Universe age ≈ 13.8 Gyr. Dark matter: 27%, Dark energy: 68%, Baryonic: 5%.',
+                    'deductive_axiom' => 'Friedmann equation: H² = 8πGρ/3 − k/a². ΛCDM: ρ_tot = ρ_matter + ρ_radiation + ρ_Λ. Dark energy density ρ_Λ = Λc²/8πG. Nucleosynthesis: D, ³He, ⁴He ratios match BBN predictions.',
+                    'inductive_limit' => 'CMB anisotropies (WMAP, Planck satellite) verify ΛCDM to <1% precision. Baryon acoustic oscillations (BAO) confirm large-scale structure. Cosmological parameters independently verified by 6 methods.',
+                    'domain_partition' => 'astrophysics',
+                ],
+                'astrophysics' => [
+                    'name'            => 'Astrophysics: Stars, Stellar Evolution & Galaxies',
+                    'aliases'         => ['star', 'stellar evolution', 'main sequence', 'red giant', 'white dwarf', 'neutron star', 'supernova', 'pulsar', 'quasar', 'galaxy', 'milky way', 'andromeda', 'hertzsprung russell', 'hr diagram', 'luminosity', 'stellar nucleosynthesis', 'chandrasekhar limit', 'mass-luminosity relation'],
+                    'prerequisites'   => ['nuclear_physics', 'general_relativity', 'thermodynamics'],
+                    'unsolved'        => false,
+                    'branch_icon'     => '⭐',
+                    'academic_ref'    => 'Hertzsprung-Russell (1913) · Chandrasekhar (1930) · Hoyle (1954)',
+                    'trial'           => 'Main sequence: stars fuse H→He in core. Sun: T_core ≈ 15×10⁶ K, L_☉ = 3.85×10²⁶ W. HR diagram maps 90% of stars on main sequence. Chandrasekhar limit: M_Ch = 1.4 M☉ (white dwarf max mass).',
+                    'deductive_axiom' => 'Hydrostatic equilibrium: dP/dr = −ρGM(r)/r². Virial theorem: KE = −½PE. Nuclear burning: pp-chain (< 1.5M☉), CNO cycle (> 1.5M☉). Stellar lifetime: τ ∝ M/L ∝ M^(1−2.5) ≈ M^(−1.5).',
+                    'inductive_limit' => 'Stellar nucleosynthesis (Hoyle) verified: all elements from H to Fe forged in stars; elements Fe+ from supernovae (SNe Ia, SNe II). Confirmed by stellar spectra (Fraunhofer lines), asteroseismology, and meteorite isotope ratios.',
+                    'domain_partition' => 'astrophysics',
+                ],
+
+                // ══════════════════════════════════════════════════════════
+                // EARTH SCIENCE CLUSTER
+                // ══════════════════════════════════════════════════════════
+                'plate_tectonics' => [
+                    'name'            => 'Plate Tectonics & Earth\'s Interior',
+                    'aliases'         => ['plate tectonics', 'tectonic plate', 'continental drift', 'seismic', 'earthquake', 'volcano', 'subduction', 'divergent', 'convergent', 'transform fault', 'lithosphere', 'asthenosphere', 'mantle convection', 'mid-ocean ridge', 'seafloor spreading', 'wegener', 'ring of fire', 'richter scale', 'moment magnitude'],
+                    'prerequisites'   => ['geology', 'thermodynamics'],
+                    'unsolved'        => false,
+                    'branch_icon'     => '🌋',
+                    'academic_ref'    => 'Wegener (1912) · Hess (1962) · Wilson (1965)',
+                    'trial'           => 'Sea-floor spreading rate: 2–18 cm/yr (Atlantic Ridge: 2.5 cm/yr). Earthquake energy: E = 10^(1.5·M + 4.8) J. Magnitude 9.0 quake ≈ 31,623× more energy than M 7.0. Subduction: oceanic plate (denser) descends under continental.',
+                    'deductive_axiom' => 'Mantle convection driven by radioactive heat (U-238, Th-232, K-40) + primordial heat. Rayleigh number Ra = αρgΔTd³/(ηκ) >> 1000 → convection inevitable. Continental crust (2700 kg/m³) is less dense than oceanic (3000 kg/m³).',
+                    'inductive_limit' => 'Verified by paleomagnetism (symmetric magnetic reversals on ocean floor), GPS measurements of current plate motion (Eurasia-North America 2.5 cm/yr), and fossil distribution (Gondwana supercontinent).',
+                    'domain_partition' => 'earth_science',
+                ],
+                'climate_science' => [
+                    'name'            => 'Climate Science & Atmospheric Physics',
+                    'aliases'         => ['climate change', 'global warming', 'greenhouse effect', 'greenhouse gas', 'carbon dioxide', 'co2', 'methane', 'ozone layer', 'albedo', 'radiative forcing', 'ipcc', 'carbon footprint', 'climate model', 'ice age', 'glaciation', 'sea level rise', 'atmosphere', 'weather', 'lightning', 'thunder', 'precipitation'],
+                    'prerequisites'   => ['thermodynamics', 'fluid_dynamics', 'chemistry'],
+                    'unsolved'        => false,
+                    'branch_icon'     => '🌡️',
+                    'academic_ref'    => 'Arrhenius (1896) · IPCC AR6 (2021)',
+                    'trial'           => 'Greenhouse effect: atmosphere absorbs IR re-emitted from surface. Stefan-Boltzmann: L = 4πR²σT⁴. Earth\'s effective temperature without GHGs: T_eff = 255 K (−18°C). Actual mean: 288 K (+15°C). ΔT = 33°C = greenhouse contribution.',
+                    'deductive_axiom' => 'Radiative forcing ΔF = 5.35·ln(C/C₀) W/m² (CO₂ logarithmic). Pre-industrial CO₂: 280 ppm. Current: 420 ppm. ΔF ≈ 2.1 W/m². Climate sensitivity: ΔT = λ·ΔF where λ ≈ 0.8°C/(W/m²).',
+                    'inductive_limit' => 'Verified by 800,000-year ice core records (Vostok, EPICA), satellite radiometry, ocean heat content measurements, and 150+ years of surface temperature records (NOAA/NASA GISS).',
+                    'domain_partition' => 'earth_science',
+                ],
+
+                // ══════════════════════════════════════════════════════════
+                // CHEMISTRY EXTENSION CLUSTER
+                // ══════════════════════════════════════════════════════════
+                'atomic_theory' => [
+                    'name'            => 'Atomic Theory & Quantum Chemistry',
+                    'aliases'         => ['periodic table', 'atomic number', 'valence electron', 'electron configuration', 'orbital', 's orbital', 'p orbital', 'd orbital', 'aufbau', 'pauli exclusion', 'hunds rule', 'electronegativity', 'ionisation energy', 'atomic radius', 'mendeleev', 'electron shell', 'atomic mass', 'isotope'],
+                    'prerequisites'   => ['quantum_mechanics', 'chemistry'],
+                    'unsolved'        => false,
+                    'branch_icon'     => '⚛️',
+                    'academic_ref'    => 'Mendeleev (1869) · Bohr (1913) · Schrödinger (1926)',
+                    'trial'           => 'Bohr model: E_n = −13.6 eV/n² (hydrogen). Schrödinger equation: Ĥψ = Eψ. Electron configuration fills orbitals by n+l (Aufbau). Pauli: max 2e per orbital (spin ±½). Hund: maximise spin multiplicity.',
+                    'deductive_axiom' => 'Periodic law: element properties are periodic functions of atomic number Z. Electronegativity (Pauling scale): F=3.98, O=3.44, N=3.04, C=2.55, H=2.20. Ionisation energy trend: increases across period, decreases down group.',
+                    'inductive_limit' => 'Periodic table predicts properties of all 118 confirmed elements. Quantum chemical calculations (DFT, HF) match experimental spectra and bond lengths to <0.1% for thousands of molecules.',
+                    'domain_partition' => 'chemistry',
+                ],
+                'chemical_bonding' => [
+                    'name'            => 'Chemical Bonding & Molecular Structure',
+                    'aliases'         => ['covalent bond', 'ionic bond', 'hydrogen bond', 'van der waals', 'metallic bond', 'polar covalent', 'bond energy', 'bond length', 'vsepr', 'hybridisation', 'sp3', 'sp2', 'sp', 'resonance', 'formal charge', 'lewis structure', 'dipole moment', 'london dispersion'],
+                    'prerequisites'   => ['atomic_theory', 'chemistry'],
+                    'unsolved'        => false,
+                    'branch_icon'     => '🔗',
+                    'academic_ref'    => 'Lewis (1916) · Pauling (1931) · Gillespie VSEPR (1957)',
+                    'trial'           => 'Covalent: shared electron pair. Bond energy H-H: 436 kJ/mol, C-C: 347 kJ/mol, C=C: 614 kJ/mol, C≡C: 839 kJ/mol. Ionic: NaCl lattice energy = 787 kJ/mol. H-bonds: 5–30 kJ/mol (responsible for water\'s unique properties).',
+                    'deductive_axiom' => 'VSEPR: electron pairs repel → geometry minimises repulsion. Hybridisation: sp³ (tetrahedral, 109.5°), sp² (trigonal, 120°), sp (linear, 180°). Bond polarity: Δχ > 0.4 polar covalent; > 1.7 ionic.',
+                    'inductive_limit' => 'VSEPR predicts molecular geometry correctly for 98%+ of simple molecules. Verified by X-ray crystallography, NMR spectroscopy, and electron diffraction.',
+                    'domain_partition' => 'chemistry',
+                ],
+                'redox_chemistry' => [
+                    'name'            => 'Redox Chemistry & Electrochemistry',
+                    'aliases'         => ['oxidation', 'reduction', 'redox', 'oxidation state', 'electrochemistry', 'electrolysis', 'galvanic cell', 'electrode potential', 'standard reduction potential', 'nernst equation', 'faraday', 'battery', 'fuel cell', 'corrosion', 'electrolyte', 'half reaction'],
+                    'prerequisites'   => ['chemistry', 'thermodynamics'],
+                    'unsolved'        => false,
+                    'branch_icon'     => '⚡',
+                    'academic_ref'    => 'Faraday (1833) · Nernst (1889)',
+                    'trial'           => 'LEO the lion says GER: Loss of Electrons = Oxidation; Gain of Electrons = Reduction. Standard cell potential: E°_cell = E°_cathode − E°_anode. ΔG° = −nFE°_cell. Faraday\'s law: m = (Q·M)/(n·F).',
+                    'deductive_axiom' => 'Nernst equation: E = E° − (RT/nF)·ln(Q). At 25°C: E = E° − (0.0592/n)·log(Q). Spontaneous if E°_cell > 0 (ΔG < 0). F = 96485 C/mol.',
+                    'inductive_limit' => 'Electrochemistry governs all batteries (Li-ion, Pb-acid), fuel cells, chlor-alkali industry, and electroplating. Verified across millions of industrial applications.',
+                    'domain_partition' => 'chemistry',
+                ],
+
+                // ══════════════════════════════════════════════════════════
+                // GEOMETRY CLUSTER (previously misrouted)
+                // ══════════════════════════════════════════════════════════
+                'geometry' => [
+                    'name'            => 'Geometry & Pythagorean Theorem',
+                    'aliases'         => ['pythagorean theorem', 'pythagoras', 'right triangle', 'hypotenuse', 'a squared plus b squared', 'euclidean geometry', 'triangle', 'angle', 'area', 'perimeter', 'circle', 'radius', 'circumference', 'pi', 'polygon', 'congruent', 'similar triangles', 'euclid', 'parallel postulate', 'non-euclidean', 'riemannian geometry', 'hyperbolic geometry'],
+                    'prerequisites'   => ['number_theory', 'formal_logic'],
+                    'unsolved'        => false,
+                    'branch_icon'     => '📐',
+                    'academic_ref'    => 'Euclid ~300 BCE · Pythagoras ~570 BCE',
+                    'trial'           => 'For right triangle with legs a, b and hypotenuse c: a² + b² = c². Base cases: (3,4,5) → 9+16=25 ✅. (5,12,13) → 25+144=169 ✅. (8,15,17) → 64+225=289 ✅.',
+                    'deductive_axiom' => 'Euclid\'s proof (Book I, Prop 47): construct squares on each side → area of two leg squares = area of hypotenuse square. Algebraic proof: (a+b)² = c² + 4·(½ab) → a²+b² = c².',
+                    'inductive_limit' => '370+ known proofs (Elisha Loomis, 1927). Generalises: Law of Cosines c² = a² + b² − 2ab·cosC. Extends to n-dim Euclidean distance: d = √(∑xᵢ²). Used in GPS, architecture, and all Euclidean geometry.',
+                    'domain_partition' => 'formal_mathematics',
+                ],
+
+                // ══════════════════════════════════════════════════════════
+                // PHYSICS EXTENSIONS
+                // ══════════════════════════════════════════════════════════
+                'electrostatics_lightning' => [
+                    'name'            => 'Electrostatics & Atmospheric Electricity (Lightning)',
+                    'aliases'         => ['lightning', 'thunder', 'charge separation', 'static electricity', 'electrostatics', 'electric field', 'plasma channel', 'corona discharge', 'stepped leader', 'return stroke', 'ball lightning', 'thunderstorm', 'storm cloud', 'convective storm'],
+                    'prerequisites'   => ['electromagnetism', 'thermodynamics'],
+                    'unsolved'        => false,
+                    'branch_icon'     => '⚡',
+                    'academic_ref'    => 'Franklin (1752) · Wilson (1920) · Uman (1987)',
+                    'trial'           => 'Thunderstorm: updrafts separate charge — ice crystals (positive) rise, graupel (negative) sinks. Charge separation builds V > 100 MV. Stepped leader descends at 200 km/s. Return stroke at 100,000 km/s (⅓c). Peak current 30,000 A, T > 30,000 K.',
+                    'deductive_axiom' => 'Breakdown field in air: E_bd ≈ 3×10⁶ V/m. Above threshold → plasma channel forms (ionised N₂, O₂). Coulomb\'s law drives charge neutralisation. Thunder delay: 3 s/km (sound speed 343 m/s vs light speed).',
+                    'inductive_limit' => 'Earth receives ≈ 100 lightning strikes/second globally. Verified by high-speed cameras (return stroke confirmed), radio wave detection (VLF sferics), and rocket-triggered lightning experiments.',
+                    'domain_partition' => 'physics',
+                ],
+                'fluid_dynamics' => [
+                    'name'            => 'Fluid Dynamics & Bernoulli Principle',
+                    'aliases'         => ['fluid dynamics', 'bernoulli', 'laminar flow', 'turbulent flow', 'reynolds number', 'navier stokes', 'viscosity', 'drag', 'lift', 'pressure', 'continuity equation', 'venturi', 'archimedes', 'buoyancy', 'surface tension', 'capillary'],
+                    'prerequisites'   => ['classical_mechanics', 'thermodynamics'],
+                    'unsolved'        => false,
+                    'branch_icon'     => '🌊',
+                    'academic_ref'    => 'Bernoulli (1738) · Navier-Stokes (1822/1845)',
+                    'trial'           => 'Bernoulli: P + ½ρv² + ρgh = const. Re = ρvL/η: laminar (Re < 2300), turbulent (Re > 4000). Archimedes: F_b = ρ_fluid·V_displaced·g. Continuity: A₁v₁ = A₂v₂ (incompressible flow).',
+                    'deductive_axiom' => 'Navier-Stokes: ρ(∂v/∂t + v·∇v) = −∇P + μ∇²v + ρg. Conservation of mass: ∇·v = 0 (incompressible). Millennium Prize Problem: smooth global solutions not yet proven.',
+                    'inductive_limit' => 'Bernoulli\'s principle governs airplane lift, carburettors, and venturi meters. Verified in wind tunnels, pipe flow experiments, and ocean current models.',
+                    'domain_partition' => 'physics',
                 ],
             ];
 

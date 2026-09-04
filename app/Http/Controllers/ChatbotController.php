@@ -351,6 +351,12 @@ class ChatbotController extends Controller
         // ========================================================================
         $hasLogicTerms = preg_match('/\b(?:implies|is true|is false|be true|negation|contradict(?:ion|ory)?|propositions?|logic|conjunction|disjunction|premise|if\s+.*?then|if\s+|therefore|all\s+.*?are|some\s+.*?are|no\s+.*?are|none|or|not|paradox|theorem|conjecture|goldbach|simulation|heterological|liar|berry|cantor|banach|gödel|godel|tarski|incompleteness|rule|exception|infinite|infinity|monkey|time travel|electron|wave|particle|impossible|necessarily|santa|moon|cheese|pigs|fly)\b/i', strtolower($message));
 
+        $hasScienceTerms = preg_match('/\b(?:thermodynamics|kinematics|biology|chemistry|physics|oceanography|forensic|space science|agronomy|paleontology|psychology|sociology|economics|military science|demography|culinary|jurisprudence|theology|pedagogy|hermeticism|aesthetics|metrology|architecture|systems theory|medicine|pharmacology|psychiatry|surgery|pathology|accounting|corporate finance|supply chain|cryptography|artificial intelligence|database theory|software engineering|scientific method|hypothesis testing)\b/i', strtolower($message));
+
+        $categorizer = app(\App\Services\ExpertScienceCategorizer::class);
+        $resolvedCategory = $categorizer->classify($message);
+        $isScienceCategory = ($resolvedCategory && !in_array($resolvedCategory, ['general', 'app_support']));
+
         $isProofRequest = in_array($intent['intent'], [
             \App\Services\NaturalLanguageIntentService::INTENT_PROOF,
             \App\Services\NaturalLanguageIntentService::INTENT_CALCULATION,
@@ -359,8 +365,10 @@ class ChatbotController extends Controller
             || preg_match('/Sum\s*\(\s*[a-zA-Z]+\s*=\s*(0|1)/i', $message)
             || preg_match('/^\s*\([a-zA-Z0-9\+\-\*\/\s]+\)\s*\^\s*\d+\s*$/', $message)
             || (preg_match('/^[a-zA-Z0-9\+\-\*\/\^\(\)\s\.]+$/', $message) && preg_match('/[a-zA-Z]/', $message) && !preg_match('/[a-zA-Z]{3,}/', $message))
-            || preg_match('/^\s*(?:prove|theorem|proof|show\s+that)\b/i', $request->message)
-            || $hasLogicTerms;
+            || preg_match('/^\s*(?:prove|theorem|proof|show\s+that|explain|what is)\b/i', $request->message)
+            || $hasLogicTerms
+            || $hasScienceTerms
+            || $isScienceCategory;
 
         if ($isProofRequest) {
             // Use DIRE-extracted thesis when available (higher quality), else fall back to regex strip

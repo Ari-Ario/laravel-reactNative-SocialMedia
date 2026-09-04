@@ -154,7 +154,8 @@ class UniversalRouterService
                 . '|tarski undefinability|l[öo]b\'s theorem|goodstein|paris.harrington'
                 . '|incompleteness theorem(?!.*(?:knowledge|epistemolog|philosoph))'
                 . '|g[öo]del(?!.*(?:epistemolog|philosoph|knowledge))'
-                . '|\bcategorical syllogism\b|\bhypothetical syllogism\b|\baffirming the consequent\b|\btarski.*undefinability\b|\bimplies.*true\b)\b/iu',
+                . '|\bcategorical syllogism\b|\bhypothetical syllogism\b|\baffirming the consequent\b|\btarski.*undefinability\b|\bimplies.*true\b'
+                . '|\bcpu absolute roots\b|\bmathematical logic\b|\bnon.classical logics?\b)\b/iu',
                 $thesis
             )
         ) {
@@ -184,6 +185,7 @@ class UniversalRouterService
                 . '/iu',
                 $thesis
             )
+            && !preg_match('/\\bimplies\\b|\\bmodus\\b/iu', $thesis)
         ) {
             return new BooleanLogicSolver($this->syntax);
         }
@@ -202,7 +204,7 @@ class UniversalRouterService
                 . '|photoelectric effect|infinite potential well|bell\'s inequalit'
                 . '|bell inequalit|hilbert space.*quantum'
                 . '|\bphoton\b|dual nature|double.?slit|hidden variables|harmonic oscillator'
-                . '|\bquantum\b(?!.*(?:leap|computing game|social)))/iu',
+                . '|\bquantum\b(?!.*(?:leap|computing game|social|chemistry)))/iu',
                 $thesis
             )
         ) {
@@ -245,7 +247,8 @@ class UniversalRouterService
                 . '|cantor.bernstein|diagonal argument|cardinal hierarchy'
                 . '|russell\'?s paradox|zfc\b|von neumann ordinal'
                 . '|set of all sets|power set of real'
-                . '|\bunion\b.*\bsets?\b|\bsets?\b.*\bunion\b|\bempty set\b|\buncountable set\b|\bintersection\b.*\bsets?\b|\bsets?\b.*\bintersection\b|\binaccessible cardinals?\b)/iu',
+                . '|\bunion\b.*\bsets?\b|\bsets?\b.*\bunion\b|\bempty set\b|\buncountable set\b|\bintersection\b.*\bsets?\b|\bsets?\b.*\bintersection\b|\binaccessible cardinals?\b'
+                . '|\bset theory\b|\bcategory theory\b|\bproof theory\b)/iu',
                 $thesis
             )
         ) {
@@ -267,7 +270,10 @@ class UniversalRouterService
                 . '|boolean satisfiability|landauer limit|one.time pad'
                 . '|byzantine general|nakamoto consensus|hash collision\b'
                 . '|\balgorithm\b|\bbinary number\b|\brecursion\b|\bmachine learning\b'
-                . '|\bneural network\b|\bsorting\b)/iu',
+                . '|\bneural network\b|\bsorting\b|information theory\b|ai software\b'
+                . '|computer science\b|blockchain\b|decentralized consensus\b'
+                . '|cybersecurity\b|cryptanalysis\b|cryptography\b|ai alignment\b'
+                . '|deep computer science\b)/iu',
                 $thesis
             )
         ) {
@@ -290,7 +296,22 @@ class UniversalRouterService
                 . '|dunbar\'?s number\b|keynesian\b|fiscal policy\b|monetary policy\b'
                 . '|aggregate demand\b|is.lm\b|folk theorem\b|minimax theorem\b'
                 . '|backward induction\b.*game|endowment effect\b|status quo bias\b'
-                . '|concept of culture|cognitive dissonance)/iu',
+                . '|concept of culture|cognitive dissonance|military strategy\b|lanchester\'?s (law|square)\b'
+                . '|clausewitz\b|demography\b|mortality rate\b|gompertz.makeham\b|media studies\b'
+                . '|mass communication\b|shannon.weaver\b|mcluhan\b'
+                . '|accounting\b|corporate finance\b|supply chain\b|capm\b|black.scholes\b|little\'?s law\b|balance sheet\b|cash flow\b'
+                . '|(?<!multiversal\s)\beconomics\b|\bsocial sciences?\b|\bcommerce\b|(?<!water\s)(?<!emergency\s)(?<!disaster\s)\bmanagement\b|\bjurisprudence\b'
+                . '|\blegal theory\b|\bactuarial science\b|\bpopulation dynamics\b'
+                . '|\bphilanthropy\b|\bsocial work\b|\bdiplomacy\b|\binternational relations\b'
+                . '|\bgeopolitics\b|\barchival science\b|\btaxonomy\b|\bmuseology\b'
+                . '|\boperations research\b|\blogistics\b|\blibrary science\b|\bbibliometrics\b'
+                . '|\bpublic administration\b|\bpublic policy\b|\bbureaucracy\b'
+                . '|\bpenology\b|\bcorrectional science\b|\brestorative justice\b'
+                . '|\bhospitality\b|\btourism management\b|\bjournalism\b|\bpublic relations\b'
+                . '|\bbusiness niches?\b|\bdomestic sciences?\b|\bconsumer sciences?\b'
+                . '|\bpsychology\b|\bneurodiversity\b|\bcognitive pluralism\b'
+                . '|\bmilitary science\b|\bstrategic studies\b|\bmedia\b|\bcommunication\b'
+                . '|\binformation science\b|\bspecialized legal fields\b)/iu',
                 $thesis
             )
         ) {
@@ -304,13 +325,13 @@ class UniversalRouterService
         if (
             preg_match(
                 '/\b(yield stress\b|tensile strength\b|young\'?s modulus\b'
-                . '|reynolds number\b|navier.stokes\b|bernoulli\'?s (equation|principle)\b'
+                . '|reynolds number\b|navier.stokes\b'
                 . '|lift equation\b|kutta.joukowski\b|drag coefficient\b|mach number\b'
                 . '|bending moment\b|shear force (diagram)?\b|cantilever beam\b'
                 . '|euler column\b|slenderness ratio\b|beam bending\b'
                 . '|specific impulse\b|tsiolkovsky\b|rocket equation\b'
                 . '|rankine cycle\b|brayton cycle\b|carnot cycle\b|refrigeration cop\b'
-                . '|fourier conduction\b|newton\'?s cooling\b|heat exchanger\b'
+                . '|fourier transform\b|fourier analysis\b|fourier conduction\b|signal processing\b|newton\'?s cooling\b|heat exchanger\b'
                 . '|rc circuit\b|rl circuit\b|rlc (resonance|circuit)\b'
                 . '|mohr\'?s circle\b|fracture toughness\b|griffith crack\b'
                 . '|poiseuille flow\b|boundary layer\b|aerodynamics\b'
@@ -318,7 +339,12 @@ class UniversalRouterService
                 . '|shear modulus\b|fluid dynamics\b|viscosity\b'
                 . '|reynolds\b.*flow|flow.*reynolds\b'
                 . '|ohm\'?s law|ac and dc|transformer|fatigue life|miner\'?s rule|nyquist plot'
-                . '|specific impulse|rocketry'
+                . '|specific impulse|rocketry|architecture\b|urban planning\b|ergonomics\b'
+                . '|human factors\b|systems theory\b|cybernetics\b|control theory\b|pid controller\b|system dynamics\b'
+                . '|culinary\b|gastronomy\b|food science\b|maillard reaction\b'
+                . '|(?<!temporal\s)(?<!astro.)(?<!astro)\bengineering\b|\bcivil structuring\b|\binterface design\b|\bmining\b'
+                . '|\bmetallurgy\b|\bsubsurface\b|\btextile\b|\bapparel\b|\brobotics\b'
+                . '|\baviation\b|\bmarine navigation\b|\bnautics\b|\btransportation\b|\binfrastructure\b'
                 . '|stress.*rod|\bstress\b.*force|\bforce\b.*\bstress\b)/iu',
                 $thesis
             )
@@ -340,6 +366,10 @@ class UniversalRouterService
                 . '|omega point\b|eschatology\b.*technolog|heat death.*universe'
                 . '|matrioshka brain\b|infinite computation\b|zero energy cost\b'
                 . '|neuralink\b|mind uploading\b|brain.computer interface.*future'
+                . '|\bfuturology\b|\bextraterrestrial\b|\bastro.sociology\b|\binterplanetary\b'
+                . '|\bxenology\b|\bexo.sociology\b|\btranshumanist\b|\bmultiversal\b'
+                . '|\bchrono.mechanics\b|\btemporal engineering\b|\bxenobotany\b'
+                . '|\bmegastructure\b|\bastro.engineering\b|\bomega.point synthesis\b'
                 . '|artificial intelligence|simulation hypothesis|simulated matrix|dyson spheres?|fermi paradox)/iu',
                 $thesis
             )
@@ -413,7 +443,8 @@ class UniversalRouterService
                 . '|euler\'?s totient\b|chinese remainder theorem\b'
                 . '|arithmetic progression.*prime|prime.*arithmetic progression'
                 . '|greatest common divisor|carmichael number|fundamental theorem of arithmetic'
-                . '|\bprime number\b|multiplying.*even number|\bpositive integers?\b|\binfinitely many prime numbers\b)\b/iu',
+                . '|\bprime number\b|multiplying.*even number|\bpositive integers?\b|\binfinitely many prime numbers\b'
+                . '|\bnumber theory\b|\barithmetic\b|\besoteric hyper.mathematics\b)\b/iu',
                 $thesis
             )
         ) {
@@ -456,6 +487,19 @@ class UniversalRouterService
                 . '|kuhn.*paradigm|paradigm shift.*science|toynbee\b|braudel\b|tainter.*complexity'
                 . '|turing test.*intelligence|behavioral.*criterion.*machine'
                 . '|hegelian dialectic|historical materialism.*marx|marx.*historical materialism'
+                . '|\bmetaphysics\b|\bontology\b|\bepistemology\b|\bhumanities\b|\bapplied arts\b|\bdesign\b'
+                . '|\blinguistics\b|\bsemiotics\b|\bphilology\b|\btheology\b|\bmythology\b|\breligious studies\b'
+                . '|\bpedagogy\b|\bandragogy\b|\beducational sciences?\b|\bhermeticism\b|\besotericism\b'
+                . '|\boccult philosophy\b|\bmusicology\b|\bdramaturgy\b|\bperforming arts\b|\bgenealogy\b'
+                . '|\bheraldry\b|\bprosopography\b|\bnumismatics\b|\bphilately\b|\bexonumia\b'
+                . '|\bcryptozoology\b|\bufology\b|\bfringe syntheses\b|\bontological meta.knowledge\b'
+                . '|\bphilosophy of science\b|\bepistemological paradigms?\b|\bcritical theory\b'
+                . '|\bpost.structuralism\b|\bdeconstruction\b|\bgender studies\b|\bqueer theory\b'
+                . '|\bintersectionality\b|\bgame design\b|\bludology\b|\bplay theory\b'
+                . '|\btranslation studies\b|\brhetoric\b|\bdivination\b|\besoteric cosmologies?\b'
+                . '|\bzmzir\b|\bvisual arts?\b|\bgraphic arts?\b|\bcinema\b|\barea studies\b|\bcultural studies\b'
+                . '|\besoteric philosophy\b|\babsolute epistemic synthesis\b|\beastern epistemology\b'
+                . '|\bnon.dualism\b|\bindigenous knowledge\b|\bethnoscience\b|\bphenomenology\b|\bexistentialism\b'
                 . ')/iu',
                 $thesis
             )
@@ -501,6 +545,7 @@ class UniversalRouterService
                 . '|\bbolzano.weierstrass\b|\bheine.cantor\b'
                 . '|\bmean value theorem\b|\barc length\b|\bweierstrass\b'
                 . '|\bfundamental theorem of calculus\b'
+                . '|\balgebra\b|\bmathematical analysis\b|\bgeometry\b|\btopology\b'
                 . '/iu',
                 $thesis
             )
@@ -539,7 +584,7 @@ class UniversalRouterService
                 . '|stoichiometry\b|molar mass\b|avogadro\b|photosynthesis\b'
                 . '|combustion\b|equilibrium constant\b|le chatelier\b|arrhenius\b'
                 . '|hess\'?s law\b|gibbs\b|haber.bosch\b|acid.base\b'
-                . '|chemical formula|plate tectonics|standard model)\b/iu',
+                . '|chemical formula|standard model)\b/iu',
                 $thesis
             )
         ) {
@@ -574,7 +619,7 @@ class UniversalRouterService
             return new NaturalScienceSolver($this->syntax, $this->cas);
         }
 
-        // 16e. Biology & Life Sciences
+        // 16e. Biology & Life Sciences & Medicine
         if (
             preg_match(
                 '/\b(dna\b|rna\b|genetics?\b|chromosome\b|mitosis\b|meiosis\b'
@@ -583,7 +628,16 @@ class UniversalRouterService
                 . '|hardy.weinberg\b|speciation\b|phenotype\b|genotype\b|allele\b'
                 . '|neurotransmitter\b|synapse\b|action potential\b|neuron\b'
                 . '|evolv(e|ing|ution)\b(?!.*ethics)|kin selection\b(?!.*ethics|.*moral)'
-                . '|cellular respiration|krebs cycle)\b/iu',
+                . '|cellular respiration|krebs cycle|kinesiology\b|biomechanics\b|muscle hypertrophy\b'
+                . '|vo2 max\b|sports science\b|medicine\b|medical\b|pharmacology\b'
+                . '|pharmacokinetics\b|surgery\b|psychiatry\b|pediatrics\b|pathology\b|etiology\b'
+                . '|cellular\b|molecular biology\b|evolutionary biology\b|ecology\b'
+                . '|physiology\b|applied medical\b|veterinary medicine\b|ethology\b'
+                . '|animal sciences?\b|toxicology\b|venomics\b|poison sciences?\b'
+                . '|gerontology\b|somnology\b|chronobiology\b|forestry\b|silviculture\b'
+                . '|dendrology\b|clinical medicine\b|alternative medicine\b'
+                . '|virology\b|epidemiology\b|immunology\b|endocrinology\b|neuroscience\b|botany\b|zoology\b|anatomy\b'
+                . '|biological sub.disciplines?\b|biophysics\b|synthetic biology\b)\b/iu',
                 $thesis
             )
         ) {
@@ -615,11 +669,41 @@ class UniversalRouterService
                 . '|shannon.*diversity|competitive exclusion\b'
                 . '|si unit\b|measurement uncertainty\b|propagation of (error|uncertainty)'
                 . '|significant figure\b|dimensional analysis\b(?!.*econom)'
+                . '|oceanography\b|thermohaline\b|gulf stream\b|marine biolog\b|forensic science\b'
+                . '|space science\b|orbital mechanics\b|astronom\b|kepler\'?s laws\b|satellite orbit\b|escape velocity\b'
+                . '|paleontology\b|fossil record\b|dinosaur\b|extinction event\b|cambrian explosion\b'
+                . '|agronomy\b|agriculture\b|soil science\b|crop yield\b|fertilizer\b'
+                . '|\bearth sciences?\b|\bmeteorology\b|\bempirical science\b|\bhistory\b'
+                . '|\barchaeology\b|\bastronautics\b|\bcriminology\b|\bmetrology\b'
+                . '|\bscientific instrumentation\b|\bcartography\b|\btopography\b|\bgeodesy\b'
+                . '|\bhorology\b|\bchronometry\b|\bhydrology\b|\bglaciology\b|\bwater management\b'
+                . '|\bgemology\b|\bmineralogy\b|\bcrystallography\b|\bpermaculture\b'
+                . '|\bdisaster science\b|\bemergency management\b|\brisk resilience\b'
+                . '|\bhusbandry\b|\bspeleology\b|\bpedology\b|\bextreme earth sciences?\b'
+                . '|\banthropocene\b|\bsustainability\b'
+                . '|\bastrophysics\b|\bgeology\b|\bseismology\b|\bvulcanology\b|\bclimatology\b|\bvolcanology\b'
                 . ')/iu',
                 $thesis
             )
         ) {
             return new EmpiricalScienceSolver($this->syntax);
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
+        // LAYER 16g – Scientific Axiom/Theorem Structural Pattern
+        // Catches arbitrary mathematical/scientific theorems, laws, and equations
+        // by their structural naming conventions even if missing from keyword banks.
+        // ═══════════════════════════════════════════════════════════════════
+        if (
+            preg_match(
+                '/\b([a-z]+-?[a-z]*(?:\'s|s)? (theorem|law|principle|equation|conjecture|paradox|effect|constant|rule|hypothesis|lemma|theory)'
+                . '|(law|theorem|principle|equation|effect|rule|constant|hypothesis|lemma|theory) of [a-z]+-?[a-z]*)\b/iu',
+                $thesis
+            )
+        ) {
+            // These structural phrases are overwhelmingly scientific/mathematical in nature.
+            // If it hits here, it bypasses the basic logic check.
+            return new NaturalScienceSolver($this->syntax, $this->cas);
         }
 
         // ═══════════════════════════════════════════════════════════════════
@@ -700,10 +784,22 @@ class UniversalRouterService
         if ($semanticDomain) {
             $solverClass = \App\Services\Dialectical\Semantic\ScientificTaxonomyService::resolveSolverClass($semanticDomain);
             $mlMap = [
+                \App\Services\Dialectical\Solvers\MathematicalAnalysisSolver::class => fn() => new MathematicalAnalysisSolver($this->syntax),
+                \App\Services\Dialectical\Solvers\ComplexDomainSolver::class => fn() => new ComplexDomainSolver($this->syntax),
+                \App\Services\Dialectical\Solvers\SetTheorySolver::class => fn() => new SetTheorySolver($this->syntax),
+                \App\Services\Dialectical\Solvers\AlgebraicSummationSolver::class => fn() => new AlgebraicSummationSolver($this->syntax, $this->cas),
+                \App\Services\Dialectical\Solvers\ComputationalLogicSolver::class => fn() => new ComputationalLogicSolver($this->syntax),
+                \App\Services\Dialectical\Solvers\HumanitiesDialecticsSolver::class => fn() => new HumanitiesDialecticsSolver($this->syntax, $this->cas),
+                \App\Services\Dialectical\Solvers\PostHumanSpeculativeSolver::class => fn() => new PostHumanSpeculativeSolver($this->syntax, $this->cas),
                 \App\Services\Dialectical\Solvers\NumberTheorySolver::class => fn() => new NumberTheorySolver($this->syntax),
                 \App\Services\Dialectical\Solvers\FormalLogicSolver::class => fn() => new FormalLogicSolver($this->syntax),
                 \App\Services\Dialectical\Solvers\NaturalScienceSolver::class => fn() => new NaturalScienceSolver($this->syntax, $this->cas),
+                \App\Services\Dialectical\Solvers\EngineeringScienceSolver::class => fn() => new EngineeringScienceSolver($this->syntax, $this->cas),
+                \App\Services\Dialectical\Solvers\SocialScienceSolver::class => fn() => new SocialScienceSolver($this->syntax, $this->cas),
                 \App\Services\Dialectical\Solvers\StatisticalScienceSolver::class => fn() => new StatisticalScienceSolver($this->syntax),
+                \App\Services\Dialectical\Solvers\QuantumMechanicsSolver::class => fn() => new QuantumMechanicsSolver($this->syntax, $this->cas),
+                \App\Services\Dialectical\Solvers\BooleanLogicSolver::class => fn() => new BooleanLogicSolver($this->syntax),
+                \App\Services\Dialectical\Solvers\ParadoxSolver::class => fn() => new ParadoxSolver($this->syntax),
             ];
             if (isset($mlMap[$solverClass])) {
                 return ($mlMap[$solverClass])();

@@ -1277,6 +1277,10 @@ const getStyles = (colors: any, activeScheme: string) => StyleSheet.create({
         paddingHorizontal: 20,
         paddingBottom: 16,
     },
+    headerLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
     headerTitle: {
         fontSize: 20,
         fontWeight: '800',
